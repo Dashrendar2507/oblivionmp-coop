@@ -5,3 +5,5 @@ build.log
 *.user
 .vs/
 .idea/
+*.esm
+__pycache__/
