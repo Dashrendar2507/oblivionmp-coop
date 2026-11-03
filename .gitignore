@@ -1,0 +1,7 @@
+bin/
+obj/
+Output/
+build.log
+*.user
+.vs/
+.idea/
