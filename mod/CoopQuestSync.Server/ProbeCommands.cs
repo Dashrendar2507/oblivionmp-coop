@@ -45,7 +45,7 @@ public sealed partial class ProbeCommands(IChat chat, IEntities entities, Invent
         switch (parts[0].ToLowerInvariant())
         {
             case "inv":
-                var items = InventoryProbe.ReadItems(main, PluginItems.IsPluginForm);
+                var items = PluginItems.ReadItems(main, PluginItems.IsPluginForm);
                 if (items.Count == 0)
                     Reply(sender, "The server sees no plugin items in your inventory.");
                 foreach (var (formId, count) in items)
@@ -53,7 +53,7 @@ public sealed partial class ProbeCommands(IChat chat, IEntities entities, Invent
                 break;
 
             case "count" when parts.Length == 2 && PluginItems.TryParseHex(parts[1], out var countId):
-                var all = InventoryProbe.ReadItems(main, id => id == countId);
+                var all = PluginItems.ReadItems(main, id => id == countId);
                 Reply(sender, $"Server sees {PluginItems.Hex(countId)} x{all.GetValueOrDefault(countId)} in your inventory.");
                 break;
 

@@ -27,9 +27,10 @@ class CompileError(Exception):
     pass
 
 class Script:
-    def __init__(self, resolve):
-        """resolve(editor_id) -> form id (int) or None."""
+    def __init__(self, resolve, globals_=()):
+        """resolve(editor_id) -> form id (int) or None. globals_: editor ids of GLOB records."""
         self.resolve = resolve
+        self.globals = {g.lower() for g in globals_}
         self.refs = []          # form ids in SCRO order
         self.vars = []          # (name, is_int)
         self.name = None
@@ -53,6 +54,8 @@ class Script:
         return None
 
     def var_token(self, name):
+        if self.var(name) is None and name.lower() in self.globals:
+            return b"\x47" + struct.pack("<H", self.ref_index(name))
         v = self.var(name)
         if v is None:
             raise CompileError(f"unknown variable {name}")
@@ -116,7 +119,7 @@ class Script:
                 b = (b"\x72" + prefix if hasref else b"") + b"\x58" + struct.pack("<HH", op, len(p)) + p
                 emit(b)
                 i += nargs
-            elif self.var(t):
+            elif self.var(t) or t.lower() in self.globals:
                 emit(self.var_token(t))
             else:
                 raise CompileError(f"unknown token {t}")
@@ -162,6 +165,13 @@ class Script:
                 stmts.append(["else", None])
             elif kw == "endif":
                 stmts.append(["endif", b"\x19\x00\x00\x00"])
+            elif kw == "message":
+                m = re.match(r'message\s+"([^"%]*)"$', l, re.I)
+                if not m:
+                    raise CompileError(f"only plain Message \"text\" is supported: {l}")
+                text = m.group(1).encode("cp1252")
+                body = struct.pack("<HH", 1, len(text)) + text + b"\0" * 6
+                stmts.append(["stmt", struct.pack("<HH", 0x1059, len(body)) + body])
             elif kw == "return":
                 stmts.append(["stmt", b"\x1e\x00\x00\x00"])
             else:

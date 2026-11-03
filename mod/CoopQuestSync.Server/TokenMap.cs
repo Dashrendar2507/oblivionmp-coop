@@ -19,6 +19,10 @@ public sealed class TokenMap
 {
     public uint BeaconLocalId { get; }
     public uint SeqLocalId { get; }
+    public uint BusyLocalId { get; }
+    public uint AckLocalId { get; }
+    /// <summary>Token ids from old test builds, [start, end). The server takes these out of inventories.</summary>
+    public (uint Start, uint End) Legacy { get; }
     public IReadOnlyDictionary<string, QuestInfo> Quests => _quests;
 
     private readonly Dictionary<uint, QuestStage> _byToken = new();
@@ -31,6 +35,10 @@ public sealed class TokenMap
     {
         BeaconLocalId = ParseHex(root.GetProperty("beacon").GetString()!);
         SeqLocalId = ParseHex(root.GetProperty("seq").GetString()!);
+        BusyLocalId = ParseHex(root.GetProperty("busy").GetString()!);
+        AckLocalId = ParseHex(root.GetProperty("ack").GetString()!);
+        if (root.TryGetProperty("legacy", out var legacy))
+            Legacy = (ParseHex(legacy[0].GetString()!), ParseHex(legacy[1].GetString()!));
         foreach (var q in root.GetProperty("quests").EnumerateArray())
         {
             var editorId = q.GetProperty("editorId").GetString()!;

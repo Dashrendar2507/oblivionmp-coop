@@ -33,7 +33,7 @@ public sealed partial class QuestCommands(IChat chat, IEntities entities, QuestT
                 Reply(sender, $"Auto sync is {(sync.AutoSync ? "ON" : "OFF")}. Shared progress: {sync.Shared.Count} quest(s), {sync.Shared.Sum(kv => kv.Value.Count)} stage(s).");
                 foreach (var (id, view) in sync.Players)
                     Reply(sender, view.ModIndex is { } slot
-                        ? $"{id}: plugin in slot {slot:X2}, {view.Stages.Count} stage token(s)"
+                        ? $"{id}: plugin in slot {slot:X2}, {view.Phase}, {view.Stages.Count} stage token(s)"
                         : $"{id}: plugin not seen yet");
                 break;
 
@@ -58,7 +58,7 @@ public sealed partial class QuestCommands(IChat chat, IEntities entities, QuestT
                 }
                 if (!entities.TryLookup(sender, out MainCharacter main) || !sync.PushOne(main, new QuestStage(quest, stageNo)))
                 {
-                    Reply(sender, "Could not give you the token: the server has not seen the plugin in your inventory yet.");
+                    Reply(sender, "Could not give you the token: the server has not seen the plugin in your inventory yet, or is still restoring your progress.");
                     break;
                 }
                 Reply(sender, $"Gave you the token for {quest} {stageNo}. The plugin should set that stage within a few seconds.");

@@ -12,7 +12,8 @@ The SDK cannot read or set the game's own quests, so a small game plugin does th
 ## Layout
 
 - `mod/`: the real mod (server and client halves, plus the generated plugin in `mod/Content/`). See `mod/TESTING.md` for test steps.
-- `plugin/tools/`: Python tools that generate the plugin from `Oblivion.esm`, including a small Oblivion script compiler.
+- `plugin/tools/`: Python tools that generate the plugin from `Oblivion.esm`, including a small Oblivion script compiler. `plugin/token-ids.json` pins every stage's token id, so regenerating never changes the id of a token players already carry.
+- `ui/CoopQuestSyncUI/`: a UE4SS Lua add-on that hides HUD pop-ups while the plugin replays stages, so catching up on join is silent.
 - `probe/`: the Phase 0 test mod (inventory logging and `/qsprobe`).
 
 ## Generating the plugin
@@ -22,8 +23,6 @@ Needs Python 3 and your own copy of `Oblivion.esm`, which is not in this repo.
 ```sh
 # every quest
 python3 -I plugin/tools/gen_plugin.py path/to/Oblivion.esm mod/Content
-# only some quests (the 0.2 test build uses MS93 and MS52)
-python3 -I plugin/tools/gen_plugin.py path/to/Oblivion.esm mod/Content --only MS93,MS52
 # check the script compiler against the game's own compiled scripts
 python3 -I plugin/tools/check_compiler.py path/to/Oblivion.esm
 ```

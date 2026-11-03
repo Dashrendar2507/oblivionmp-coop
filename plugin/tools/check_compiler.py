@@ -12,14 +12,17 @@ import tes4, obscript
 buf = tes4.load(sys.argv[1])
 names = {}
 scripts = []
+globs = set()
 for r in tes4.iter_records(buf):
     if r.edid:
         names[r.edid.lower()] = r.formid
+        if r.type == "GLOB":
+            globs.add(r.edid.lower())
     if r.type == "SCPT" and r.get("SCDA"):
         scripts.append(r)
 res = collections.Counter()
 for r in scripts:
-    s = obscript.Script(lambda n: names.get(n.lower()))
+    s = obscript.Script(lambda n: names.get(n.lower()), globs)
     try:
         code = s.compile(r.get("SCTX").decode("cp1252"))
     except Exception:
