@@ -22,13 +22,21 @@ public sealed partial class TestCommands(IChat chat, IEntities entities, QuestTo
     ConversationRelay talks, PartyService party)
 {
     private const string Ghost = "Ghost";
-    private const string Usage = "/coop test talk [ask] | stop | stage <quest> <stage> | effects <quest> | revive | status";
+    private const string Usage = "/coop follow | revive | giveup, or /coop test talk [ask] | stop | stage <quest> <stage> | effects <quest> | revive | status";
 
     private void Start() => chat.AddCommand("coop", Usage, Run);
 
     private void Run(IChat c, PlayerId sender, string arguments)
     {
         var parts = arguments.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        // Same as the keys, for when a key doesn't get through.
+        if (parts.Length == 1)
+            switch (parts[0].ToLowerInvariant())
+            {
+                case "follow": talks.ToggleFollow(sender); return;
+                case "revive": party.ReviveNearest(sender); return;
+                case "giveup": party.GiveUp(sender); return;
+            }
         if (parts.Length < 2 || !parts[0].Equals("test", StringComparison.OrdinalIgnoreCase))
         {
             Reply(sender, Usage);

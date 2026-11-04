@@ -218,6 +218,12 @@ public sealed partial class PartyService(IEntities entities, IServerEvents event
         }
     }
 
+    /// <summary>/coop revive: the same as Alt+R.</summary>
+    public void ReviveNearest(PlayerId helper) => OnReviveRequested(helper);
+
+    /// <summary>/coop giveup: the same as Alt+G.</summary>
+    public void GiveUp(PlayerId id) => OnGiveUp(id);
+
     private void OnReviveRequested(PlayerId helper)
     {
         if (!entities.TryLookup(helper, out MainCharacter me) || me.IsDead)

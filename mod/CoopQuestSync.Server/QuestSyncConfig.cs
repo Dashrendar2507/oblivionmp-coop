@@ -44,7 +44,7 @@ public sealed partial class QuestSyncConfig
     /// </summary>
     public string GamePlugins { get; set; } =
         "Oblivion.esm,DLCBattlehornCastle.esp,DLCFrostcrag.esp,DLCHorseArmor.esp,DLCMehrunesRazor.esp,DLCOrrery.esp," +
-        "DLCShiveringIsles.esp,DLCSpellTomes.esp,DLCThievesDen.esp,DLCVileLair.esp,Knights.esp,AltarESPMain.esp,AltarDeluxe.esp";
+        "DLCShiveringIsles.esp,DLCSpellTomes.esp,DLCThievesDen.esp,DLCVileLair.esp,Knights.esp,AltarESPMain.esp,AltarDeluxe.esp,AltarESPLocal.esp";
 
     /// <summary>The game's text (key -> text), made with plugin/tools/locres.py. Empty: strings.json next to the DLL.</summary>
     public string StringsFile { get; set; } = "";

@@ -22,8 +22,9 @@ What's new since 0.4:
   the watchers' overlay says "Alice is bartering..." and waits for them to come back. The tag over their head says
   so too, and "Picking a lock" while they pick one.
 * **Alt+F: follow or leave a conversation.** Pressing Alt+F while you watch someone's conversation closes the overlay
-  and unfreezes you, and pressing it again brings you back. "Watchers follow a conversation: When they press Alt+F" on the page
-  stops pulling anyone in: you get a prompt ("Alice is talking to Ysabel. Alt+F to listen in.") and choose.
+  and unfreezes you, and pressing it again brings you back. "Watchers follow a conversation: When they press Alt+F"
+  on the page stops pulling anyone in: a banner at the top says who is talking, for as long as they talk, and you
+  choose. `/coop follow` in chat does the same as the key.
 * **Updates wait for the end of a conversation**, so a quest doesn't jump while you're talking.
 * **Chat messages**: "Alice advanced The Quest: journal text".
 * **Rewards handed out in conversation** (gold or items a line gives) go to everyone. Trades don't.
@@ -42,10 +43,10 @@ shared progress, so a restart keeps them.
 
 1. **Server:** replace the server's `mods\CoopQuestSync` folder with the one in the zip. Keep
    `coop-quest-sync-state.json`: your shared progress carries over.
-2. **Each player:** copy both files from `game-plugin\` in the zip into the game's `Data` folder, replacing the old
-   `CoopQuestSync.esp`:
-   * `CoopQuestSync.esp` (quests, as before)
-   * `CoopQuestSyncDialogue.esp` (new: shared conversations)
+2. **Nothing to copy for the players.** Both plugins (`CoopQuestSync.esp` and `CoopQuestSyncDialogue.esp`) are in
+   the mod's `client` folder. OblivionMP puts them in each player's `Data` folder when they join, and takes them out
+   when they leave, which is why they disappear after a disconnect. If you copied them into `Data` yourself before,
+   you can delete those copies.
 3. **Each player:** open `Plugins.txt` (the same one you edited for 0.2) and make the end of it read:
 
    ```
@@ -59,7 +60,7 @@ shared progress, so a restart keeps them.
 4. The pop-up add-on in `ui\` hasn't changed since 0.3.
 5. Restart the server. Its log should show:
    * `Loaded 287 quests / 2696 stages from the token map`
-   * `Game data: 11019 dialogue lines, ... names, 0 text entries (no strings.json: ...)`
+   * `Game data: 11019 dialogue lines, ... names, 24730 text entries` (the game's text, from `strings.json`)
    * `Quest admin page: http://localhost:9060/`
 
 ## Test 1: you alone
@@ -85,13 +86,16 @@ The server can play a made-up teammate called "Ghost". Type these in chat:
    ends. After the second line, the overlay should say "Ghost is bartering..." for a few seconds, and later
    "Ghost is persuading...".
    Press Alt+F while it runs: the overlay should close and you can move. Press it again: it comes back with the last
-   lines. Then try `/coop test talk ask`: you only get a prompt, and Alt+F opens the overlay. `/coop test stop` ends it early. Set "Freeze watchers" to "Nobody" on the page and try again: overlay, no freeze.
+   lines. Then try `/coop test talk ask`: you get a banner at the top ("Ghost talks with ... · Alt+F to listen in")
+   that stays until the conversation ends, and Alt+F opens the overlay. `/coop follow` in chat does the same as
+   Alt+F. `/coop test stop` ends it early. Set "Freeze watchers" to "Nobody" on the page and try again: overlay,
+   no freeze.
 3. `/coop test effects MS93` lists the stages of a quest that have effects on the player, for example
    `20: teleport/items`. Pick a quest you haven't started and a stage with a teleport.
 4. `/coop test stage <quest> <stage>`: Ghost "reached" that stage. You get it as if a teammate did it live, and the
    chat line says which effects you should get. Then turn Live Teleport off on the page, and try another teleport
    stage: you should get the stage but stay where you are.
-5. Death: open the console and type `kill`. You should see "You are down...". Either `/coop test revive` (Ghost
+5. Death: open the console and type `player.kill`. You should see "You are down...". Either `/coop test revive` (Ghost
    revives you, where you fell), or press Alt+G, or wait 60 s: you come back where you last stood on solid ground,
    a few seconds before you died (Ghost has no body to stand next to). To check the fall case, jump off something
    high: you should come back at the top, not at the bottom.
@@ -112,7 +116,7 @@ Do these standing next to each other, in the same place:
 3. **Stage effects.** Find a quest stage that moves you (the page shows a "Teleport" tag). When one of you
    reaches it, the other should be moved too. Then turn Live Teleport off on the page and try another one: the
    other player gets the stage but stays put.
-4. **Death.** One of you dies (or `kill` in the console). The dead player should see "You are down...", the other
+4. **Death.** One of you dies (or `player.kill` in the console). The dead player should see "You are down...", the other
    gets a chat line. Stand next to them and press Alt+R: they should come back. Next time, wait 60 s or press
    Alt+G: they should come back next to the other player.
 5. **Walking around during a conversation.** This one decides the defaults, so please take notes. Set "Freeze
@@ -133,22 +137,19 @@ Do these standing next to each other, in the same place:
 
 ## Getting the game's text (for the overlay and the page)
 
-The remaster doesn't keep names, dialogue or journal text in the plugins, only keys like
-`LOC_FN_YsabelAndronicus`. Without the text, the overlay shows the NPC and the topic but not the words of the line,
-and the page shows quest ids. The text is in the game's localization file:
-
-1. Download FModel (https://fmodel.app) and point it at the game's
-   `OblivionRemastered\Content\Paks` folder.
-2. Find `Localization/Game/en/Game.locres` (search for `.locres`), right-click it and choose **Export Raw Data**.
-3. Upload that file here. I'll turn it into `strings.json`, which goes next to the server DLL. The overlay and the
-   page will then show the real names, lines and journal entries.
+Done: the zip's `server` folder now has `strings.json`, made from the `Game.locres` you sent (English). The overlay
+and the page show real names, lines, quest names and journal entries. For another language, export that language's
+`Game.locres` the same way (FModel, `Localization/Game/<language>/Game.locres`, Export Raw Data) and send it.
 
 ## Known limits
 
 * **The overlay runs behind the talker.** The game reports a line when its result script runs, which is at the end of
   the line, so the watcher reads it after the talker has heard it. There is no voice.
-* **Alt+F while frozen** relies on OblivionMP still hearing keys when the game has turned your controls off. If
-  it doesn't, tell me and I'll pick another way to leave.
+* **Alt+R, Alt+G and Alt+F** are read straight from the keyboard, so they work while you're frozen. If a key
+  still does nothing (a remote desktop may not pass Alt combinations on), type `/coop revive`, `/coop giveup` or
+  `/coop follow` in chat instead. The client log shows `Alt+F (follow) pressed.` when the key gets through.
+* **You can still look around while listening in.** The game's freeze stops walking and fighting, but not the
+  camera, and I haven't found a way for a mod to lock it. Looking around doesn't affect anyone else.
 * **Menus are recognised by the original game's menu numbers.** If the remaster numbers them differently, the
   log won't show `is bartering`. Tell me which menu stayed silent.
 * **The NPC's name** comes from the line's own conditions when it names its speaker, otherwise from the NPC closest
@@ -169,7 +170,7 @@ and the page shows quest ids. The text is in the game's localization file:
 {
   "WebBind": "127.0.0.1", "WebPassword": "", "WebPort": 9060,
   "AutoSync": true, "UndoReplayRewards": true,
-  "GamePlugins": "Oblivion.esm,DLCBattlehornCastle.esp,DLCFrostcrag.esp,DLCHorseArmor.esp,DLCMehrunesRazor.esp,DLCOrrery.esp,DLCShiveringIsles.esp,DLCSpellTomes.esp,DLCThievesDen.esp,DLCVileLair.esp,Knights.esp,AltarESPMain.esp,AltarDeluxe.esp",
+  "GamePlugins": "Oblivion.esm,DLCBattlehornCastle.esp,DLCFrostcrag.esp,DLCHorseArmor.esp,DLCMehrunesRazor.esp,DLCOrrery.esp,DLCShiveringIsles.esp,DLCSpellTomes.esp,DLCThievesDen.esp,DLCVileLair.esp,Knights.esp,AltarESPMain.esp,AltarDeluxe.esp,AltarESPLocal.esp",
   "StringsFile": ""
 }
 ```

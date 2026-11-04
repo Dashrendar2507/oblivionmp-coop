@@ -46,6 +46,7 @@ local function onNotification(param)
         hiddenCount = 0
         hide = true
     elseif text == FINISH then
+        watchUntil = os.clock() + WATCH_AFTER
         if muted then
             log("batch done, hid " .. hiddenCount .. " pop-up(s)")
         end
@@ -62,6 +63,26 @@ local function onNotification(param)
         pcall(function() vm.Notification.ShowSeconds = HIDDEN end)
     end
 end
+
+-- Finding the "Set as active quest / Continue" box: it is not a HUD notification, so the hook above misses it.
+-- While a batch runs, and for a while after, write the class of every new UI widget to UE4SS.log, so the next
+-- version can close that box by itself.
+local WATCH_AFTER = 20 -- seconds after a batch
+local watchUntil = 0
+local seenClasses = {}
+
+local function onNewWidget(widget)
+    if not muted and os.clock() > watchUntil then
+        return
+    end
+    local ok, name = pcall(function() return widget:GetClass():GetFullName() end)
+    if ok and name and not seenClasses[name] then
+        seenClasses[name] = true
+        log("new widget during sync: " .. name)
+    end
+end
+
+pcall(NotifyOnNewObject, "/Script/UMG.UserWidget", onNewWidget)
 
 -- The HUD class may not be loaded when UE4SS starts mods, so keep trying until the hook takes.
 local tries = 0

@@ -140,7 +140,7 @@ function render() {
   renderSettings();
   $("players").innerHTML = state.players.length
     ? state.players.map(p => `<div class="player"><b>${esc(p.name)}${p.name === state.settings.leader ? " ★" : ""}</b><span class="phase ${esc(p.phase)}">${esc(phaseText(p.phase))}</span>
-        · ${Object.values(p.stages).reduce((a, s) => a + s.length, 0)} stages${p.talking ? `<span class="tag">talking</span>` : ""}${p.frozen ? `<span class="tag">watching (frozen)</span>` : ""}${p.extra && p.extra.downed ? `<span class="tag">down, ${p.extra.secondsLeft} s</span>` : ""}${p.extra && p.extra.activity ? `<span class="tag">${esc(p.extra.activity)}</span>` : ""}</div>`).join("")
+        · ${Object.values(p.stages).reduce((a, s) => a + s.length, 0)} stages${p.talking && !(p.extra && p.extra.activity) ? `<span class="tag">talking</span>` : ""}${p.frozen ? `<span class="tag">watching (frozen)</span>` : ""}${p.extra && p.extra.downed ? `<span class="tag">down, ${p.extra.secondsLeft} s</span>` : ""}${p.extra && p.extra.activity ? `<span class="tag">${esc(p.extra.activity)}</span>` : ""}</div>`).join("")
     : `<div class="player"><span class="phase">Nobody is connected.</span></div>`;
 
   $("head").innerHTML = `<th>Quest</th><th>Shared</th>` + state.players.map(p => `<th class="hide-sm">${esc(p.name)}</th>`).join("");

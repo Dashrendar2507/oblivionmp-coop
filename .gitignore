@@ -7,3 +7,4 @@ build.log
 .idea/
 *.esm
 __pycache__/
+strings.json
