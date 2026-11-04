@@ -52,6 +52,20 @@
   .qactions { display: flex; gap: 8px; margin-top: 10px; }
   .empty { padding: 30px; text-align: center; color: var(--muted); }
   #err { color: var(--bad); }
+  details.settings { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; margin-bottom: 16px; }
+  details.settings > summary { padding: 10px 14px; cursor: pointer; font-weight: 600; }
+  .sgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 0 24px; padding: 0 14px 14px; }
+  .sgroup h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); margin: 14px 0 6px; }
+  .srow { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 5px 0; border-bottom: 1px dashed var(--line); }
+  .srow:last-child { border-bottom: 0; }
+  .srow span small { display: block; color: var(--muted); font-size: 12px; }
+  .srow input[type=number] { width: 80px; font: inherit; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px; }
+  table.fx { border: 0; }
+  table.fx th, table.fx td { padding: 4px 6px; text-align: center; }
+  table.fx td:first-child, table.fx th:first-child { text-align: left; }
+  .hint { font-size: 12px; color: var(--muted); margin: 6px 0 0; }
+  .mark.fx { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); }
+  .tag { font-size: 12px; margin-left: 6px; color: var(--warn); }
   @media (max-width: 640px) { .stage { grid-template-columns: 40px 1fr; } .marks, .stage > button { grid-column: 2; justify-content: flex-start; } .hide-sm { display: none; } }
 </style>
 </head>
@@ -59,14 +73,15 @@
 <header>
   <h1>Co-op Quest Sync</h1>
   <label class="switch"><input type="checkbox" id="auto"> Auto sync</label>
-  <label>Shared progress comes from
-    <select id="source"></select>
-  </label>
   <button class="danger" id="resetAll">Reset all shared progress</button>
   <span id="err"></span>
 </header>
 <main>
   <div class="players" id="players"></div>
+  <details class="settings" id="settingsBox">
+    <summary>Co-op settings</summary>
+    <div class="sgrid" id="settings"></div>
+  </details>
   <div class="tools">
     <input type="search" id="q" placeholder="Search quests or journal text">
     <select id="filter">
@@ -122,18 +137,10 @@ function stagesOf(set, quest) { return new Set((set && set[quest]) || []); }
 
 function render() {
   $("auto").checked = state.auto;
-  const names = state.players.map(p => p.name);
-  const sources = [["", "Everyone"], ...names.map(n => [n, n])];
-  if (state.source && !names.includes(state.source)) sources.push([state.source, state.source + " (offline)"]);
-  const sel = $("source");
-  if (document.activeElement !== sel) {
-    sel.innerHTML = sources.map(([v, t]) => `<option value="${esc(v)}">${esc(t)}</option>`).join("");
-    sel.value = state.source || "";
-  }
-
+  renderSettings();
   $("players").innerHTML = state.players.length
-    ? state.players.map(p => `<div class="player"><b>${esc(p.name)}</b><span class="phase ${esc(p.phase)}">${esc(phaseText(p.phase))}</span>
-        · ${Object.values(p.stages).reduce((a, s) => a + s.length, 0)} stages</div>`).join("")
+    ? state.players.map(p => `<div class="player"><b>${esc(p.name)}${p.name === state.settings.leader ? " ★" : ""}</b><span class="phase ${esc(p.phase)}">${esc(phaseText(p.phase))}</span>
+        · ${Object.values(p.stages).reduce((a, s) => a + s.length, 0)} stages${p.talking ? `<span class="tag">talking</span>` : ""}${p.frozen ? `<span class="tag">watching (frozen)</span>` : ""}${p.extra && p.extra.downed ? `<span class="tag">down, ${p.extra.secondsLeft} s</span>` : ""}</div>`).join("")
     : `<div class="player"><span class="phase">Nobody is connected.</span></div>`;
 
   $("head").innerHTML = `<th>Quest</th><th>Shared</th>` + state.players.map(p => `<th class="hide-sm">${esc(p.name)}</th>`).join("");
@@ -158,7 +165,7 @@ function render() {
 }
 
 function phaseText(p) {
-  return { Ready: "in sync", Restoring: "restoring progress", Handshake: "joining", NoPlugin: "plugin not found" }[p] || p;
+  return { Ready: "in sync", CatchingUp: "catching up", Restoring: "restoring progress", Handshake: "joining", NoPlugin: "plugin not found" }[p] || p;
 }
 
 function row(q) {
@@ -175,8 +182,9 @@ function row(q) {
         .concat(state.players.map(p => `<span class="mark ${stagesOf(p.stages, q.editorId).has(s.stage) ? "on" : ""}">${esc(p.name)}</span>`));
       const btn = q.sync && !shared.has(s.stage)
         ? `<button class="primary" data-push="${esc(q.editorId)}" data-stage="${s.stage}" title="Add to shared progress and give it to every player in game">Give to everyone</button>` : `<span></span>`;
+      const fx = (s.effects || []).map(c => `<span class="mark fx" title="This stage's script has a ${esc(FX[c] || c)} effect">${esc(FX[c] || c)}</span>`).join(" ");
       return `<div class="stage"><span class="num">${s.stage}</span>
-        <span>${esc(s.text || "(no journal entry)")}${s.replay ? "" : `<br><span class="note">Not replayed when someone joins (teleport, cut scene or menu).</span>`}</span>
+        <span>${esc(s.text || (state.hasText ? "(no journal entry)" : "(journal text needs strings.json)"))}${fx ? `<br>${fx}` : ""}</span>
         <span class="marks">${marks.join("")}</span>${btn}</div>`;
     }).join("") + (q.sync ? `<div class="qactions"><button class="danger" data-reset="${esc(q.editorId)}">Reset this quest</button></div>` : "")
       + `</td></tr>`;
@@ -198,11 +206,78 @@ $("rows").addEventListener("click", e => {
   if (tr) { const q = tr.dataset.q; open.has(q) ? open.delete(q) : open.add(q); render(); }
 });
 $("auto").addEventListener("change", e => act({ action: "auto", on: e.target.checked }));
-$("source").addEventListener("change", e => act({ action: "source", name: e.target.value }));
 $("resetAll").addEventListener("click", () => {
   if (confirm("Reset every shared quest?\n\nThe shared progress is cleared and the hidden tokens are taken from everyone, including players who join later. "
     + "The game can't undo quests while someone is playing, so each player keeps their quests until they rejoin."))
     act({ action: "reset-all" });
+});
+const FX = { teleport: "Teleport", combat: "Combat", items: "Items", status: "Status", ranks: "Faction ranks", cutscene: "Cut scene" };
+const FX_HINT = {
+  teleport: "moves the player (MoveTo, SetPos)", combat: "starts or stops fights", items: "gives or takes items: rewards",
+  status: "spells, stats, fame, bounty", ranks: "joins factions, sets ranks", cutscene: "turns controls off, menus, videos"
+};
+const choices = {
+  progressFrom: [["anyone", "Anyone"], ["leader", "Leader only"]],
+  conversationOverlay: [["everyone", "Everyone"], ["area", "Same area only"], ["off", "Off"]],
+  conversationFreeze: [["area", "Same area"], ["everyone", "Everyone"], ["off", "Nobody"]],
+  death: [["revive", "Down, wait for a revive"], ["respawn", "Respawn next to the party"], ["off", "Game default"]],
+  scaling: [["default", "Server default (halfway)"], ["lowest", "Lowest player level"], ["mid", "Halfway"], ["highest", "Highest player level"]],
+  difficultyDealt: ["Unset", "Novice", "Apprentice", "Adept", "Journeyman", "Expert", "Master"].map(t => [t, t === "Unset" ? "Game default" : t]),
+};
+choices.difficultyTaken = choices.difficultyDealt;
+
+function sel(key, opts, value) {
+  return `<select data-set="${key}">${opts.map(([v, t]) => `<option value="${esc(v)}"${v === value ? " selected" : ""}>${esc(t)}</option>`).join("")}</select>`;
+}
+function chk(key, value) { return `<input type="checkbox" data-set="${key}"${value ? " checked" : ""}>`; }
+function num(key, value) { return `<input type="number" data-set="${key}" value="${value}">`; }
+function srow(label, hint, control) { return `<div class="srow"><span>${esc(label)}${hint ? `<small>${esc(hint)}</small>` : ""}</span>${control}</div>`; }
+
+function renderSettings() {
+  const box = $("settings");
+  if (box.contains(document.activeElement)) return;   // don't redraw under the cursor
+  const st = state.settings;
+  const leaders = [["", "Nobody"], ...state.players.map(p => [p.name, p.name])];
+  if (st.leader && !leaders.some(([v]) => v === st.leader)) leaders.push([st.leader, st.leader + " (offline)"]);
+  const fxRows = state.categories.map(c => `<tr><td>${esc(FX[c] || c)}<br><span class="edid">${esc(FX_HINT[c] || "")}</span></td>`
+    + ["live", "join", "rejoin"].map(ph => `<td>${chk(ph + "." + c, st[ph][c])}</td>`).join("") + `</tr>`).join("");
+  box.innerHTML = `
+  <div class="sgroup"><h3>Quest progress</h3>
+    ${srow("Progress counts from", "Anyone: a stage anyone reaches advances it for all.", sel("progressFrom", choices.progressFrom, st.progressFrom))}
+    ${srow("Party leader", "Used by \"leader only\" and by respawns.", sel("leader", leaders, st.leader))}
+    ${srow("Wait while someone talks", "New stages reach a player once their conversation ends.", chk("holdDuringDialogue", st.holdDuringDialogue))}
+    ${srow("Announce progress in chat", "\"Alice advanced The Quest\".", chk("questMessages", st.questMessages))}
+  </div>
+  <div class="sgroup"><h3>Effects of a stage someone else reached</h3>
+    <table class="fx"><thead><tr><th>Effect</th><th title="Someone advanced the quest while you play">Live</th><th title="Stages the party did while you were away, given when you join">On join</th><th title="Your own stages, which the game forgets and the plugin sets again each time you join">On rejoin</th></tr></thead>
+    <tbody>${fxRows}</tbody></table>
+    <p class="hint">The player who reaches a stage always gets every effect. Live Items is the reward rule: on, everybody gets the rewards.
+      On rejoin, the reward undo puts items back anyway.</p>
+  </div>
+  <div class="sgroup"><h3>Conversations</h3>
+    ${srow("Show others' conversations to", "An overlay like the dialogue screen; watchers can't pick topics.", sel("conversationOverlay", choices.conversationOverlay, st.conversationOverlay))}
+    ${srow("Freeze watchers", "Players in combat are never frozen.", sel("conversationFreeze", choices.conversationFreeze, st.conversationFreeze))}
+    ${srow("Share rewards handed out in conversation", "Not trades (lines that also take something).", chk("shareDialogueRewards", st.shareDialogueRewards))}
+    ${srow("Share quest items", "Keys, letters... picked up by one player go to everyone.", chk("shareQuestItems", st.shareQuestItems))}
+  </div>
+  <div class="sgroup"><h3>Party</h3>
+    ${srow("When a player dies", "Alt+R revives a downed teammate next to you, Alt+G respawns.", sel("death", choices.death, st.death))}
+    ${srow("Seconds before respawning", "", num("reviveSeconds", st.reviveSeconds))}
+    ${srow("Revive distance (game units)", "About 1.4 cm each; 400 is a few steps.", num("reviveRange", st.reviveRange))}
+    ${srow("Tags over heads", "Talking, down.", chk("statusTags", st.statusTags))}
+    ${srow("Level of spawns and loot", "", sel("scaling", choices.scaling, st.scaling))}
+    ${srow("Difficulty, damage dealt", "", sel("difficultyDealt", choices.difficultyDealt, st.difficultyDealt))}
+    ${srow("Difficulty, damage taken", "", sel("difficultyTaken", choices.difficultyTaken, st.difficultyTaken))}
+    ${srow("Friendly fire", "Always on: OblivionMP can't tell mods who hit whom.", `<span class="edid">On</span>`)}
+  </div>`;
+}
+
+$("settings").addEventListener("change", e => {
+  const el = e.target.closest("[data-set]");
+  if (!el) return;
+  const value = el.type === "checkbox" ? el.checked : el.type === "number" ? Number(el.value) : el.value;
+  act({ action: "set", key: el.dataset.set, value });
+  el.blur();
 });
 $("q").addEventListener("input", () => state && render());
 $("filter").addEventListener("change", () => state && render());

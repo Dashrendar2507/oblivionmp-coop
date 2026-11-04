@@ -217,15 +217,27 @@ def guard(code, refs, ids):
     return new, refs, found
 
 
-def additems(code, refs):
-    """(form id, count) for every `player.AddItem <form> <number>` in the script."""
-    out = []
+def player_item_calls(code, refs, opcode, toplevel_only=False):
+    """(form id, count) for every `player.AddItem <form> <number>` (or RemoveItem: opcode) in the script.
+    toplevel_only skips the ones inside an if block, which may or may not run."""
+    out, depth = [], 0
     for st in split(code):
-        if st.op == 0x1002 and st.ref is not None and 0 < st.ref <= len(refs) and refs[st.ref - 1] == PLAYER:
+        if st.ref is None and st.op == IF:
+            depth += 1
+        elif st.ref is None and st.op == ENDIF:
+            depth -= 1
+        if toplevel_only and depth > 0:
+            continue
+        if st.op == opcode and st.ref is not None and 0 < st.ref <= len(refs) and refs[st.ref - 1] == PLAYER:
             b = st.body
             if len(b) >= 10 and b[2] == 0x72 and b[5] == 0x6E:
                 ri = struct.unpack_from("<H", b, 3)[0]
                 cnt = struct.unpack_from("<i", b, 6)[0]
                 if 0 < ri <= len(refs):
-                    out.append((refs[ri - 1], cnt))
+                    if not isinstance(refs[ri - 1], tuple):
+                        out.append((refs[ri - 1], cnt))
     return out
+
+
+def additems(code, refs):
+    return player_item_calls(code, refs, 0x1002)

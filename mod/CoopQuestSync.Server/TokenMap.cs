@@ -21,6 +21,13 @@ public sealed class TokenMap
     public uint SeqLocalId { get; }
     public uint BusyLocalId { get; }
     public uint AckLocalId { get; }
+    public uint FreezeLocalId { get; }
+    /// <summary>Category -> local id of its CQSAllow item.</summary>
+    public IReadOnlyDictionary<string, uint> AllowLocalIds => _allow;
+    /// <summary>Plugins the generator read, in its numbering: the top byte of a form id in the tables is an index here.</summary>
+    public IReadOnlyList<string> Masters { get; } = ["Oblivion.esm"];
+    /// <summary>Items quests mark as quest items (keys, letters...), in the generator's numbering.</summary>
+    public IReadOnlySet<uint> QuestItems => _questItems;
     /// <summary>Token ids from old test builds, [start, end). The server takes these out of inventories.</summary>
     public (uint Start, uint End) Legacy { get; }
     public IReadOnlyDictionary<string, QuestInfo> Quests => _quests;
@@ -28,6 +35,8 @@ public sealed class TokenMap
     private readonly Dictionary<uint, QuestStage> _byToken = new();
     private readonly Dictionary<QuestStage, uint> _byStage = new();
     private readonly Dictionary<string, QuestInfo> _quests = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, uint> _allow = new();
+    private readonly HashSet<uint> _questItems = new();
 
     /// <summary>A quest the plugin mirrors. <see cref="Sync"/> is false for quests that stay local (the tutorial).</summary>
     public sealed record QuestInfo(string EditorId, string FormId, string? Name, bool Sync, IReadOnlyList<StageInfo> StageInfos)
@@ -35,8 +44,8 @@ public sealed class TokenMap
         public IEnumerable<int> Stages => StageInfos.Select(s => s.Stage);
     }
 
-    /// <summary>One stage: its journal entry, and whether the plugin replays it (some stages teleport or play cut scenes).</summary>
-    public sealed record StageInfo(int Stage, string? Text, bool Replay);
+    /// <summary>One stage: its journal entry, whether the plugin replays it, and the kinds of effect its script has.</summary>
+    public sealed record StageInfo(int Stage, string? Text, bool Replay, IReadOnlyList<string> Effects);
 
     /// <summary>The raw tokens.json, served to the web page as is.</summary>
     public string Json { get; private set; } = "{}";
@@ -47,6 +56,16 @@ public sealed class TokenMap
         SeqLocalId = ParseHex(root.GetProperty("seq").GetString()!);
         BusyLocalId = ParseHex(root.GetProperty("busy").GetString()!);
         AckLocalId = ParseHex(root.GetProperty("ack").GetString()!);
+        if (root.TryGetProperty("freeze", out var freeze))
+            FreezeLocalId = ParseHex(freeze.GetString()!);
+        if (root.TryGetProperty("allow", out var allow))
+            foreach (var p in allow.EnumerateObject())
+                _allow[p.Name] = ParseHex(p.Value.GetString()!);
+        if (root.TryGetProperty("masters", out var masters))
+            Masters = masters.EnumerateArray().Select(m => m.GetString()!).ToList();
+        if (root.TryGetProperty("questItems", out var qi))
+            foreach (var x in qi.EnumerateArray())
+                _questItems.Add(ParseHex(x.GetString()!));
         if (root.TryGetProperty("legacy", out var legacy))
             Legacy = (ParseHex(legacy[0].GetString()!), ParseHex(legacy[1].GetString()!));
         foreach (var q in root.GetProperty("quests").EnumerateArray())
@@ -61,7 +80,8 @@ public sealed class TokenMap
                 _byStage[stage] = token;
                 var text = s.TryGetProperty("text", out var t) && t.ValueKind == JsonValueKind.String ? t.GetString() : null;
                 var replay = !s.TryGetProperty("replay", out var r) || r.GetBoolean();
-                stages.Add(new StageInfo(stage.Stage, text, replay));
+                var effects = s.TryGetProperty("effects", out var ef) ? ef.EnumerateArray().Select(e => e.GetString()!).ToList() : [];
+                stages.Add(new StageInfo(stage.Stage, text, replay, effects));
             }
             var name = q.TryGetProperty("name", out var n) && n.ValueKind == JsonValueKind.String ? n.GetString() : null;
             var sync = !q.TryGetProperty("sync", out var sy) || sy.GetBoolean();
@@ -92,14 +112,24 @@ public sealed class TokenMap
 
     public static TokenMap LoadEmbedded()
     {
-        var asm = Assembly.GetExecutingAssembly();
-        var name = asm.GetManifestResourceNames().Single(n => n.EndsWith("tokens.json", StringComparison.Ordinal));
-        using var stream = asm.GetManifestResourceStream(name)!;
-        using var reader = new StreamReader(stream);
-        var json = reader.ReadToEnd();
+        var json = ReadEmbedded("tokens.json")!;
         using var doc = JsonDocument.Parse(json);
         return new TokenMap(doc.RootElement) { Json = json };
     }
 
-    private static uint ParseHex(string text) => uint.Parse(text, NumberStyles.HexNumber, CultureInfo.InvariantCulture);
+    /// <summary>A text file embedded in this DLL (the generator's tables), or null.</summary>
+    public static string? ReadEmbedded(string fileName)
+    {
+        var asm = Assembly.GetExecutingAssembly();
+        var name = asm.GetManifestResourceNames().SingleOrDefault(n => n.EndsWith("." + fileName, StringComparison.Ordinal));
+        if (name is null)
+            return null;
+        using var stream = asm.GetManifestResourceStream(name)!;
+        using var reader = new StreamReader(stream);
+        return reader.ReadToEnd();
+    }
+
+    public QuestInfo? Quest(string editorId) => _quests.GetValueOrDefault(editorId);
+
+    public static uint ParseHex(string text) => uint.Parse(text, NumberStyles.HexNumber, CultureInfo.InvariantCulture);
 }

@@ -7,4 +7,12 @@
     <ItemGroup>
         <PackageReference Include="ReadyM.SDK.Oblivion.Client" Version="1.0.0" />
     </ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\CoopQuestSync.Common\CoopQuestSync.Common.csproj" />
+    </ItemGroup>
+    <ItemGroup>
+        <None Update="web\**\*">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+    </ItemGroup>
 </Project>

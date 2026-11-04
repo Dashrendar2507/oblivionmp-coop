@@ -1,0 +1,108 @@
+using Microsoft.Extensions.Logging;
+using ReadyM.Cef;
+using ReadyM.Cef.Rpc;
+using ReadyM.SDK.Attributes;
+
+namespace CoopQuestSync.Client;
+
+/// <summary>
+/// The screen that shows another player's conversation, styled like the game's dialogue screen. It is display only:
+/// it takes no mouse or keyboard, so the witness cannot pick topics (the topic list is the talker's alone).
+/// </summary>
+[Service]
+public sealed partial class WitnessOverlay(CefHost cef, OverlayPage page, ILogger logger)
+{
+    private const string Host = "coopwitness";
+
+    private ViewportHandle _viewport;
+    private bool _created;
+
+    private void Start()
+    {
+        // Content must be registered while mods start, never later.
+        var directory = Path.GetDirectoryName(typeof(WitnessOverlay).Assembly.Location)!;
+        cef.RegisterFolder(Host, Path.Combine(directory, "web"));
+    }
+
+    public void Started(string json)
+    {
+        EnsureCreated();
+        page.Show(json);
+        cef.SetVisible(_viewport, true);
+    }
+
+    public void Line(string json)
+    {
+        EnsureCreated();
+        page.AddLine(json);
+    }
+
+    public void Ended()
+    {
+        if (!_created)
+            return;
+        page.Hide();
+        cef.SetVisible(_viewport, false);
+    }
+
+    private void EnsureCreated()
+    {
+        if (_created)
+            return;
+        _created = true;
+        _viewport = cef.CreateViewport(zOrder: 1);
+        cef.SetPlacement(_viewport, ViewportPlacement.FullScreen);
+        cef.SetInputMode(_viewport, CefInputMode.DisplayOnly);
+        cef.SetFocusable(_viewport, false);
+        var browser = cef.CreateBrowser();
+        page.Page = browser.Handle;
+        browser.Navigate($"readym://{Host}/");
+        cef.Assign(_viewport, browser.Handle);
+        logger.LogInformation("[QuestSync] Witness overlay ready.");
+    }
+}
+
+/// <summary>Messages to the overlay page. Remembers what is on screen, for a page that loads after the fact.</summary>
+public sealed partial class OverlayPage
+{
+    private BrowserHandle? _page;
+    private string? _current;
+    private readonly List<string> _lines = new();
+
+    public BrowserHandle Page { set => _page = value; }
+
+    public void Show(string json)
+    {
+        _current = json;
+        _lines.Clear();
+        if (_page is { } p) SendStart(p, json);
+    }
+
+    public void AddLine(string json)
+    {
+        _lines.Add(json);
+        if (_page is { } p) SendLine(p, json);
+    }
+
+    public void Hide()
+    {
+        _current = null;
+        _lines.Clear();
+        if (_page is { } p) SendEnd(p);
+    }
+
+    /// <summary>The page's first message once it has loaded.</summary>
+    [ReceiveFromCef]
+    private void OnReady(BrowserHandle page)
+    {
+        if (_current is null)
+            return;
+        SendStart(page, _current);
+        foreach (var line in _lines)
+            SendLine(page, line);
+    }
+
+    [SendToCef] public partial void SendStart(BrowserHandle page, string json);
+    [SendToCef] public partial void SendLine(BrowserHandle page, string json);
+    [SendToCef] public partial void SendEnd(BrowserHandle page);
+}

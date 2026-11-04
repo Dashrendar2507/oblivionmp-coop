@@ -18,7 +18,7 @@ namespace CoopQuestSync.Server;
 /// Requests run on a background thread; anything that changes the game goes through <see cref="QuestTokenSync.Enqueue"/>.
 /// </summary>
 [Service]
-public sealed partial class WebAdmin(QuestTokenSync sync, QuestSyncConfig config, ILogger logger)
+public sealed partial class WebAdmin(QuestTokenSync sync, GameData data, QuestSyncConfig config, ILogger logger)
 {
     private TcpListener? _listener;
     private CancellationTokenSource? _cts;
@@ -159,7 +159,7 @@ public sealed partial class WebAdmin(QuestTokenSync sync, QuestSyncConfig config
             return Json("401 Unauthorized", new { error = "password" });
 
         if (r.Method == "GET" && r.Path == "/api/map")
-            return ("200 OK", "application/json", Encoding.UTF8.GetBytes(sync.Map.Json));
+            return ("200 OK", "application/json", Encoding.UTF8.GetBytes(data.WebMapJson()));
         if (r.Method == "GET" && r.Path == "/api/state")
             return ("200 OK", "application/json", Encoding.UTF8.GetBytes(sync.StateJson));
         if (r.Method == "POST" && r.Path == "/api/action")
@@ -224,6 +224,21 @@ public sealed partial class WebAdmin(QuestTokenSync sync, QuestSyncConfig config
                 if (quest is null || !sync.Map.TryNormalizeQuest(quest, out var name))
                     return Json("400 Bad Request", new { error = "unknown quest" });
                 sync.Enqueue(() => sync.ResetQuest(name));
+                break;
+            }
+
+            case "set":
+            {
+                var key = Str("key");
+                if (key is null || !a.TryGetProperty("value", out var value))
+                    return Json("400 Bad Request", new { error = "key and value needed" });
+                var copy = value.Clone();
+                sync.Enqueue(() =>
+                {
+                    var error = sync.ChangeSetting(key, copy);
+                    if (error is not null)
+                        logger.LogWarning("[QuestSync] Web: setting {Key} refused: {Error}", key, error);
+                });
                 break;
             }
 

@@ -564,15 +564,9 @@ def build_dialogue(lo, outdir, npc_names, quest_edids):
             gives, takes = [], []
             if code:
                 try:
-                    for fid, cnt in scriptpatch.additems(code, refs):
-                        gives.append([f"{fid:08X}", cnt])
-                    for st in scriptpatch.split(code):
-                        if st.op == 0x1052 and st.ref and 0 < st.ref <= len(refs) and refs[st.ref - 1] == scriptpatch.PLAYER:
-                            b = st.body
-                            if len(b) >= 10 and b[2] == 0x72 and b[5] == 0x6E:
-                                ri = struct.unpack_from("<H", b, 3)[0]
-                                if 0 < ri <= len(refs) and not isinstance(refs[ri - 1], tuple):
-                                    takes.append([f"{refs[ri - 1]:08X}", struct.unpack_from("<i", b, 6)[0]])
+                    # Only unconditional ones: a reward inside an if block may not have been handed out.
+                    gives = [[f"{fid:08X}", cnt] for fid, cnt in scriptpatch.player_item_calls(code, refs, 0x1002, True)]
+                    takes = [[f"{fid:08X}", cnt] for fid, cnt in scriptpatch.player_item_calls(code, refs, 0x1052, True)]
                 except Exception:
                     pass
             # player.AddItem <token> 1, appended to the line's result script.
