@@ -101,6 +101,21 @@ public sealed partial class GameData(QuestSyncConfig config, ILogger logger)
         }
     }
 
+    /// <summary>A few random topic lines that name their speaker, for test conversations.</summary>
+    public List<Line> SampleLines(int count)
+    {
+        EnsureLoaded();
+        var pool = _lines.Values.Where(l => l.Speaker is not null && l.Lines.Length > 0 && l.Quest is not null).ToList();
+        if (pool.Count == 0)
+            pool = _lines.Values.ToList();
+        if (pool.Count == 0)
+            return [];
+        var start = Random.Shared.Next(pool.Count);
+        var speaker = pool[start].Speaker;
+        var same = pool.Where(l => l.Speaker == speaker).Take(count).ToList();
+        return same.Count >= 2 ? same : pool.OrderBy(_ => Random.Shared.Next()).Take(count).ToList();
+    }
+
     public bool TryGetLine(uint localId, out Line line)
     {
         EnsureLoaded();

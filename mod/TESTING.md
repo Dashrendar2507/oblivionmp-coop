@@ -66,6 +66,22 @@ shared progress, so a restart keeps them.
    log should show `<you> is talking to <NPC>; 0 witness(es)`.
 4. Rejoin once. Your quests should come back as before, silently.
 
+## Test 1b: alone, with a pretend teammate
+
+The server can play a made-up teammate called "Ghost". Type these in chat:
+
+1. `/coop test status`: what the server knows about you (phase, area, which effect switches apply right now).
+2. `/coop test talk`: Ghost "talks" to an NPC for about 25 s. You should see the overlay with a few real lines
+   (the NPC and topic; the sentences need the game's text, see below), and you should be unable to move until it
+   ends. `/coop test stop` ends it early. Set "Freeze watchers" to "Nobody" on the page and try again: overlay, no freeze.
+3. `/coop test effects MS93` lists the stages of a quest that have effects on the player, for example
+   `20: teleport/items`. Pick a quest you haven't started and a stage with a teleport.
+4. `/coop test stage <quest> <stage>`: Ghost "reached" that stage. You get it as if a teammate did it live, and the
+   chat line says which effects you should get. Then turn Live Teleport off on the page, and try another teleport
+   stage: you should get the stage but stay where you are.
+5. Death: open the console and type `kill`. You should see "You are down...". Either `/coop test revive` (Ghost
+   revives you), or press Alt+G, or wait 60 s: you come back to life where you fell (Ghost has no body to stand next to).
+
 ## Test 2: two players (when your friend can join)
 
 Do these standing next to each other, in the same place:

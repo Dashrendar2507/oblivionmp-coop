@@ -206,6 +206,20 @@ public sealed partial class PartyService(IEntities entities, IServerEvents event
         logger.LogInformation("[QuestSync] {Helper} revived {Player}.", sync.Nickname(helper), sync.Nickname(target));
     }
 
+    /// <summary>Test: a made-up teammate revives the player.</summary>
+    public bool TestRevive(PlayerId id, string helper)
+    {
+        if (!_downed.Remove(id))
+            return false;
+        rpc.SendResurrect(id);
+        rpc.SendNotice(id, $"{helper} revived you.");
+        logger.LogInformation("[QuestSync] Test: {Helper} revived {Player}.", helper, sync.Nickname(id));
+        return true;
+    }
+
+    /// <summary>Test: the "Talking"/"Down" tag data as the other players would receive it, shown to the player.</summary>
+    public string StatusJson => _lastStatus;
+
     private void OnGiveUp(PlayerId id)
     {
         if (_downed.ContainsKey(id))

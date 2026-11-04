@@ -39,6 +39,17 @@ public sealed partial class ConversationRelay(IEntities entities, IServerEvents 
     private readonly Dictionary<PlayerId, Talk> _talks = new();
     private readonly Dictionary<PlayerId, uint> _dialogueSlot = new();
     private float _elapsed;
+    private float _clock;
+
+    /// <summary>A pretend conversation shown to one player, for testing alone (/coop test talk).</summary>
+    private sealed class Ghost
+    {
+        public bool Frozen;
+        public readonly Queue<(float At, string Json)> Lines = new();
+        public float EndsAt;
+    }
+
+    private readonly Dictionary<PlayerId, Ghost> _ghosts = new();
 
     private void Start()
     {
@@ -51,6 +62,7 @@ public sealed partial class ConversationRelay(IEntities entities, IServerEvents 
     private void OnPlayerDisconnected(PlayerId player, Entity _, LiteNetLib.DisconnectReason __)
     {
         _dialogueSlot.Remove(player);
+        _ghosts.Remove(player);
         if (_talks.ContainsKey(player))
             End(player);
         foreach (var talk in _talks.Values)
@@ -62,6 +74,8 @@ public sealed partial class ConversationRelay(IEntities entities, IServerEvents 
 
     private void Update()
     {
+        _clock += Time.DeltaTime;
+        RunGhosts();
         _elapsed += Time.DeltaTime;
         if (_elapsed < ScanSeconds)
             return;
@@ -227,11 +241,62 @@ public sealed partial class ConversationRelay(IEntities entities, IServerEvents 
             var id = main.PlayerId;
             if (!sync.Players.TryGetValue(id, out var view))
                 continue;
-            var want = _talks.Values.Any(t => t.Frozen.Contains(id));
+            var want = _talks.Values.Any(t => t.Frozen.Contains(id)) || _ghosts.TryGetValue(id, out var g) && g.Frozen;
             if (want == view.WantFrozen)
                 continue;
             view.WantFrozen = want;
             sync.ApplySwitches(main, view);
+        }
+    }
+
+    /// <summary>
+    /// Test: shows <paramref name="witness"/> a conversation between a made-up player and an NPC, a few real lines
+    /// from the game's dialogue, and freezes them as a witness in the same area would be.
+    /// </summary>
+    public void StartGhost(MainCharacter witness, string ghostName)
+    {
+        var id = witness.PlayerId;
+        var settings = sync.Settings;
+        var freeze = settings.ConversationFreeze != "off" && !witness.InCombat;
+        var samples = data.SampleLines(4);
+        var npc = samples.Select(l => l.Speaker).FirstOrDefault(n => n is not null) is { } key ? data.Name(key) : "Ysabel Andronicus";
+        var ghost = new Ghost { Frozen = freeze };
+        var at = _clock + 2f;
+        foreach (var line in samples)
+        {
+            ghost.Lines.Enqueue((at, JsonSerializer.Serialize(new
+            {
+                topic = data.Name(line.Topic),
+                lines = line.Lines.Select(l => data.Text(l)).Where(l => l is not null).ToArray(),
+                speaker = npc,
+                quest = line.Quest is { } q ? data.QuestName(q) : null,
+            })));
+            at += 5f;
+        }
+        ghost.EndsAt = at + 2f;
+        _ghosts[id] = ghost;
+        rpc.SendConversationStarted(id, JsonSerializer.Serialize(new { talker = ghostName, npc, frozen = freeze }));
+        logger.LogInformation("[QuestSync] Test: {Player} watches {Ghost} talk to {Npc} for {Seconds:0} s (frozen: {Frozen}).",
+            sync.Nickname(id), ghostName, npc, ghost.EndsAt - _clock, freeze);
+    }
+
+    /// <summary>Ends a test conversation early.</summary>
+    public bool StopGhost(PlayerId id)
+    {
+        if (!_ghosts.Remove(id))
+            return false;
+        rpc.SendConversationEnded(id);
+        return true;
+    }
+
+    private void RunGhosts()
+    {
+        foreach (var (id, ghost) in _ghosts.ToList())
+        {
+            while (ghost.Lines.Count > 0 && ghost.Lines.Peek().At <= _clock)
+                rpc.SendConversationLine(id, ghost.Lines.Dequeue().Json);
+            if (_clock >= ghost.EndsAt)
+                StopGhost(id);
         }
     }
 

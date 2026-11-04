@@ -108,6 +108,8 @@ class Script:
                 _, item, n = l.split(); g.inv[item] = g.inv.get(item, 0) + int(n)
             elif l.lower().startswith("player.removeitem"):
                 _, item, n = l.split(); g.inv[item] = max(0, g.inv.get(item, 0) - int(n))
+            elif kw in ("disableplayercontrols", "enableplayercontrols"):
+                g.messages.append("controls " + ("off" if kw.startswith("disable") else "on"))
             elif kw == "setstage":
                 _, q, s = l.split(); g.setstage(q, int(s))
             else:
@@ -157,7 +159,7 @@ class Server:
     def bump(self, g):
         g.inv["CQSSeq"] = g.inv.get("CQSSeq", 0) + 1; self.lastBump = self.clock
 
-def session(inventory, shared, label, seconds=40):
+def session(inventory, shared, label, seconds=40, events=None):
     g = Game(inventory, {"CQSGo": 0, "CQSReplay": 0})
     scripts = {k: Script(v) for k, v in SCRIPTS.items()}
     srv = Server(shared)
@@ -168,6 +170,8 @@ def session(inventory, shared, label, seconds=40):
                 s.run(g); s.next = t + s.delay
         if abs(t - round(t)) < 1e-9 and t > 0:
             srv.poll(g)
+            if events and int(round(t)) in events:
+                events[int(round(t))](g)
         t = round(t + 0.1, 1)
     print(f"== {label}")
     print("  server:", srv.log)
@@ -183,7 +187,15 @@ g1 = session({"Gold001": 100}, {"CQStMS93_10", "CQStMS16_15"}, "first join, shar
 inv = dict(g1.inv); inv["CQStMS93_20"] = 1
 g2 = session(inv, {"CQStMS93_10", "CQStMS16_15", "CQStMS93_20"}, "rejoin: own stages restored, rewards undone")
 
-ok = (g1.inv.get("Gold001") == 150 and g2.inv.get("Gold001") == 150
+# 3) watching someone's conversation: the server holds CQSFreeze from 20 s to 30 s
+def give_freeze(g): g.inv["CQSFreeze"] = 1
+def take_freeze(g): g.inv["CQSFreeze"] = 0
+g3 = session(dict(g2.inv), {"CQStMS93_10", "CQStMS16_15", "CQStMS93_20"}, "freeze while watching", 40,
+             {20: give_freeze, 30: take_freeze})
+controls = [m for m in g3.messages if m.startswith("controls")]
+print("  controls:", controls)
+
+ok = (controls == ["controls off", "controls on"] and g1.inv.get("Gold001") == 150 and g2.inv.get("Gold001") == 150
       and g2.done.get("MS93") == {10, 20} and g2.done.get("MS16") == {15} and g2.inv.get("CQSBusy", 0) == 0)
 print("PASS" if ok else "FAIL")
 sys.exit(0 if ok else 1)
