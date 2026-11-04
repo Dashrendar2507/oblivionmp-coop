@@ -61,7 +61,7 @@ public sealed class CoopSettings
     /// <summary>How long a downed player waits for a revive before respawning next to the party.</summary>
     public int ReviveSeconds { get; set; } = 60;
 
-    /// <summary>How close (game units) a player must stand to revive someone. 1 unit is about 1.4 cm.</summary>
+    /// <summary>How close a player must stand to revive someone, in centimetres (positions are in cm).</summary>
     public int ReviveRange { get; set; } = 400;
 
     /// <summary>Tags over players' heads: "Talking", "Down".</summary>

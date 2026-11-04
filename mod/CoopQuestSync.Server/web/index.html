@@ -263,7 +263,7 @@ function renderSettings() {
   <div class="sgroup"><h3>Party</h3>
     ${srow("When a player dies", "Alt+R revives a downed teammate next to you, Alt+G respawns.", sel("death", choices.death, st.death))}
     ${srow("Seconds before respawning", "", num("reviveSeconds", st.reviveSeconds))}
-    ${srow("Revive distance (game units)", "About 1.4 cm each; 400 is a few steps.", num("reviveRange", st.reviveRange))}
+    ${srow("Revive distance (cm)", "400 is about four metres.", num("reviveRange", st.reviveRange))}
     ${srow("Tags over heads", "Talking, down.", chk("statusTags", st.statusTags))}
     ${srow("Level of spawns and loot", "", sel("scaling", choices.scaling, st.scaling))}
     ${srow("Difficulty, damage dealt", "", sel("difficultyDealt", choices.difficultyDealt, st.difficultyDealt))}
