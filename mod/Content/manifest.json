@@ -1,6 +1,6 @@
 {
   "uniqueId": "CoopQuestSync",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "name": "Co-op Quest Sync",
   "author": "Nicolas",
   "description": "Shares vanilla quest progress between players. A plugin mirrors quest stages into hidden token items; the server reads them and pushes them to the other players.",

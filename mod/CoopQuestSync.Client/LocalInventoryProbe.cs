@@ -39,9 +39,7 @@ public sealed partial class LocalInventoryProbe(IPlayers players, ILogger logger
 
         if (_lastSeen is null)
         {
-            logger.LogInformation("[QuestSyncInv] Local inventory: {Plugin} item kind(s).", now.Count);
-            foreach (var (formId, count) in now)
-                logger.LogInformation("[QuestSyncInv] Local has {FormId:X8} x{Count}", formId, count);
+            logger.LogInformation("[QuestSyncInv] Local inventory: {Plugin} plugin item kind(s).", now.Count);
         }
         else
         {

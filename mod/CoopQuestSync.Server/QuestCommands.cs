@@ -15,12 +15,13 @@ namespace CoopQuestSync.Server;
 ///   /qs shared [quest]        - the shared progress
 ///   /qs push &lt;quest&gt; &lt;stage&gt;  - give yourself the token for one stage; the plugin then sets it in your game
 ///   /qs auto on|off           - turn automatic sync between players on or off
-///   /qs reset                 - forget the shared progress (players keep what they have)
+///   /qs source &lt;name&gt;|all     - share only one player's progress, or everyone's
+///   /qs reset                 - reset every shared quest (players lose them when they rejoin)
 /// </summary>
 [Service]
 public sealed partial class QuestCommands(IChat chat, IEntities entities, QuestTokenSync sync)
 {
-    private const string Usage = "/qs status | mine [quest] | shared [quest] | push <quest> <stage> | auto on|off | reset";
+    private const string Usage = "/qs status | mine [quest] | shared [quest] | push <quest> <stage> | auto on|off | source <name>|all | reset";
 
     private void Start() => chat.AddCommand("qs", Usage, Run);
 
@@ -30,11 +31,11 @@ public sealed partial class QuestCommands(IChat chat, IEntities entities, QuestT
         switch (parts.FirstOrDefault()?.ToLowerInvariant())
         {
             case "status":
-                Reply(sender, $"Auto sync is {(sync.AutoSync ? "ON" : "OFF")}. Shared progress: {sync.Shared.Count} quest(s), {sync.Shared.Sum(kv => kv.Value.Count)} stage(s).");
+                Reply(sender, $"Auto sync is {(sync.AutoSync ? "ON" : "OFF")}. Source: {sync.SourcePlayer ?? "everyone"}. Shared progress: {sync.Shared.Count} quest(s), {sync.Shared.Sum(kv => kv.Value.Count)} stage(s).");
                 foreach (var (id, view) in sync.Players)
                     Reply(sender, view.ModIndex is { } slot
-                        ? $"{id}: plugin in slot {slot:X2}, {view.Phase}, {view.Stages.Count} stage token(s)"
-                        : $"{id}: plugin not seen yet");
+                        ? $"{sync.Nickname(id)}: plugin in slot {slot:X2}, {view.Phase}, {view.Stages.Count} stage token(s)"
+                        : $"{sync.Nickname(id)}: plugin not seen yet");
                 break;
 
             case "mine":
@@ -65,13 +66,21 @@ public sealed partial class QuestCommands(IChat chat, IEntities entities, QuestT
                 break;
 
             case "auto" when parts.Length == 2 && parts[1] is "on" or "off":
-                sync.AutoSync = parts[1] == "on";
+                sync.SetAuto(parts[1] == "on");
                 Reply(sender, $"Auto sync is now {(sync.AutoSync ? "ON" : "OFF")}.");
+                break;
+
+            case "source" when parts.Length >= 2:
+                var who = string.Join(' ', parts.Skip(1));
+                sync.SetSource(who.Equals("all", StringComparison.OrdinalIgnoreCase) ? null : who);
+                Reply(sender, sync.SourcePlayer is null
+                    ? "Everyone's progress is shared."
+                    : $"Only {sync.SourcePlayer}'s progress is shared now. Other players still get it, but what they do on their own stays in their game.");
                 break;
 
             case "reset":
                 sync.ClearShared();
-                Reply(sender, "Shared progress cleared. Players keep the stages they have.");
+                Reply(sender, "All shared quests reset. Each player loses them the next time they join.");
                 break;
 
             default:

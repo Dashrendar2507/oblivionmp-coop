@@ -29,7 +29,17 @@ public sealed class TokenMap
     private readonly Dictionary<QuestStage, uint> _byStage = new();
     private readonly Dictionary<string, QuestInfo> _quests = new(StringComparer.OrdinalIgnoreCase);
 
-    public sealed record QuestInfo(string EditorId, string FormId, string? Name, IReadOnlyList<int> Stages);
+    /// <summary>A quest the plugin mirrors. <see cref="Sync"/> is false for quests that stay local (the tutorial).</summary>
+    public sealed record QuestInfo(string EditorId, string FormId, string? Name, bool Sync, IReadOnlyList<StageInfo> StageInfos)
+    {
+        public IEnumerable<int> Stages => StageInfos.Select(s => s.Stage);
+    }
+
+    /// <summary>One stage: its journal entry, and whether the plugin replays it (some stages teleport or play cut scenes).</summary>
+    public sealed record StageInfo(int Stage, string? Text, bool Replay);
+
+    /// <summary>The raw tokens.json, served to the web page as is.</summary>
+    public string Json { get; private set; } = "{}";
 
     private TokenMap(JsonElement root)
     {
@@ -42,21 +52,27 @@ public sealed class TokenMap
         foreach (var q in root.GetProperty("quests").EnumerateArray())
         {
             var editorId = q.GetProperty("editorId").GetString()!;
-            var stages = new List<int>();
+            var stages = new List<StageInfo>();
             foreach (var s in q.GetProperty("stages").EnumerateArray())
             {
                 var stage = new QuestStage(editorId, s.GetProperty("stage").GetInt32());
                 var token = ParseHex(s.GetProperty("token").GetString()!);
                 _byToken[token] = stage;
                 _byStage[stage] = token;
-                stages.Add(stage.Stage);
+                var text = s.TryGetProperty("text", out var t) && t.ValueKind == JsonValueKind.String ? t.GetString() : null;
+                var replay = !s.TryGetProperty("replay", out var r) || r.GetBoolean();
+                stages.Add(new StageInfo(stage.Stage, text, replay));
             }
             var name = q.TryGetProperty("name", out var n) && n.ValueKind == JsonValueKind.String ? n.GetString() : null;
-            _quests[editorId] = new QuestInfo(editorId, q.GetProperty("formId").GetString()!, name, stages);
+            var sync = !q.TryGetProperty("sync", out var sy) || sy.GetBoolean();
+            _quests[editorId] = new QuestInfo(editorId, q.GetProperty("formId").GetString()!, name, sync, stages);
         }
     }
 
     public int StageCount => _byToken.Count;
+
+    /// <summary>Whether stages of this quest are shared between players.</summary>
+    public bool IsShared(string quest) => _quests.TryGetValue(quest, out var q) && q.Sync;
 
     public bool TryGetStage(uint localId, out QuestStage stage) => _byToken.TryGetValue(localId, out stage);
 
@@ -79,8 +95,10 @@ public sealed class TokenMap
         var asm = Assembly.GetExecutingAssembly();
         var name = asm.GetManifestResourceNames().Single(n => n.EndsWith("tokens.json", StringComparison.Ordinal));
         using var stream = asm.GetManifestResourceStream(name)!;
-        using var doc = JsonDocument.Parse(stream);
-        return new TokenMap(doc.RootElement);
+        using var reader = new StreamReader(stream);
+        var json = reader.ReadToEnd();
+        using var doc = JsonDocument.Parse(json);
+        return new TokenMap(doc.RootElement) { Json = json };
     }
 
     private static uint ParseHex(string text) => uint.Parse(text, NumberStyles.HexNumber, CultureInfo.InvariantCulture);

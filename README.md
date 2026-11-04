@@ -13,6 +13,7 @@ The SDK cannot read or set the game's own quests, so a small game plugin does th
 
 - `mod/`: the real mod (server and client halves, plus the generated plugin in `mod/Content/`). See `mod/TESTING.md` for test steps.
 - `plugin/tools/`: Python tools that generate the plugin from `Oblivion.esm`, including a small Oblivion script compiler. `plugin/token-ids.json` pins every stage's token id, so regenerating never changes the id of a token players already carry.
+- `mod/CoopQuestSync.Server/web/index.html`: the quest admin page, served by the server mod on port 9060 (see `WebAdmin.cs`).
 - `ui/CoopQuestSyncUI/`: a UE4SS Lua add-on that hides HUD pop-ups while the plugin replays stages, so catching up on join is silent.
 - `probe/`: the Phase 0 test mod (inventory logging and `/qsprobe`).
 
@@ -25,6 +26,8 @@ Needs Python 3 and your own copy of `Oblivion.esm`, which is not in this repo.
 python3 -I plugin/tools/gen_plugin.py path/to/Oblivion.esm mod/Content
 # check the script compiler against the game's own compiled scripts
 python3 -I plugin/tools/check_compiler.py path/to/Oblivion.esm
+# run the generated scripts against a model of the game and the server's join handshake
+python3 -I plugin/tools/simulate_protocol.py mod/Content/CoopQuestSync.esp
 ```
 
 This writes `CoopQuestSync.esp` and `tokens.json`. The server DLL embeds `tokens.json`, so rebuild the mod after regenerating.

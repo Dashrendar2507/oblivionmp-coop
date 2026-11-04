@@ -41,6 +41,11 @@ STAGES_PER_SCRIPT = 20    # keeps each compiled script well under the size of th
 
 # Quests never synced: character creation and the E3 demo quest.
 SKIP_QUESTS = {"charactergen", "e3"}
+# Quests that stay local: mirrored so the server can show them, but never shared or replayed.
+# MQ01 ("Tutorial") is the help pop-up system, not a real quest: each stage is a modal tip.
+LOCAL_ONLY = {"mq01"}
+RESCAN_EVERY = 30         # quest scripts do a full check every 30 runs (about 30 s) even if nothing changed
+WARMUP_RUNS = 8           # the control script waits 8 runs (4 s of gameplay) after loading before replaying
 # A stage whose result script does one of these is mirrored to the server but never replayed:
 # replaying it on join would teleport the player, play a cut scene, open a menu or empty the inventory.
 NO_REPLAY = re.compile(
@@ -55,12 +60,14 @@ def quest_script(q, part, tokens):
     """tokens: list of (stage, token editor id, replay)."""
     qe = q["edid"]
     lines = [f"scn CQSs{clean(qe)}{part}", "float fQuestDelayTime", "short init", "short last",
-             "short seq", "short cur", "short c", "begin GameMode",
+             "short seq", "short cur", "short c", "short tick", "short go", "begin GameMode",
              "if CQSReplay > 0", "set fQuestDelayTime to 0.1", "else", "set fQuestDelayTime to 1", "endif",
              f"set cur to GetStage {qe}",
              "set c to player.GetItemCount CQSSeq",
-             "if init == 0 || cur != last || c != seq",
-             "set init to 1", "set last to cur", "set seq to c"]
+             "set tick to tick + 1",
+             # CQSGo turning on must trigger a scan too: the seq bump that leads to it can arrive first.
+             f"if init == 0 || cur != last || c != seq || go != CQSGo || tick >= {RESCAN_EVERY}",
+             "set init to 1", "set last to cur", "set seq to c", "set go to CQSGo", "set tick to 0"]
     for stage, tok, replay in tokens:
         lines += [f"if GetStageDone {qe} {stage} == 1",
                   f"if player.GetItemCount {tok} == 0",
@@ -81,14 +88,17 @@ def quest_script(q, part, tokens):
     return "\r\n".join(lines) + "\r\n"
 
 CONTROL_SCRIPT = "\r\n".join([
-    "scn CQSControlScript", "float fQuestDelayTime", "short init", "short seq0", "begin GameMode",
+    "scn CQSControlScript", "float fQuestDelayTime", "short init", "short seq0", "short runs", "begin GameMode",
     "set fQuestDelayTime to 0.5",
     "if init == 0",
     "set init to 1", "set CQSGo to 0", "set CQSReplay to 0",
     "set seq0 to player.GetItemCount CQSSeq",
     "endif",
     "if player.GetItemCount CQSBeacon == 0", "player.AddItem CQSBeacon 1", "endif",
-    "if CQSGo == 0",
+    f"if runs < {WARMUP_RUNS}",
+    "set runs to runs + 1",
+    "endif",
+    f"if CQSGo == 0 && runs >= {WARMUP_RUNS}",
     "if player.GetItemCount CQSSeq != seq0",
     "set CQSGo to 1", "player.AddItem CQSAck 1",
     "endif",
@@ -133,6 +143,18 @@ def quest_record(formid, edid, script_id):
         ("EDID", edid), ("SCRI", struct.pack("<I", script_id)),
         ("DATA", bytes([0x01, 0x00]))])               # start game enabled, priority 0
 
+def stage_texts(r):
+    """Stage index -> its journal entry (the last one, which is the PC wording when there are two)."""
+    out, cur = {}, None
+    for k, v in r.subs:
+        if k == "INDX":
+            cur = struct.unpack("<H", v[:2])[0]
+        elif k == "CNAM" and cur is not None:
+            text = re.sub(r"&\w+;", "...", v.rstrip(b"\0").decode("cp1252")).strip()
+            if text:
+                out[cur] = text if len(text) <= 240 else text[:237] + "..."
+    return out
+
 def stage_scripts(r):
     """Stage index -> the text of its result scripts."""
     out, cur = {}, None
@@ -159,7 +181,9 @@ def main():
             continue
         full = r.get("FULL")
         quests.append(dict(edid=r.edid, formid=r.formid,
-                           stages=[(st, not NO_REPLAY.search(scripts[st])) for st in sorted(scripts)],
+                           sync=r.edid.lower() not in LOCAL_ONLY, texts=stage_texts(r),
+                           stages=[(st, r.edid.lower() not in LOCAL_ONLY and not NO_REPLAY.search(scripts[st]))
+                                   for st in sorted(scripts)],
                            name=full.rstrip(b"\0").decode("cp1252") if full else None))
     quests.sort(key=lambda q: q["formid"])
 
@@ -211,9 +235,11 @@ def main():
         qust.append(quest_record(MOD | qid, f"CQSq{clean(q['edid'])}{part}", MOD | sid))
         entry = by_quest.get(q["edid"])
         if entry is None:
-            entry = by_quest[q["edid"]] = dict(editorId=q["edid"], formId=f"{q['formid']:08X}", name=q["name"], stages=[])
+            entry = by_quest[q["edid"]] = dict(editorId=q["edid"], formId=f"{q['formid']:08X}", name=q["name"],
+                                               sync=q["sync"], stages=[])
             mapping.append(entry)
-        entry["stages"] += [dict(stage=st, token=f"{tid:06X}", replay=rp) for st, _, tid, rp in toks]
+        entry["stages"] += [dict(stage=st, token=f"{tid:06X}", replay=rp, text=q["texts"].get(st))
+                            for st, _, tid, rp in toks]
     csid, cqid = nxt, nxt + 1; nxt += 2
     rec, _ = scpt_record(MOD | csid, "CQSControlScript", CONTROL_SCRIPT, resolve)
     scpt.append(rec)

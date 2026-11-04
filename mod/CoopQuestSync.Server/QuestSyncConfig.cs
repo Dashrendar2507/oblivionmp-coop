@@ -23,6 +23,18 @@ public sealed partial class QuestSyncConfig
     /// <summary>How often, in seconds, the server reads the players' tokens.</summary>
     public float IntervalSeconds { get; set; } = 1f;
 
+    /// <summary>Port of the quest admin web page. 0 turns it off.</summary>
+    public int WebPort { get; set; } = 9060;
+
+    /// <summary>
+    /// Which address the web page listens on. 127.0.0.1 means only this computer can open it. Use 0.0.0.0 to open it
+    /// to your network, which also needs a <see cref="WebPassword"/>.
+    /// </summary>
+    public string WebBind { get; set; } = "127.0.0.1";
+
+    /// <summary>Password the web page asks for. Required when <see cref="WebBind"/> is not 127.0.0.1.</summary>
+    public string WebPassword { get; set; } = "";
+
     /// <summary>Where the server keeps the shared quest progress. A relative path is from the server's working folder.</summary>
     public string StateFile { get; set; } = "coop-quest-sync-state.json";
 }
