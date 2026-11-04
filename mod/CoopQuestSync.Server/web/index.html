@@ -140,7 +140,7 @@ function render() {
   renderSettings();
   $("players").innerHTML = state.players.length
     ? state.players.map(p => `<div class="player"><b>${esc(p.name)}${p.name === state.settings.leader ? " ★" : ""}</b><span class="phase ${esc(p.phase)}">${esc(phaseText(p.phase))}</span>
-        · ${Object.values(p.stages).reduce((a, s) => a + s.length, 0)} stages${p.talking ? `<span class="tag">talking</span>` : ""}${p.frozen ? `<span class="tag">watching (frozen)</span>` : ""}${p.extra && p.extra.downed ? `<span class="tag">down, ${p.extra.secondsLeft} s</span>` : ""}</div>`).join("")
+        · ${Object.values(p.stages).reduce((a, s) => a + s.length, 0)} stages${p.talking ? `<span class="tag">talking</span>` : ""}${p.frozen ? `<span class="tag">watching (frozen)</span>` : ""}${p.extra && p.extra.downed ? `<span class="tag">down, ${p.extra.secondsLeft} s</span>` : ""}${p.extra && p.extra.activity ? `<span class="tag">${esc(p.extra.activity)}</span>` : ""}</div>`).join("")
     : `<div class="player"><span class="phase">Nobody is connected.</span></div>`;
 
   $("head").innerHTML = `<th>Quest</th><th>Shared</th>` + state.players.map(p => `<th class="hide-sm">${esc(p.name)}</th>`).join("");
@@ -264,7 +264,7 @@ function renderSettings() {
     ${srow("When a player dies", "Alt+R revives a downed teammate next to you, Alt+G respawns.", sel("death", choices.death, st.death))}
     ${srow("Seconds before respawning", "", num("reviveSeconds", st.reviveSeconds))}
     ${srow("Revive distance (cm)", "400 is about four metres.", num("reviveRange", st.reviveRange))}
-    ${srow("Tags over heads", "Talking, down.", chk("statusTags", st.statusTags))}
+    ${srow("Tags over heads", "Talking, bartering, picking a lock, down.", chk("statusTags", st.statusTags))}
     ${srow("Level of spawns and loot", "", sel("scaling", choices.scaling, st.scaling))}
     ${srow("Difficulty, damage dealt", "", sel("difficultyDealt", choices.difficultyDealt, st.difficultyDealt))}
     ${srow("Difficulty, damage taken", "", sel("difficultyTaken", choices.difficultyTaken, st.difficultyTaken))}

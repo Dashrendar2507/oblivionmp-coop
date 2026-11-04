@@ -7,14 +7,17 @@ using ReadyM.SDK.Attributes;
 
 namespace CoopQuestSync.Client;
 
-/// <summary>Tags over other players' heads: "Talking" while they are in a conversation, "Down" while they wait for a revive.</summary>
+/// <summary>
+/// Tags over other players' heads: "Talking" while they are in a conversation ("Bartering", "Picking a lock"... while
+/// they are in one of those menus), "Down" while they wait for a revive.
+/// </summary>
 [Service]
 public sealed partial class PartyTags(IPlayers players, IMarkers markers)
 {
     private static readonly MarkerColor Talking = new(0.85f, 0.75f, 0.45f, 1f);
     private static readonly MarkerColor Down = new(0.9f, 0.3f, 0.25f, 1f);
 
-    private sealed record Status(string Id, string Name, bool Talking, bool Downed);
+    private sealed record Status(string Id, string Name, bool Talking, bool Downed, string? Activity);
 
     private Dictionary<string, Status> _status = new();
     private readonly Dictionary<PlayerId, MarkerHandle> _markers = new();
@@ -49,7 +52,9 @@ public sealed partial class PartyTags(IPlayers players, IMarkers markers)
             if (!_status.TryGetValue(id.ToString(), out var s))
                 continue;
             seen.Add(id);
-            var text = s.Downed ? "Down - Alt+R to revive" : "Talking";
+            var text = s.Downed ? "Down - Alt+R to revive"
+                : s.Activity is { Length: > 0 } a ? char.ToUpperInvariant(a[0]) + a[1..]
+                : "Talking";
             var color = s.Downed ? Down : Talking;
             if (_markers.TryGetValue(id, out var handle))
                 markers.SetMarkerText(handle, text, color);

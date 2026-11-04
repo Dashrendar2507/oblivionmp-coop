@@ -72,9 +72,13 @@ public sealed partial class PartyService(IEntities entities, IServerEvents event
         rpc.ReviveRequested += OnReviveRequested;
         rpc.GiveUpRequested += OnGiveUp;
         sync.SettingsChanged += ApplySessionRules;
-        sync.PlayerExtras = id => _downed.TryGetValue(id, out var d)
-            ? new { downed = true, secondsLeft = (int)Math.Max(0, d.Until - _clock) }
-            : null;
+        sync.PlayerExtras = id =>
+        {
+            var doing = talks.Activity(id);
+            if (_downed.TryGetValue(id, out var d))
+                return new { downed = true, secondsLeft = (int)Math.Max(0, d.Until - _clock), activity = doing };
+            return doing is null ? null : new { downed = false, secondsLeft = 0, activity = doing };
+        };
         events.OnPlayerDisconnected += OnPlayerDisconnected;
         // The session's rules live on the world entity, which exists once the server has made it.
         events.OnWorldEntityCreated += OnWorldCreated;
@@ -329,7 +333,7 @@ public sealed partial class PartyService(IEntities entities, IServerEvents event
         return alive.Count == 0 ? null : alive.OrderBy(p => p.Name, StringComparer.OrdinalIgnoreCase).First().Id;
     }
 
-    /// <summary>Tags over heads: who is talking, who is down. Sent to everyone when it changes.</summary>
+    /// <summary>Tags over heads: who is talking (and in which menu), who is down. Sent to everyone when it changes.</summary>
     private void SendStatus(CoopSettings settings)
     {
         var list = new List<object>();
@@ -338,8 +342,9 @@ public sealed partial class PartyService(IEntities entities, IServerEvents event
             {
                 var talking = talks.IsTalking(id);
                 var down = _downed.ContainsKey(id);
-                if (talking || down)
-                    list.Add(new { id = id.ToString(), name = sync.Nickname(id), talking, downed = down });
+                var activity = talks.Activity(id);
+                if (talking || down || activity is not null)
+                    list.Add(new { id = id.ToString(), name = sync.Nickname(id), talking, downed = down, activity });
             }
         var json = JsonSerializer.Serialize(list);
         if (json == _lastStatus)

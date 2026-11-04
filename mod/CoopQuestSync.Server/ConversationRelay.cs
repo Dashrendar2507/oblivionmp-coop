@@ -21,6 +21,9 @@ namespace CoopQuestSync.Server;
 /// Witnesses in the same area are frozen (the plugin turns their controls off while the server holds CQSFreeze in
 /// their inventory), so nobody fights or wanders off beside a conversation that the game thinks is private.
 /// A witness who is in combat is never frozen.
+///
+/// The dialogue plugin also keeps a token in the inventory while a menu is open (barter, persuasion, training...,
+/// lockpicking): the witnesses' overlay then says "Alice is bartering" and waits, and the tag over the talker says so.
 /// </summary>
 [Service]
 public sealed partial class ConversationRelay(IEntities entities, IServerEvents events, QuestTokenSync sync, GameData data,
@@ -38,6 +41,15 @@ public sealed partial class ConversationRelay(IEntities entities, IServerEvents 
 
     private readonly Dictionary<PlayerId, Talk> _talks = new();
     private readonly Dictionary<PlayerId, uint> _dialogueSlot = new();
+    private readonly Dictionary<PlayerId, string> _activity = new();
+
+    /// <summary>What a player is doing in each menu the dialogue plugin reports, as the others read it.</summary>
+    private static readonly Dictionary<string, string> Activities = new()
+    {
+        ["barter"] = "bartering", ["persuade"] = "persuading", ["training"] = "training", ["repair"] = "repairing",
+        ["spells"] = "buying spells", ["recharge"] = "recharging", ["spellmaking"] = "making a spell",
+        ["enchanting"] = "enchanting", ["lockpick"] = "picking a lock",
+    };
     private float _elapsed;
     private float _clock;
 
@@ -45,7 +57,8 @@ public sealed partial class ConversationRelay(IEntities entities, IServerEvents 
     private sealed class Ghost
     {
         public bool Frozen;
-        public readonly Queue<(float At, string Json)> Lines = new();
+        /// <summary>Lines, and menus the ghost "opens" (Activity true), in order.</summary>
+        public readonly Queue<(float At, bool Activity, string Json)> Lines = new();
         public float EndsAt;
     }
 
@@ -62,6 +75,7 @@ public sealed partial class ConversationRelay(IEntities entities, IServerEvents 
     private void OnPlayerDisconnected(PlayerId player, Entity _, LiteNetLib.DisconnectReason __)
     {
         _dialogueSlot.Remove(player);
+        _activity.Remove(player);
         _ghosts.Remove(player);
         if (_talks.ContainsKey(player))
             End(player);
@@ -129,6 +143,8 @@ public sealed partial class ConversationRelay(IEntities entities, IServerEvents 
             if (freeze)
                 talk.Frozen.Add(w);
             rpc.SendConversationStarted(w, JsonSerializer.Serialize(new { talker = sync.Nickname(id), npc = talk.Npc, frozen = freeze }));
+            if (_activity.TryGetValue(id, out var doing))
+                rpc.SendConversationActivity(w, ActivityJson(doing));
         }
         logger.LogInformation("[QuestSync] {Player} is talking to {Npc}; {Count} witness(es), {Frozen} frozen.",
             sync.Nickname(id), talk.Npc.Length > 0 ? talk.Npc : "someone", talk.Witnesses.Count, talk.Frozen.Count);
@@ -148,6 +164,7 @@ public sealed partial class ConversationRelay(IEntities entities, IServerEvents 
         var id = main.PlayerId;
         var beacon = data.DialogueBeacon;
         List<(uint FormId, int Count)>? found = null;
+        string? menu = null;
         _dialogueSlot.TryGetValue(id, out var slot);
         for (var i = 0; i < main.ItemsCount; i++)
         {
@@ -163,9 +180,12 @@ public sealed partial class ConversationRelay(IEntities entities, IServerEvents 
                 _dialogueSlot[id] = top;
                 continue;
             }
-            if (slot != 0 && top == slot && data.TryGetLine(local, out _))
+            if (slot != 0 && top == slot && data.MenuOf(local) is { } m)
+                menu = m;
+            else if (slot != 0 && top == slot && data.TryGetLine(local, out _))
                 (found ??= new()).Add((formId, entry.Count));
         }
+        SetActivity(main, menu);
         if (found is null)
             return;
         foreach (var (formId, count) in found)
@@ -175,6 +195,32 @@ public sealed partial class ConversationRelay(IEntities entities, IServerEvents 
                 Relay(id, line);
         }
     }
+
+    /// <summary>Notes the menu a player has open and tells whoever watches their conversation.</summary>
+    private void SetActivity(MainCharacter main, string? menu)
+    {
+        var id = main.PlayerId;
+        // The barter screen is the game's container screen: outside a conversation it is a chest, not a merchant.
+        if (menu == "barter" && !main.InDialogue)
+            menu = null;
+        var doing = menu is not null && Activities.TryGetValue(menu, out var label) ? label : null;
+        _activity.TryGetValue(id, out var was);
+        if (doing == was)
+            return;
+        if (doing is null)
+            _activity.Remove(id);
+        else
+            _activity[id] = doing;
+        logger.LogInformation("[QuestSync] {Player} {What}.", sync.Nickname(id), doing is null ? $"stopped {was}" : $"is {doing}");
+        if (_talks.TryGetValue(id, out var talk))
+            foreach (var w in talk.Witnesses)
+                rpc.SendConversationActivity(w, ActivityJson(doing));
+    }
+
+    private static string ActivityJson(string? doing) => JsonSerializer.Serialize(new { activity = doing });
+
+    /// <summary>What the player is doing in a menu ("bartering", "picking a lock"), or null.</summary>
+    public string? Activity(PlayerId id) => _activity.TryGetValue(id, out var a) ? a : null;
 
     private void Relay(PlayerId talker, GameData.Line line)
     {
@@ -262,9 +308,20 @@ public sealed partial class ConversationRelay(IEntities entities, IServerEvents 
         var npc = samples.Select(l => l.Speaker).FirstOrDefault(n => n is not null) is { } key ? data.Name(key) : "Ysabel Andronicus";
         var ghost = new Ghost { Frozen = freeze };
         var at = _clock + 2f;
+        var index = 0;
         foreach (var line in samples)
         {
-            ghost.Lines.Enqueue((at, JsonSerializer.Serialize(new
+            // Between lines, the ghost opens a menu or two, as a talker would: bartering after the second line,
+            // persuading after the third.
+            if (index is 2 or 3)
+            {
+                ghost.Lines.Enqueue((at, true, ActivityJson(index == 2 ? "bartering" : "persuading")));
+                at += 6f;
+                ghost.Lines.Enqueue((at, true, ActivityJson(null)));
+                at += 1f;
+            }
+            index++;
+            ghost.Lines.Enqueue((at, false, JsonSerializer.Serialize(new
             {
                 topic = data.Name(line.Topic),
                 lines = line.Lines.Select(l => data.Text(l)).Where(l => l is not null).ToArray(),
@@ -294,7 +351,13 @@ public sealed partial class ConversationRelay(IEntities entities, IServerEvents 
         foreach (var (id, ghost) in _ghosts.ToList())
         {
             while (ghost.Lines.Count > 0 && ghost.Lines.Peek().At <= _clock)
-                rpc.SendConversationLine(id, ghost.Lines.Dequeue().Json);
+            {
+                var (_, activity, json) = ghost.Lines.Dequeue();
+                if (activity)
+                    rpc.SendConversationActivity(id, json);
+                else
+                    rpc.SendConversationLine(id, json);
+            }
             if (_clock >= ghost.EndsAt)
                 StopGhost(id);
         }

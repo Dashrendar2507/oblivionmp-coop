@@ -18,6 +18,9 @@ What's new since 0.4:
 * **Shared conversations.** When someone talks to an NPC, everyone else sees an overlay styled like the dialogue
   screen: the NPC's name, the topic, the line. Watchers can't click anything. Players in the same area are frozen
   until the conversation ends, unless they are in combat. See "Known limits" for the text.
+* **Menus during a conversation.** When the talker opens the barter, persuasion, training, repair or spell screen,
+  the watchers' overlay says "Alice is bartering..." and waits for them to come back. The tag over their head says
+  so too, and "Picking a lock" while they pick one.
 * **Updates wait for the end of a conversation**, so a quest doesn't jump while you're talking.
 * **Chat messages**: "Alice advanced The Quest: journal text".
 * **Rewards handed out in conversation** (gold or items a line gives) go to everyone. Trades don't.
@@ -64,16 +67,20 @@ shared progress, so a restart keeps them.
    progress in: stages with effects show small tags such as "Teleport" or "Items".
 3. Talk to any NPC. The page should show "talking" next to your name while you are in the conversation. The server
    log should show `<you> is talking to <NPC>; 0 witness(es)`.
-4. Rejoin once. Your quests should come back as before, silently.
+4. Talk to a merchant and open Barter. The server log should show `<you> is bartering.`, then `<you> stopped bartering.`
+   when you close it, and the page shows "bartering" next to your name meanwhile. Try persuasion the same way, and
+   picking a lock (`is picking a lock.`). Opening a chest should not show anything.
+5. Rejoin once. Your quests should come back as before, silently.
 
 ## Test 1b: alone, with a pretend teammate
 
 The server can play a made-up teammate called "Ghost". Type these in chat:
 
 1. `/coop test status`: what the server knows about you (phase, area, which effect switches apply right now).
-2. `/coop test talk`: Ghost "talks" to an NPC for about 25 s. You should see the overlay with a few real lines
+2. `/coop test talk`: Ghost "talks" to an NPC for about 40 s. You should see the overlay with a few real lines
    (the NPC and topic; the sentences need the game's text, see below), and you should be unable to move until it
-   ends. `/coop test stop` ends it early. Set "Freeze watchers" to "Nobody" on the page and try again: overlay, no freeze.
+   ends. After the second line, the overlay should say "Ghost is bartering..." for a few seconds, and later
+   "Ghost is persuading...". `/coop test stop` ends it early. Set "Freeze watchers" to "Nobody" on the page and try again: overlay, no freeze.
 3. `/coop test effects MS93` lists the stages of a quest that have effects on the player, for example
    `20: teleport/items`. Pick a quest you haven't started and a stage with a teleport.
 4. `/coop test stage <quest> <stage>`: Ghost "reached" that stage. You get it as if a teammate did it live, and the
@@ -92,6 +99,8 @@ Do these standing next to each other, in the same place:
    * see the overlay ("Listening in · Alice talks with ...") with the NPC's name and topics;
    * be unable to move until the conversation ends;
    * see a "Talking" tag over the talker.
+   Then the talker opens Barter: the watcher's overlay should say "... is bartering..." until they close it, and the
+   tag over the talker should read "Bartering".
    Then try it with the watcher in another building: they should see the overlay but can still move.
 2. **Shared progress.** One of you advances a quest. The other should get it within a few seconds, with the
    chat line "X advanced ...". If the stage had a reward, both should get it.
@@ -126,6 +135,8 @@ and the page shows quest ids. The text is in the game's localization file:
 
 * **The overlay runs behind the talker.** The game reports a line when its result script runs, which is at the end of
   the line, so the watcher reads it after the talker has heard it. There is no voice.
+* **Menus are recognised by the original game's menu numbers.** If the remaster numbers them differently, the
+  log won't show `is bartering`. Tell me which menu stayed silent.
 * **The NPC's name** comes from the line's own conditions when it names its speaker, otherwise from the NPC closest
   to the talker.
 * **Respawning next to someone** only works when they are in the same area (the same interior, or both outside). If

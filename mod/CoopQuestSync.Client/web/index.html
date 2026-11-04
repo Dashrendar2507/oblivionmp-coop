@@ -24,6 +24,11 @@
   .line.fade { opacity: 0; }
   .line.quiet { color: var(--gold-dim); font-style: italic; }
   .quest { margin-top: 1.2vh; font-size: 1.4vh; color: var(--gold-dim); letter-spacing: .05em; }
+  .doing { margin: 0 auto 1.2vh; font-size: 1.7vh; color: var(--gold); letter-spacing: .08em; font-style: italic;
+           max-height: 0; opacity: 0; overflow: hidden; transition: opacity .3s ease, max-height .3s ease; }
+  .doing.on { max-height: 4vh; opacity: 1; animation: breathe 2.4s ease-in-out infinite; }
+  @keyframes breathe { 50% { opacity: .55; } }
+  .panel.waiting .line, .panel.waiting .topic { opacity: .45; }
   .rule { width: 40%; height: 1px; margin: 0 auto 1.2vh; background: linear-gradient(to right, transparent, rgba(216,192,138,.6), transparent); }
 </style>
 </head>
@@ -31,10 +36,11 @@
 <div id="root">
   <div class="vignette"></div>
   <div class="who" id="who"></div>
-  <div class="panel">
+  <div class="panel" id="panel">
     <div class="npc" id="npc"></div>
     <div class="topic" id="topic"></div>
     <div class="rule"></div>
+    <div class="doing" id="doing"></div>
     <div class="line quiet" id="line">…</div>
     <div class="quest" id="quest"></div>
   </div>
@@ -55,6 +61,7 @@ function start(info) {
   $("topic").textContent = "";
   $("quest").textContent = "";
   setLine("…", true);
+  activity({ activity: null });
   queue = []; clearTimeout(timer); timer = null;
   $("root").classList.add("on");
 }
@@ -84,6 +91,14 @@ function line(info) {
   if (!timer) next();
 }
 
+// The talker opened a menu from the conversation (barter, persuasion...): say so until they are back.
+function activity(info) {
+  const doing = info.activity;
+  $("doing").textContent = doing ? (talker || "Someone") + " is " + doing + "…" : "";
+  $("doing").classList.toggle("on", !!doing);
+  $("panel").classList.toggle("waiting", !!doing);
+}
+
 function end() {
   queue = []; clearTimeout(timer); timer = null;
   $("root").classList.remove("on");
@@ -91,6 +106,7 @@ function end() {
 
 readym.on("Start", json => start(JSON.parse(json)));
 readym.on("Line", json => line(JSON.parse(json)));
+readym.on("Activity", json => activity(JSON.parse(json)));
 readym.on("End", () => end());
 readym.sendReady();
 </script>

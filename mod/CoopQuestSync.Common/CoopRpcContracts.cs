@@ -18,11 +18,17 @@ public static partial class CoopRpcContracts
     /// <summary>One line of that conversation. json: { topic, lines: [..], speaker }.</summary>
     [ServerToClient] public static partial void ConversationLine(string json);
 
+    /// <summary>
+    /// The talker opened or closed a menu from the conversation. json: { activity } ("bartering", "persuading"...,
+    /// or null when they are back at the topic list).
+    /// </summary>
+    [ServerToClient] public static partial void ConversationActivity(string json);
+
     /// <summary>The conversation is over: the overlay closes.</summary>
     [ServerToClient] public static partial void ConversationEnded();
 
     /// <summary>
-    /// Every player's party status, for the tags over their heads. json: [{ name, talking, downed }].
+    /// Every player's party status, for the tags over their heads. json: [{ name, talking, downed, activity }].
     /// </summary>
     [ServerToClient] public static partial void PartyStatus(string json);
 

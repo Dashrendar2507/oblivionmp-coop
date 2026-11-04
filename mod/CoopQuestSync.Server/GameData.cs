@@ -26,6 +26,7 @@ public sealed partial class GameData(QuestSyncConfig config, ILogger logger)
 
     private readonly Dictionary<uint, Line> _lines = new();
     private readonly Dictionary<uint, string> _npcs = new();
+    private readonly Dictionary<uint, string> _menus = new();
     private Dictionary<string, string> _text = new(StringComparer.Ordinal);
     private int[] _toGame = [];
     private Dictionary<int, int> _fromGame = new();
@@ -64,6 +65,9 @@ public sealed partial class GameData(QuestSyncConfig config, ILogger logger)
         {
             using var doc = JsonDocument.Parse(dialogue);
             _dialogueBeacon = TokenMap.ParseHex(doc.RootElement.GetProperty("beacon").GetString()!);
+            if (doc.RootElement.TryGetProperty("menus", out var menus))
+                foreach (var p in menus.EnumerateObject())
+                    _menus[TokenMap.ParseHex(p.Name)] = p.Value.GetString()!;
             foreach (var p in doc.RootElement.GetProperty("lines").EnumerateObject())
             {
                 var v = p.Value;
@@ -114,6 +118,16 @@ public sealed partial class GameData(QuestSyncConfig config, ILogger logger)
         var speaker = pool[start].Speaker;
         var same = pool.Where(l => l.Speaker == speaker).Take(count).ToList();
         return same.Count >= 2 ? same : pool.OrderBy(_ => Random.Shared.Next()).Take(count).ToList();
+    }
+
+    /// <summary>
+    /// The menu a dialogue plugin token stands for ("barter", "persuade", "lockpick"...), by its local id; null for
+    /// other items. The plugin keeps the token in the inventory while that menu is open.
+    /// </summary>
+    public string? MenuOf(uint localId)
+    {
+        EnsureLoaded();
+        return _menus.TryGetValue(localId, out var menu) ? menu : null;
     }
 
     public bool TryGetLine(uint localId, out Line line)

@@ -15,6 +15,8 @@ public sealed partial class ClientRpc(WitnessOverlay overlay, PartyTags tags, IP
 
     partial void OnConversationLine(string json) => overlay.Line(json);
 
+    partial void OnConversationActivity(string json) => overlay.Activity(json);
+
     partial void OnConversationEnded() => overlay.Ended();
 
     partial void OnPartyStatus(string json) => tags.Update(json);

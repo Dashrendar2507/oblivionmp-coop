@@ -154,7 +154,9 @@ class Script:
             elif kw == "begin":
                 mode = BLOCKS[words[1].lower()]
                 param = None
-                if len(words) > 2:
+                if len(words) > 2 and words[2].isdigit():
+                    param = b"\x01\x00\x6e" + struct.pack("<i", int(words[2]))   # MenuMode 1008
+                elif len(words) > 2:
                     param = b"\x01\x00\x72" + struct.pack("<H", self.ref_index(words[2]))
                 stmts.append(["begin", (mode, param)])
             elif kw == "end":

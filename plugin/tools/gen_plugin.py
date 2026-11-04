@@ -35,6 +35,8 @@ CoopQuestSync.esp
 CoopQuestSyncDialogue.esp (optional, separate so it can be left out if it clashes with another dialogue mod)
   Overrides every line of player dialogue (topics) to add `player.AddItem <its own token> 1` to its result script.
   The server takes the token back at once and shows the line to the other players.
+  While the player has a menu from DLG_MENUS open (barter, persuasion, training... or lockpicking), its CQSMenu*
+  token is in the inventory, so the server can tell the others what the talker is doing.
 """
 import json, os, re, struct, sys
 
@@ -240,11 +242,35 @@ CONTROL_SCRIPT = "\r\n".join([
     "endif",
     "end"]) + "\r\n"
 
-DLG_CONTROL_SCRIPT = "\r\n".join([
-    "scn CQSDialogueControlScript", "float fQuestDelayTime", "begin GameMode",
-    "set fQuestDelayTime to 2",
-    "if player.GetItemCount CQSDlgBeacon == 0", "player.AddItem CQSDlgBeacon 1", "endif",
-    "end"]) + "\r\n"
+# Menus the talker can open from a conversation (and lockpicking), by the game's menu codes. While one is open, the
+# dialogue plugin keeps its token in the inventory, so the server can tell the witnesses "Alice is bartering".
+# Barter is the container menu: the server only calls it bartering during a conversation.
+DLG_MENUS = [("barter", 1008), ("persuade", 1034), ("training", 1028), ("repair", 1035), ("spells", 1037),
+             ("recharge", 1049), ("spellmaking", 1041), ("enchanting", 1042), ("lockpick", 1014)]
+
+
+def dlg_menu_edid(name):
+    return "CQSMenu" + name.capitalize()
+
+
+def _menu_sync():
+    out = []
+    for i, (name, _) in enumerate(DLG_MENUS, 1):
+        e = dlg_menu_edid(name)
+        out += [f"if seen == {i}", f"if player.GetItemCount {e} == 0", f"player.AddItem {e} 1", "endif",
+                f"elseif player.GetItemCount {e} > 0", f"player.RemoveItem {e} 1", "endif"]
+    return out
+
+
+DLG_CONTROL_SCRIPT = "\r\n".join(
+    ["scn CQSDialogueControlScript", "float fQuestDelayTime", "short seen",
+     "begin GameMode",
+     "set fQuestDelayTime to 0.5",
+     "if player.GetItemCount CQSDlgBeacon == 0", "player.AddItem CQSDlgBeacon 1", "endif",
+     "set seen to 0"] + _menu_sync() + ["end"]
+    # The game runs the blocks in order: the ones for a given menu note it, the last one (any menu) reports it.
+    + sum(([f"begin MenuMode {code}", f"set seen to {i}", "end"] for i, (_, code) in enumerate(DLG_MENUS, 1)), [])
+    + ["begin MenuMode", "set fQuestDelayTime to 0.5"] + _menu_sync() + ["set seen to 0", "end"]) + "\r\n"
 
 GLOBALS = {"CQSGo": GLOB_GO, "CQSReplay": GLOB_REPLAY}
 
@@ -542,6 +568,11 @@ def build_dialogue(lo, outdir, npc_names, quest_edids):
     ids, nxt = load_ids(DLG_IDS_FILE, DLG_FIRST)
     clot = [token_record(mod | DLG_BEACON, "CQSDlgBeacon")]
     names = {"cqsdlgbeacon": mod | DLG_BEACON}
+    menus = {}
+    for i, (name, _) in enumerate(DLG_MENUS, 1):
+        clot.append(token_record(mod | DLG_BEACON + i, dlg_menu_edid(name)))
+        names[dlg_menu_edid(name).lower()] = mod | DLG_BEACON + i
+        menus[f"{DLG_BEACON + i:06X}"] = name
     groups, table, n_infos = [], {}, 0
     for topic_id, (tsrc, dial, infos) in lo.dialogue().items():
         data = dial.get("DATA")
@@ -616,7 +647,7 @@ def build_dialogue(lo, outdir, npc_names, quest_edids):
     with open(os.path.join(outdir, DIALOGUE_PLUGIN), "wb") as f:
         f.write(data)
     with open(os.path.join(outdir, "dialogue.json"), "w") as f:
-        json.dump(dict(plugin=DIALOGUE_PLUGIN, beacon=f"{DLG_BEACON:06X}", lines=table), f, separators=(",", ":"))
+        json.dump(dict(plugin=DIALOGUE_PLUGIN, beacon=f"{DLG_BEACON:06X}", menus=menus, lines=table), f, separators=(",", ":"))
     print(f"{DIALOGUE_PLUGIN}: {n_infos} dialogue lines in {len(groups)} topics, {len(data)} bytes")
 
 

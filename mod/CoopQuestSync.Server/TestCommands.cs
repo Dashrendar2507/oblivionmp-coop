@@ -9,12 +9,13 @@ namespace CoopQuestSync.Server;
 
 /// <summary>
 /// /coop test: lets one player try the co-op features alone, with a made-up teammate ("Ghost").
-///   /coop test talk           - Ghost talks to an NPC: you get the overlay (and the freeze, per the settings)
+///   /coop test talk           - Ghost talks to an NPC: you get the overlay (and the freeze, per the settings), with a
+///                               pause while Ghost barters and another while Ghost persuades
 ///   /coop test stop           - end that conversation now
 ///   /coop test stage Q N      - Ghost reached stage N of quest Q: you get it live, with the live effect switches
 ///   /coop test effects Q      - list the stages of quest Q that have effects, and which
 ///   /coop test revive         - Ghost revives you while you are down (die first: console "kill")
-///   /coop test status         - what the server knows about you: phase, area, talking, frozen, switches
+///   /coop test status         - what the server knows about you: phase, area, talking, menu, frozen, switches
 /// </summary>
 [Service]
 public sealed partial class TestCommands(IChat chat, IEntities entities, QuestTokenSync sync, GameData data,
@@ -43,7 +44,7 @@ public sealed partial class TestCommands(IChat chat, IEntities entities, QuestTo
                 else
                 {
                     talks.StartGhost(me, Ghost);
-                    Reply(sender, "Ghost is talking to an NPC for about 25 s. /coop test stop ends it.");
+                    Reply(sender, "Ghost is talking to an NPC for about 40 s, and stops to barter and to persuade on the way. /coop test stop ends it.");
                 }
                 break;
 
@@ -102,7 +103,7 @@ public sealed partial class TestCommands(IChat chat, IEntities entities, QuestTo
                 var phase = view.Phase != QuestTokenSync.Phase.Ready ? "rejoin" : view.CatchingUp ? "join" : "live";
                 var allowed = CoopSettings.Categories.Where(cat => sync.Settings.Allowed(phase, cat));
                 Reply(sender, $"Phase {view.Phase}{(view.CatchingUp ? " (catching up)" : "")}, area {view.Area?.ToString() ?? "unknown"}, "
-                    + $"talking {view.InDialogue}, in combat {view.InCombat}, frozen {view.WantFrozen}. "
+                    + $"talking {view.InDialogue}, menu {talks.Activity(sender) ?? "none"}, in combat {view.InCombat}, frozen {view.WantFrozen}. "
                     + $"Effect switches now ({phase}): {string.Join(", ", allowed)}. Dialogue text loaded: {(data.HasText ? "yes" : "no")}.");
                 break;
             }

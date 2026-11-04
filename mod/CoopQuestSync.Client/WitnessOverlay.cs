@@ -37,6 +37,12 @@ public sealed partial class WitnessOverlay(CefHost cef, OverlayPage page, ILogge
         page.AddLine(json);
     }
 
+    public void Activity(string json)
+    {
+        EnsureCreated();
+        page.SetActivity(json);
+    }
+
     public void Ended()
     {
         if (!_created)
@@ -68,6 +74,7 @@ public sealed partial class OverlayPage
     private BrowserHandle? _page;
     private string? _current;
     private readonly List<string> _lines = new();
+    private string? _activity;
 
     public BrowserHandle Page { set => _page = value; }
 
@@ -75,6 +82,7 @@ public sealed partial class OverlayPage
     {
         _current = json;
         _lines.Clear();
+        _activity = null;
         if (_page is { } p) SendStart(p, json);
     }
 
@@ -84,10 +92,18 @@ public sealed partial class OverlayPage
         if (_page is { } p) SendLine(p, json);
     }
 
+    /// <summary>The talker opened or left a menu (barter, persuasion...): the page says so and waits.</summary>
+    public void SetActivity(string json)
+    {
+        _activity = json;
+        if (_page is { } p) SendActivity(p, json);
+    }
+
     public void Hide()
     {
         _current = null;
         _lines.Clear();
+        _activity = null;
         if (_page is { } p) SendEnd(p);
     }
 
@@ -100,9 +116,12 @@ public sealed partial class OverlayPage
         SendStart(page, _current);
         foreach (var line in _lines)
             SendLine(page, line);
+        if (_activity is not null)
+            SendActivity(page, _activity);
     }
 
     [SendToCef] public partial void SendStart(BrowserHandle page, string json);
     [SendToCef] public partial void SendLine(BrowserHandle page, string json);
     [SendToCef] public partial void SendEnd(BrowserHandle page);
+    [SendToCef] public partial void SendActivity(BrowserHandle page, string json);
 }

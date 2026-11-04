@@ -481,8 +481,8 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
                 else own[local] = count;
                 continue;
             }
-            // The dialogue plugin's items (its beacon and line tokens) come and go on their own.
-            if (formId >> 24 != 0 && (local == dialogueBeacon || data.TryGetLine(local, out _)))
+            // The dialogue plugin's items (its beacon, line and menu tokens) come and go on their own.
+            if (formId >> 24 != 0 && (local == dialogueBeacon || data.TryGetLine(local, out _) || data.MenuOf(local) is not null))
                 continue;
             items[formId] = count;
         }
