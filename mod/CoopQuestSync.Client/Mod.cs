@@ -16,37 +16,12 @@ public sealed partial class Mod(IDependencyContainer services, IInput input, ILo
         services.RegisterSingleton<OverlayPage>();
         services.RegisterSingleton<ICefRpcHandler, OverlayPage>(services.Resolve<OverlayPage>());
 
-        // Alt+R: revive the downed teammate next to you. Alt+G: when you are down, respawn by the party now.
-        // Alt+F: stop watching someone's conversation, or listen in on one.
-        // Polled, not UnhandledByUi: R and F are game keys (ready weapon, view), so the game's own input takes those
-        // presses first and an "unhandled" bind never fires. The chat commands /coop revive, /coop giveup and
-        // /coop follow do the same.
-        Bind(Key.R, "Alt+R (revive)", () => services.Resolve<ClientRpc>().SendReviveNearest());
-        Bind(Key.G, "Alt+G (respawn)", () => services.Resolve<ClientRpc>().SendGiveUp());
-        Bind(Key.F, "Alt+F (follow)", () => services.Resolve<ClientRpc>().SendToggleFollow());
+        // The co-op keys (Alt+L listen in or leave, Alt+H revive, Alt+G respawn; changeable on the web page).
+        // /coop follow, /coop revive and /coop giveup in chat do the same.
+        var keys = new CoopKeys(input, () => services.Resolve<ClientRpc>(), logger);
+        services.RegisterSingleton<CoopKeys, CoopKeys>(keys);
+        keys.Start();
 
-        logger.LogInformation("[QuestSync] Client half loaded. Alt+R revives a downed teammate, Alt+G respawns when you are down, Alt+F follows or leaves a conversation.");
-    }
-
-    private readonly Dictionary<Key, DateTime> _lastPress = new();
-
-    /// <summary>A polled bind fires for as long as the keys are down: take one press per half second, and none
-    /// while the chat or a menu has the keyboard.</summary>
-    private void Bind(Key key, string name, Action action)
-    {
-        input.RegisterKeyBind(ModifierKeys.Alt, key, () =>
-        {
-            var now = DateTime.UtcNow;
-            if (_lastPress.TryGetValue(key, out var last) && now - last < TimeSpan.FromSeconds(0.5))
-            {
-                _lastPress[key] = now;
-                return;
-            }
-            _lastPress[key] = now;
-            if (!input.CanApplyInput())
-                return;
-            logger.LogInformation("[QuestSync] {Key} pressed.", name);
-            action();
-        }, KeySource.Polled);
+        logger.LogInformation("[QuestSync] Client half loaded.");
     }
 }

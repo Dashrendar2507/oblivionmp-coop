@@ -23,7 +23,7 @@ namespace CoopQuestSync.Server;
 /// A witness who is in combat is never frozen.
 ///
 /// With "Follow conversations" set to "ask", nobody is pulled in: players who could watch get a prompt and press
-/// Alt+F to listen in. Either way, Alt+F while watching leaves the conversation (and unfreezes).
+/// the follow key (Alt+L by default) to listen in. Either way, that key while watching leaves the conversation.
 ///
 /// The dialogue plugin also keeps a token in the inventory while a menu is open (barter, persuasion, training...,
 /// lockpicking): the witnesses' overlay then says "Alice is bartering" and waits, and the tag over the talker says so.
@@ -40,7 +40,7 @@ public sealed partial class ConversationRelay(IEntities entities, IServerEvents 
         public string Npc = "";
         public readonly HashSet<PlayerId> Witnesses = new();
         public readonly HashSet<PlayerId> Frozen = new();
-        /// <summary>Players who may listen in with Alt+F (asked, or who left and may come back).</summary>
+        /// <summary>Players who may listen in with the follow key (asked, or who left and may come back).</summary>
         public readonly HashSet<PlayerId> Invited = new();
         /// <summary>The last few lines, for someone who starts listening halfway.</summary>
         public readonly List<string> Recent = new();
@@ -133,6 +133,9 @@ public sealed partial class ConversationRelay(IEntities entities, IServerEvents 
 
     private bool Overlay => sync.Settings.ConversationOverlay != "off";
 
+    /// <summary>"Alt+L": shown on the overlay ("Alt+L to leave").</summary>
+    private string FollowKey => sync.Settings.Key("follow");
+
     private void Begin(MainCharacter talker, List<MainCharacter> mains)
     {
         var id = talker.PlayerId;
@@ -168,13 +171,13 @@ public sealed partial class ConversationRelay(IEntities entities, IServerEvents 
     }
 
     /// <summary>
-    /// Offers the conversation to <paramref name="w"/>: a small banner ("Alice talks with Ysabel · Alt+F to listen
+    /// Offers the conversation to <paramref name="w"/>: a small banner ("Alice talks with Ysabel · Alt+L to listen
     /// in") that stays up until the conversation ends or they listen in.
     /// </summary>
     private void Offer(PlayerId talker, Talk talk, PlayerId w)
     {
         talk.Invited.Add(w);
-        rpc.SendConversationStarted(w, JsonSerializer.Serialize(new { talker = sync.Nickname(talker), npc = talk.Npc, offer = true }));
+        rpc.SendConversationStarted(w, JsonSerializer.Serialize(new { key = FollowKey, talker = sync.Nickname(talker), npc = talk.Npc, offer = true }));
     }
 
     /// <summary>Whether a witness stands still, per the settings: never in combat.</summary>
@@ -193,7 +196,7 @@ public sealed partial class ConversationRelay(IEntities entities, IServerEvents 
         var freeze = ShouldFreeze(m, sync.SameArea(talker, w));
         if (freeze)
             talk.Frozen.Add(w);
-        rpc.SendConversationStarted(w, JsonSerializer.Serialize(new { talker = sync.Nickname(talker), npc = talk.Npc, frozen = freeze }));
+        rpc.SendConversationStarted(w, JsonSerializer.Serialize(new { key = FollowKey, talker = sync.Nickname(talker), npc = talk.Npc, frozen = freeze }));
         foreach (var json in talk.Recent)
             rpc.SendConversationLine(w, json);
         if (_activity.TryGetValue(talker, out var doing))
@@ -201,7 +204,7 @@ public sealed partial class ConversationRelay(IEntities entities, IServerEvents 
     }
 
     /// <summary>
-    /// Alt+F: leave the conversation you are watching (you can come back), or listen in on one you were offered.
+    /// The follow key: leave the conversation you are watching (you can come back), or listen in on one you were offered.
     /// </summary>
     public void ToggleFollow(PlayerId player)
     {
@@ -416,22 +419,22 @@ public sealed partial class ConversationRelay(IEntities entities, IServerEvents 
         ghost.EndsAt = at + 2f;
         _ghosts[id] = ghost;
         rpc.SendConversationStarted(id, JsonSerializer.Serialize(ask
-            ? new { talker = ghostName, npc, frozen = false, offer = true }
-            : new { talker = ghostName, npc, frozen = freeze, offer = false }));
+            ? new { key = FollowKey, talker = ghostName, npc, frozen = false, offer = true }
+            : new { key = FollowKey, talker = ghostName, npc, frozen = freeze, offer = false }));
         logger.LogInformation("[QuestSync] Test: {Player} watches {Ghost} talk to {Npc} for {Seconds:0} s (frozen: {Frozen}).",
             sync.Nickname(id), ghostName, npc, ghost.EndsAt - _clock, freeze);
     }
 
-    /// <summary>Alt+F during a test conversation: stop or start watching it, as with a real one.</summary>
+    /// <summary>The follow key during a test conversation: stop or start watching it, as with a real one.</summary>
     private void ToggleGhost(PlayerId id, Ghost ghost)
     {
         ghost.Watching = !ghost.Watching;
         if (!ghost.Watching)
         {
-            rpc.SendConversationStarted(id, JsonSerializer.Serialize(new { talker = ghost.Name, npc = ghost.Npc, offer = true }));
+            rpc.SendConversationStarted(id, JsonSerializer.Serialize(new { key = FollowKey, talker = ghost.Name, npc = ghost.Npc, offer = true }));
             return;
         }
-        rpc.SendConversationStarted(id, JsonSerializer.Serialize(new { talker = ghost.Name, npc = ghost.Npc, frozen = ghost.Frozen }));
+        rpc.SendConversationStarted(id, JsonSerializer.Serialize(new { key = FollowKey, talker = ghost.Name, npc = ghost.Npc, frozen = ghost.Frozen }));
         foreach (var json in ghost.Recent)
             rpc.SendConversationLine(id, json);
         if (ghost.Activity is not null)

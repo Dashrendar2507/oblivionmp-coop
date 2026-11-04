@@ -21,15 +21,15 @@ What's new since 0.4:
 * **Menus during a conversation.** When the talker opens the barter, persuasion, training, repair or spell screen,
   the watchers' overlay says "Alice is bartering..." and waits for them to come back. The tag over their head says
   so too, and "Picking a lock" while they pick one.
-* **Alt+F: follow or leave a conversation.** Pressing Alt+F while you watch someone's conversation closes the overlay
-  and unfreezes you, and pressing it again brings you back. "Watchers follow a conversation: When they press Alt+F"
+* **Alt+L: follow or leave a conversation.** Pressing Alt+L while you watch someone's conversation closes the overlay
+  and unfreezes you, and pressing it again brings you back. "Watchers follow a conversation: When they press Alt+L"
   on the page stops pulling anyone in: a banner at the top says who is talking, for as long as they talk, and you
   choose. `/coop follow` in chat does the same as the key.
 * **Updates wait for the end of a conversation**, so a quest doesn't jump while you're talking.
 * **Chat messages**: "Alice advanced The Quest: journal text".
 * **Rewards handed out in conversation** (gold or items a line gives) go to everyone. Trades don't.
 * **Quest items** (keys, letters) one player picks up can go to everyone. Off by default.
-* **Death**: you go down instead. A teammate standing next to you presses **Alt+R** to revive you. After 60 s,
+* **Death**: you go down instead. A teammate standing next to you presses **Alt+H** to revive you. After 60 s,
   or when you press **Alt+G**, you come back next to the leader. If the leader is the one down, you come back next to
   the first other player by name.
 * **Tags over heads**: "Talking" and "Down".
@@ -85,17 +85,17 @@ The server can play a made-up teammate called "Ghost". Type these in chat:
    (the NPC and topic; the sentences need the game's text, see below), and you should be unable to move until it
    ends. After the second line, the overlay should say "Ghost is bartering..." for a few seconds, and later
    "Ghost is persuading...".
-   Press Alt+F while it runs: the overlay should close and you can move. Press it again: it comes back with the last
-   lines. Then try `/coop test talk ask`: you get a banner at the top ("Ghost talks with ... · Alt+F to listen in")
-   that stays until the conversation ends, and Alt+F opens the overlay. `/coop follow` in chat does the same as
-   Alt+F. `/coop test stop` ends it early. Set "Freeze watchers" to "Nobody" on the page and try again: overlay,
+   Press Alt+L while it runs: the overlay should close and you can move. Press it again: it comes back with the last
+   lines. Then try `/coop test talk ask`: you get a banner at the top ("Ghost talks with ... · Alt+L to listen in")
+   that stays until the conversation ends, and Alt+L opens the overlay. `/coop follow` in chat does the same as
+   Alt+L. `/coop test stop` ends it early. Set "Freeze watchers" to "Nobody" on the page and try again: overlay,
    no freeze.
 3. `/coop test effects MS93` lists the stages of a quest that have effects on the player, for example
    `20: teleport/items`. Pick a quest you haven't started and a stage with a teleport.
 4. `/coop test stage <quest> <stage>`: Ghost "reached" that stage. You get it as if a teammate did it live, and the
    chat line says which effects you should get. Then turn Live Teleport off on the page, and try another teleport
    stage: you should get the stage but stay where you are.
-5. Death: open the console and type `player.kill`. You should see "You are down...". Either `/coop test revive` (Ghost
+5. Death: open the console and type `player.modav health -10000`. You should see "You are down...". Either `/coop test revive` (Ghost
    revives you, where you fell), or press Alt+G, or wait 60 s: you come back where you last stood on solid ground,
    a few seconds before you died (Ghost has no body to stand next to). To check the fall case, jump off something
    high: you should come back at the top, not at the bottom.
@@ -116,8 +116,8 @@ Do these standing next to each other, in the same place:
 3. **Stage effects.** Find a quest stage that moves you (the page shows a "Teleport" tag). When one of you
    reaches it, the other should be moved too. Then turn Live Teleport off on the page and try another one: the
    other player gets the stage but stays put.
-4. **Death.** One of you dies (or `player.kill` in the console). The dead player should see "You are down...", the other
-   gets a chat line. Stand next to them and press Alt+R: they should come back. Next time, wait 60 s or press
+4. **Death.** One of you dies (or `player.modav health -10000` in the console). The dead player should see "You are down...", the other
+   gets a chat line. Stand next to them and press Alt+H: they should come back. Next time, wait 60 s or press
    Alt+G: they should come back next to the other player.
 5. **Walking around during a conversation.** This one decides the defaults, so please take notes. Set "Freeze
    watchers" to "Nobody", find a few hostile creatures or a busy street, and have one of you talk to an NPC for a
@@ -145,9 +145,11 @@ and the page show real names, lines, quest names and journal entries. For anothe
 
 * **The overlay runs behind the talker.** The game reports a line when its result script runs, which is at the end of
   the line, so the watcher reads it after the talker has heard it. There is no voice.
-* **Alt+R, Alt+G and Alt+F** are read straight from the keyboard, so they work while you're frozen. If a key
-  still does nothing (a remote desktop may not pass Alt combinations on), type `/coop revive`, `/coop giveup` or
-  `/coop follow` in chat instead. The client log shows `Alt+F (follow) pressed.` when the key gets through.
+* **The keys** are Alt+L (listen in or leave a conversation), Alt+H (revive the teammate next to you) and Alt+G
+  (respawn when you are down). The game also sees the letter, so if one of them does something in the game too,
+  pick another letter under **Keys** on the page; every player's game switches within a few seconds. K is the
+  chat. `/coop follow`, `/coop revive` and `/coop giveup` in chat do the same as the keys. The client log shows
+  `Alt+L (follow) pressed.` when a key gets through.
 * **You can still look around while listening in.** The game's freeze stops walking and fighting, but not the
   camera, and I haven't found a way for a mod to lock it. Looking around doesn't affect anyone else.
 * **Menus are recognised by the original game's menu numbers.** If the remaster numbers them differently, the
@@ -157,7 +159,7 @@ and the page show real names, lines, quest names and journal entries. For anothe
 * **Respawning next to someone** only works when they are in the same area (the same interior, or both outside). If
   not, you come back where you last stood on solid ground, at least 6 s before you died, so a fall or a drop out of
   the map doesn't kill you again. If you hadn't been in that area that long, you come back where you entered it.
-  A teammate's revive (Alt+R) brings you back where you fell; use Alt+G if your body is somewhere unreachable.
+  A teammate's revive (Alt+H) brings you back where you fell; use Alt+G if your body is somewhere unreachable.
 * **Stage scripts that say "player"** still act on each player's own game. The switches decide whether that happens
   for the players who didn't reach the stage themselves.
 * **Quest items and dialogue rewards** from DLC plugins need the right load order (see `GamePlugins` below).

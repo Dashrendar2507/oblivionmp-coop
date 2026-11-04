@@ -9,7 +9,7 @@ namespace CoopQuestSync.Client;
 
 /// <summary>Client side of <see cref="CoopRpcContracts"/>: what the server tells this game to show or do.</summary>
 [RpcHandlersFor(typeof(CoopRpcContracts))]
-public sealed partial class ClientRpc(WitnessOverlay overlay, PartyTags tags, IPlayers players, IUserInterface ui, ILogger logger)
+public sealed partial class ClientRpc(WitnessOverlay overlay, PartyTags tags, CoopKeys keys, IPlayers players, IUserInterface ui, ILogger logger)
 {
     partial void OnConversationStarted(string json) => overlay.Started(json);
 
@@ -20,6 +20,8 @@ public sealed partial class ClientRpc(WitnessOverlay overlay, PartyTags tags, IP
     partial void OnConversationEnded() => overlay.Ended();
 
     partial void OnPartyStatus(string json) => tags.Update(json);
+
+    partial void OnKeys(string json) => keys.Update(json);
 
     partial void OnNotice(string text) => ui.ShowMessage(text, MessagePosition.Center, 5f);
 

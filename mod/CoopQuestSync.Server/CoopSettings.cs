@@ -44,8 +44,8 @@ public sealed class CoopSettings
     public string ConversationOverlay { get; set; } = "everyone";
 
     /// <summary>
-    /// "auto": whoever may see a conversation is shown it. "ask": they get a prompt and press Alt+F to listen in.
-    /// Alt+F while watching always leaves.
+    /// "auto": whoever may see a conversation is shown it. "ask": they get a banner and press the follow key to
+    /// listen in. The follow key while watching always leaves.
     /// </summary>
     public string ConversationFollow { get; set; } = "auto";
 
@@ -69,6 +69,16 @@ public sealed class CoopSettings
 
     /// <summary>How close a player must stand to revive someone, in centimetres (positions are in cm).</summary>
     public int ReviveRange { get; set; } = 400;
+
+    /// <summary>The co-op keys: Alt + these. Letters (or key names such as F6) the game doesn't use; K is the chat.</summary>
+    public string KeyFollow { get; set; } = "L";
+
+    public string KeyRevive { get; set; } = "H";
+
+    public string KeyRespawn { get; set; } = "G";
+
+    /// <summary>"Alt+L", for messages.</summary>
+    public string Key(string action) => "Alt+" + action switch { "follow" => KeyFollow, "revive" => KeyRevive, _ => KeyRespawn };
 
     /// <summary>Tags over players' heads: "Talking", "Down".</summary>
     public bool StatusTags { get; set; } = true;
@@ -105,8 +115,17 @@ public sealed class CoopSettings
         ReviveRange = Math.Clamp(ReviveRange, 50, 5000);
         Scaling = Scaling is "lowest" or "mid" or "highest" ? Scaling : "default";
         Leader ??= "";
+        KeyFollow = CleanKey(KeyFollow, "L");
+        KeyRevive = CleanKey(KeyRevive, "H");
+        KeyRespawn = CleanKey(KeyRespawn, "G");
         DifficultyDealt ??= "Unset";
         DifficultyTaken ??= "Unset";
+    }
+
+    private static string CleanKey(string? key, string fallback)
+    {
+        var k = (key ?? "").Trim().ToUpperInvariant();
+        return k.Length is > 0 and <= 12 && k.All(c => char.IsAsciiLetterOrDigit(c) || c == '_') ? k : fallback;
     }
 
     private static Dictionary<string, bool> Merge(Dictionary<string, bool>? have, Dictionary<string, bool> defaults)

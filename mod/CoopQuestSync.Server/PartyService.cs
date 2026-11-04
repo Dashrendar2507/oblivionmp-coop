@@ -17,8 +17,8 @@ namespace CoopQuestSync.Server;
 /// <summary>
 /// Party rules: what happens when a player dies, the tags over players' heads, and level scaling and difficulty.
 ///
-/// Death, with the default "revive": the player stays down. A teammate standing close presses Alt+R to bring them
-/// back where they fell. After ReviveSeconds (or when the downed player presses Alt+G) they come back next to the
+/// Death, with the default "revive": the player stays down. A teammate standing close presses the revive key to bring them
+/// back where they fell. After ReviveSeconds (or when the downed player presses the respawn key) they come back next to the
 /// leader, or, when the leader is the one down or is not around, next to the first other player by name.
 /// The server can only move a player within their current area, so a player whose party is in another area comes
 /// back where they fell.
@@ -64,6 +64,7 @@ public sealed partial class PartyService(IEntities entities, IServerEvents event
     private readonly Dictionary<PlayerId, Trail> _trails = new();
     private readonly Dictionary<PlayerId, float> _diedAt = new();
     private string _lastStatus = "";
+    private readonly Dictionary<PlayerId, (string Json, float At)> _keysSent = new();
     private float _clock;
     private float _elapsed;
 
@@ -101,6 +102,7 @@ public sealed partial class PartyService(IEntities entities, IServerEvents event
         _moves.Remove(player);
         _trails.Remove(player);
         _diedAt.Remove(player);
+        _keysSent.Remove(player);
     }
 
     /// <summary>Level scaling and difficulty, from the web page's settings.</summary>
@@ -135,9 +137,16 @@ public sealed partial class PartyService(IEntities entities, IServerEvents event
         _elapsed = 0;
 
         var settings = sync.Settings;
+        var keys = JsonSerializer.Serialize(new { follow = settings.KeyFollow, revive = settings.KeyRevive, respawn = settings.KeyRespawn });
         foreach (var main in entities.Query<MainCharacter>())
         {
             var id = main.PlayerId;
+            // Each game binds the keys the page sets; sent again now and then, in case the first one came too early.
+            if (!_keysSent.TryGetValue(id, out var sent) || sent.Json != keys || _clock - sent.At > 30f)
+            {
+                rpc.SendKeys(id, keys);
+                _keysSent[id] = (keys, _clock);
+            }
             var dead = main.IsDead;
             var was = _wasDead.GetValueOrDefault(id);
             _wasDead[id] = dead;
@@ -162,7 +171,7 @@ public sealed partial class PartyService(IEntities entities, IServerEvents event
                 else if (_clock - down.LastReminder >= 15f)
                 {
                     down.LastReminder = _clock;
-                    rpc.SendNotice(id, $"You are down. A teammate can revive you (Alt+R next to you). Back in {(int)(down.Until - _clock)} s, or Alt+G to respawn now.");
+                    rpc.SendNotice(id, $"You are down. A teammate can revive you ({settings.Key("revive")} next to you). Back in {(int)(down.Until - _clock)} s, or {settings.Key("respawn")} to respawn now.");
                 }
             }
         }
@@ -210,18 +219,18 @@ public sealed partial class PartyService(IEntities entities, IServerEvents event
             default:
                 _downed[id] = new Downed { Until = _clock + settings.ReviveSeconds, LastReminder = _clock };
                 logger.LogInformation("[QuestSync] {Player} is down ({Seconds} s to revive).", name, settings.ReviveSeconds);
-                rpc.SendNotice(id, $"You are down. A teammate can revive you (Alt+R next to you). Back in {settings.ReviveSeconds} s, or Alt+G to respawn now.");
+                rpc.SendNotice(id, $"You are down. A teammate can revive you ({settings.Key("revive")} next to you). Back in {settings.ReviveSeconds} s, or {settings.Key("respawn")} to respawn now.");
                 foreach (var (other, _) in sync.Players)
                     if (other != id)
-                        chat.SendTo(other, $"{name} is down! Stand next to them and press Alt+R to revive.", ChatLineKind.System);
+                        chat.SendTo(other, $"{name} is down! Stand next to them and press {settings.Key("revive")} to revive.", ChatLineKind.System);
                 return;
         }
     }
 
-    /// <summary>/coop revive: the same as Alt+R.</summary>
+    /// <summary>/coop revive: the same as the revive key.</summary>
     public void ReviveNearest(PlayerId helper) => OnReviveRequested(helper);
 
-    /// <summary>/coop giveup: the same as Alt+G.</summary>
+    /// <summary>/coop giveup: the same as the respawn key.</summary>
     public void GiveUp(PlayerId id) => OnGiveUp(id);
 
     private void OnReviveRequested(PlayerId helper)

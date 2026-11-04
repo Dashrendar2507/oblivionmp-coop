@@ -9,7 +9,7 @@ namespace CoopQuestSync.Server;
 
 /// <summary>
 /// /coop test: lets one player try the co-op features alone, with a made-up teammate ("Ghost").
-///   /coop test talk [ask]     - Ghost talks to an NPC ("ask": you are offered it, Alt+F to listen in): you get the overlay (and the freeze, per the settings), with a
+///   /coop test talk [ask]     - Ghost talks to an NPC ("ask": you are offered it, follow key to listen in): you get the overlay (and the freeze, per the settings), with a
 ///                               pause while Ghost barters and another while Ghost persuades
 ///   /coop test stop           - end that conversation now
 ///   /coop test stage Q N      - Ghost reached stage N of quest Q: you get it live, with the live effect switches
@@ -54,7 +54,7 @@ public sealed partial class TestCommands(IChat chat, IEntities entities, QuestTo
                     var ask = parts.Length > 2 && parts[2].Equals("ask", StringComparison.OrdinalIgnoreCase);
                     talks.StartGhost(me, Ghost, ask);
                     Reply(sender, "Ghost is talking to an NPC for about 40 s, and stops to barter and to persuade on the way. "
-                        + (ask ? "Press Alt+F to listen in, and again to leave. " : "Alt+F leaves, and again comes back. ")
+                        + (ask ? $"Press {sync.Settings.Key("follow")} to listen in, and again to leave. " : $"{sync.Settings.Key("follow")} leaves, and again comes back. ")
                         + "/coop test stop ends it.");
                 }
                 break;

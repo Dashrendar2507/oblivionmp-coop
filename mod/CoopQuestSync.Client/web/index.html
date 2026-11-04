@@ -13,7 +13,8 @@
   #root.offer .vignette, #root.offer .panel { display: none; }
   /* Darkened edges, like the game when it frames a conversation */
   .vignette { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 40%, transparent 55%, rgba(0,0,0,.45) 100%); }
-  .who { position: absolute; top: 4vh; left: 50%; transform: translateX(-50%); padding: 6px 22px;
+  /* Below the game's compass, which sits at the top centre */
+  .who { position: absolute; top: 10.5vh; left: 50%; transform: translateX(-50%); padding: 6px 22px;
          background: var(--shade); border: 1px solid rgba(216,192,138,.35); border-radius: 2px;
          font-size: 1.6vh; letter-spacing: .08em; text-transform: uppercase; color: var(--gold-dim); white-space: nowrap; }
   .who b { color: var(--gold); font-weight: normal; }
@@ -61,7 +62,7 @@ function start(info) {
   if (!info.offer) $("who").append(document.createTextNode(info.frozen ? "Listening in · " : "Watching · "));
   const b = document.createElement("b"); b.textContent = talker; $("who").append(b);
   $("who").append(document.createTextNode(npc ? " talks with " + npc : " is in a conversation"));
-  const hint = document.createElement("span"); hint.className = "hint"; hint.textContent = info.offer ? "Alt+F to listen in" : "Alt+F to leave"; $("who").append(hint);
+  const hint = document.createElement("span"); hint.className = "hint"; const key = info.key || "Alt+L"; hint.textContent = info.offer ? key + " to listen in" : key + " to leave"; $("who").append(hint);
   $("npc").textContent = npc;
   $("topic").textContent = "";
   $("quest").textContent = "";

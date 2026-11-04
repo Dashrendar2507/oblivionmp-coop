@@ -32,6 +32,9 @@ public static partial class CoopRpcContracts
     /// </summary>
     [ServerToClient] public static partial void PartyStatus(string json);
 
+    /// <summary>The co-op keys, Alt + these letters. json: { follow, revive, respawn }.</summary>
+    [ServerToClient] public static partial void Keys(string json);
+
     /// <summary>A short message for the middle of the screen.</summary>
     [ServerToClient] public static partial void Notice(string text);
 
@@ -41,7 +44,7 @@ public static partial class CoopRpcContracts
     /// <summary>The player pressed the revive key: the server looks for a downed player close by.</summary>
     [ClientToServer] public static partial void ReviveNearest();
 
-    /// <summary>Alt+F: leave the conversation the player is watching, or listen in on one they were offered.</summary>
+    /// <summary>The follow key: leave the conversation the player is watching, or listen in on one they were offered.</summary>
     [ClientToServer] public static partial void ToggleFollow();
 
     /// <summary>A downed player gives up waiting and respawns next to the party.</summary>

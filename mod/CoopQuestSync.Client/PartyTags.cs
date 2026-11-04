@@ -12,7 +12,7 @@ namespace CoopQuestSync.Client;
 /// they are in one of those menus), "Down" while they wait for a revive.
 /// </summary>
 [Service]
-public sealed partial class PartyTags(IPlayers players, IMarkers markers)
+public sealed partial class PartyTags(IPlayers players, IMarkers markers, CoopKeys keys)
 {
     private static readonly MarkerColor Talking = new(0.85f, 0.75f, 0.45f, 1f);
     private static readonly MarkerColor Down = new(0.9f, 0.3f, 0.25f, 1f);
@@ -52,7 +52,7 @@ public sealed partial class PartyTags(IPlayers players, IMarkers markers)
             if (!_status.TryGetValue(id.ToString(), out var s))
                 continue;
             seen.Add(id);
-            var text = s.Downed ? "Down - Alt+R to revive"
+            var text = s.Downed ? $"Down - {keys.Name("revive")} to revive"
                 : s.Activity is { Length: > 0 } a ? char.ToUpperInvariant(a[0]) + a[1..]
                 : "Talking";
             var color = s.Downed ? Down : Talking;
