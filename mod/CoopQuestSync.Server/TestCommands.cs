@@ -15,14 +15,15 @@ namespace CoopQuestSync.Server;
 ///   /coop test stage Q N      - Ghost reached stage N of quest Q: you get it live, with the live effect switches
 ///   /coop test effects Q      - list the stages of quest Q that have effects, and which
 ///   /coop test revive         - Ghost revives you while you are down (die first: console "kill")
+///   /coop test pin / back     - remember where you stand, then go back there as a join would (into a building too)
 ///   /coop test status         - what the server knows about you: phase, area, talking, menu, frozen, switches
 /// </summary>
 [Service]
 public sealed partial class TestCommands(IChat chat, IEntities entities, QuestTokenSync sync, GameData data,
-    ConversationRelay talks, PartyService party)
+    ConversationRelay talks, PartyService party, ReturnOnJoin returns)
 {
     private const string Ghost = "Ghost";
-    private const string Usage = "/coop follow | revive | giveup, or /coop test talk [ask] | stop | stage <quest> <stage> | effects <quest> | revive | status";
+    private const string Usage = "/coop follow | revive | giveup, or /coop test talk [ask] | stop | stage <quest> <stage> | effects <quest> | revive | pin | back | status";
 
     private void Start() => chat.AddCommand("coop", Usage, Run);
 
@@ -107,6 +108,14 @@ public sealed partial class TestCommands(IChat chat, IEntities entities, QuestTo
                 Reply(sender, party.TestRevive(sender, Ghost) ? "Ghost revived you." : "You are not down. Die first (console: kill), with \"When a player dies\" set to revive.");
                 break;
 
+            case "pin":
+                Reply(sender, returns.TestPin(sender));
+                break;
+
+            case "back":
+                Reply(sender, returns.TestBack(sender));
+                break;
+
             case "status":
             {
                 if (!sync.Players.TryGetValue(sender, out var view))
@@ -116,9 +125,7 @@ public sealed partial class TestCommands(IChat chat, IEntities entities, QuestTo
                 Reply(sender, $"Phase {view.Phase}{(view.CatchingUp ? " (catching up)" : "")}, area {view.Area?.ToString() ?? "unknown"}, "
                     + $"talking {view.InDialogue}, menu {talks.Activity(sender) ?? "none"}, in combat {view.InCombat}, frozen {view.WantFrozen}. "
                     + $"Effect switches now ({phase}): {string.Join(", ", allowed)}. Dialogue text loaded: {(data.HasText ? "yes" : "no")}. "
-                    + (sync.Returns.TryGetValue(sync.Nickname(sender), out var spot)
-                        ? $"Last outdoor spot: {spot.Area} ({spot.X:0}, {spot.Y:0}, {spot.Z:0})."
-                        : "No outdoor spot recorded yet."));
+                    + returns.Describe(sender));
                 break;
             }
 

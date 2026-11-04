@@ -660,6 +660,16 @@ def npc_table(lo):
     return out
 
 
+def cell_table(lo):
+    """Interior cells: form id -> editor id, for `player.PositionCell` (bringing a player back inside a building)."""
+    out = {}
+    for key, (src, r) in lo.winning({"CELL"}).items():
+        data = r.get("DATA")
+        if r.edid and data and data[0] & 0x01:
+            out[f"{key:08X}"] = r.edid
+    return out
+
+
 def main():
     esm, outdir = sys.argv[1], sys.argv[2]
     only = None
@@ -674,6 +684,10 @@ def main():
     build_main(lo, outdir, only)
     if only:
         return
+    cells = cell_table(lo)
+    with open(os.path.join(outdir, "cells.json"), "w") as f:
+        json.dump(cells, f, separators=(",", ":"), sort_keys=True)
+    print(f"cells.json: {len(cells)} interior cells")
     npcs = npc_table(lo)
     with open(os.path.join(outdir, "npcs.json"), "w") as f:
         json.dump({f"{k:08X}": v for k, v in sorted(npcs.items())}, f, separators=(",", ":"))

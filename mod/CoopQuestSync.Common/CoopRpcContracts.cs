@@ -35,6 +35,12 @@ public static partial class CoopRpcContracts
     /// <summary>The co-op keys, Alt + these letters. json: { follow, revive, respawn }.</summary>
     [ServerToClient] public static partial void Keys(string json);
 
+    /// <summary>
+    /// Go into this interior (its editor id): the game's console runs <c>coc &lt;cell&gt;</c> through the UE4SS
+    /// add-on. Used to bring a player back inside the building they left from.
+    /// </summary>
+    [ServerToClient] public static partial void GoToCell(string cell);
+
     /// <summary>A short message for the middle of the screen.</summary>
     [ServerToClient] public static partial void Notice(string text);
 

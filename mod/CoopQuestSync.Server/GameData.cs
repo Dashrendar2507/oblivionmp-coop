@@ -27,6 +27,7 @@ public sealed partial class GameData(QuestSyncConfig config, ILogger logger)
     private readonly Dictionary<uint, Line> _lines = new();
     private readonly Dictionary<uint, string> _npcs = new();
     private readonly Dictionary<uint, string> _menus = new();
+    private readonly Dictionary<uint, string> _cells = new();
     private Dictionary<string, string> _text = new(StringComparer.Ordinal);
     private int[] _toGame = [];
     private Dictionary<int, int> _fromGame = new();
@@ -84,6 +85,11 @@ public sealed partial class GameData(QuestSyncConfig config, ILogger logger)
         if (npcs is not null)
             foreach (var p in JsonDocument.Parse(npcs).RootElement.EnumerateObject())
                 _npcs[TokenMap.ParseHex(p.Name)] = p.Value.GetString()!;
+
+        var cells = TokenMap.ReadEmbedded("cells.json");
+        if (cells is not null)
+            foreach (var p in JsonDocument.Parse(cells).RootElement.EnumerateObject())
+                _cells[TokenMap.ParseHex(p.Name)] = p.Value.GetString()!;
 
         LoadText();
         logger.LogInformation("[QuestSync] Game data: {Lines} dialogue lines, {Npcs} names, {Text} text entries{Note}.",
@@ -151,6 +157,26 @@ public sealed partial class GameData(QuestSyncConfig config, ILogger logger)
     {
         EnsureLoaded();
         return _fromGame.TryGetValue((int)(formId >> 24), out var i) ? (uint)i << 24 | formId & 0x00FFFFFF : null;
+    }
+
+    /// <summary>
+    /// The editor id of the interior an area id names (OblivionMP builds interior area ids from the cell's form id),
+    /// for the console's coc command; null for an exterior or a cell the tables don't know.
+    /// </summary>
+    public string? InteriorCell(string areaId)
+    {
+        EnsureLoaded();
+        if (!areaId.StartsWith("L_PersistentDungeon", StringComparison.Ordinal))
+            return null;
+        var m = Regex.Match(areaId, "([0-9A-Fa-f]+)$");
+        if (!m.Success)
+            return null;
+        // The number's base isn't documented: decimal if that names a known cell, else hexadecimal.
+        foreach (var style in new[] { System.Globalization.NumberStyles.None, System.Globalization.NumberStyles.HexNumber })
+            if (uint.TryParse(m.Groups[1].Value, style, null, out var formId)
+                && FromGame(formId) is { } id && _cells.TryGetValue(id, out var cell))
+                return cell;
+        return null;
     }
 
     /// <summary>The name of an NPC or creature, by its base form id in the game's numbering.</summary>

@@ -15,6 +15,7 @@
         <EmbeddedResource Include="..\Content\tokens.json" LogicalName="CoopQuestSync.tokens.json" />
         <EmbeddedResource Include="..\Content\dialogue.json" LogicalName="CoopQuestSync.dialogue.json" />
         <EmbeddedResource Include="..\Content\npcs.json" LogicalName="CoopQuestSync.npcs.json" />
+        <EmbeddedResource Include="..\Content\cells.json" LogicalName="CoopQuestSync.cells.json" />
         <EmbeddedResource Include="web\index.html" LogicalName="CoopQuestSync.web.index.html" />
     </ItemGroup>
 </Project>

@@ -84,6 +84,60 @@ end
 
 pcall(NotifyOnNewObject, "/Script/UMG.UserWidget", onNewWidget)
 
+-- Console commands from the co-op client mod. The mod can't run console commands, so it writes one into
+-- command.txt in this add-on's folder; this runs it and deletes the file. Only the shapes below are run (taking a
+-- player back inside the building they left from), whatever the file says.
+local COMMAND_FILE = (os.getenv("APPDATA") or "") .. "\\ReadyM.Launcher\\Oblivion\\Mods\\CoopQuestSyncUI\\command.txt"
+local ALLOWED = { "^coc [%w_]+$" }
+
+local function allowed(cmd)
+    for _, pattern in ipairs(ALLOWED) do
+        if cmd:match(pattern) then
+            return true
+        end
+    end
+    return false
+end
+
+-- The game's console takes Oblivion commands. Two ways in from UE4SS; the log says which one worked.
+local function runConsole(cmd)
+    local pc = FindFirstOf("PlayerController")
+    if not pc or not pc:IsValid() then
+        return false, "no player controller"
+    end
+    local ok, err = pcall(function()
+        local ksl = StaticFindObject("/Script/Engine.Default__KismetSystemLibrary")
+        ksl:ExecuteConsoleCommand(pc, cmd, pc)
+    end)
+    if ok then
+        return true, "KismetSystemLibrary.ExecuteConsoleCommand"
+    end
+    local ok2, err2 = pcall(function() pc:ConsoleCommand(cmd, false) end)
+    if ok2 then
+        return true, "PlayerController.ConsoleCommand"
+    end
+    return false, tostring(err) .. " / " .. tostring(err2)
+end
+
+LoopAsync(1000, function()
+    local f = io.open(COMMAND_FILE, "r")
+    if not f then
+        return false
+    end
+    local cmd = (f:read("*l") or ""):gsub("%s+$", "")
+    f:close()
+    os.remove(COMMAND_FILE)
+    if not allowed(cmd) then
+        log("refused command: " .. cmd)
+        return false
+    end
+    ExecuteInGameThread(function()
+        local ok, how = runConsole(cmd)
+        log((ok and "ran " or "could not run ") .. cmd .. " (" .. how .. ")")
+    end)
+    return false
+end)
+
 -- The HUD class may not be loaded when UE4SS starts mods, so keep trying until the hook takes.
 local tries = 0
 LoopAsync(2000, function()

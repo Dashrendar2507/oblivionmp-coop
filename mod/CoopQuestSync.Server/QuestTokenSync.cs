@@ -68,6 +68,9 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
     /// <summary>Where each player (by nickname) last stood outdoors. See <see cref="ReturnOnJoin"/>.</summary>
     public Dictionary<string, ReturnSpot> Returns { get; } = new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>Where each player last stood outdoors: the fallback when they can't be taken back inside.</summary>
+    public Dictionary<string, ReturnSpot> Outdoors { get; } = new(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>Saves the state file on the next pass.</summary>
     public void MarkDirty() => _dirty = true;
 
@@ -724,6 +727,7 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
         public string[]? ResetQuests { get; set; }
         public CoopSettings? Settings { get; set; }
         public Dictionary<string, ReturnSpot>? Returns { get; set; }
+        public Dictionary<string, ReturnSpot>? Outdoors { get; set; }
     }
 
     private void LoadState()
@@ -747,6 +751,8 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
                 ResetQuests.Add(quest);
             foreach (var (player, spot) in state.Returns ?? new())
                 Returns[player] = spot;
+            foreach (var (player, spot) in state.Outdoors ?? new())
+                Outdoors[player] = spot;
             if (state.AutoSync is { } auto)
                 AutoSync = auto;
             if (state.Settings is not null)
@@ -777,6 +783,7 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
                 ResetQuests = ResetQuests.ToArray(),
                 Settings = Settings,
                 Returns = Returns,
+                Outdoors = Outdoors,
             };
             var tmp = StatePath + ".tmp";
             File.WriteAllText(tmp, JsonSerializer.Serialize(state, new JsonSerializerOptions { WriteIndented = true }));

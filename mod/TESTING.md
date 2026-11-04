@@ -25,8 +25,9 @@ What's new since 0.4:
   and unfreezes you, and pressing it again brings you back. "Watchers follow a conversation: When they press Alt+L"
   on the page stops pulling anyone in: a banner at the top says who is talking, for as long as they talk, and you
   choose. `/coop follow` in chat does the same as the key.
-* **Back where you left.** When you join, you come back where you left instead of where your local save put you:
-  the same spot if you left outdoors, or outside the door if you left from inside a building.
+* **Back where you left.** When you join, you come back where you left instead of where your local save put you,
+  inside buildings too: the server asks your game to load the building (the add-on runs the console's `coc`), then
+  puts you on the spot. If that fails, you come back outside, where you last stood outdoors.
 * **Updates wait for the end of a conversation**, so a quest doesn't jump while you're talking.
 * **Chat messages**: "Alice advanced The Quest: journal text".
 * **Rewards handed out in conversation** (gold or items a line gives) go to everyone. Trades don't.
@@ -59,7 +60,9 @@ shared progress, so a restart keeps them.
    Both plugins now need every plugin that comes with the game (Knights.esp, the DLC*.esp files, AltarESPMain.esp and
    AltarDeluxe.esp) to be loaded. They are on by default. If the game doesn't load our plugins any more, send me
    your `Plugins.txt`.
-4. The pop-up add-on in `ui\` hasn't changed since 0.3.
+4. **Each player:** replace the pop-up add-on with the `ui\CoopQuestSyncUI` folder from the zip (same place as for
+   0.3: `%AppData%\ReadyM.Launcher\Oblivion\Mods`). It now also runs the console command that takes you back
+   inside a building.
 5. Restart the server. Its log should show:
    * `Loaded 287 quests / 2696 stages from the token map`
    * `Game data: 11019 dialogue lines, ... names, 24730 text entries` (the game's text, from `strings.json`)
@@ -78,8 +81,11 @@ shared progress, so a restart keeps them.
    picking a lock (`is picking a lock.`). Opening a chest should not show anything.
 5. Rejoin once. Your quests should come back as before, silently.
 6. Walk somewhere outdoors, away from where your local save starts you, and quit. Join again: a few seconds after
-   you appear, you should be moved back there ("Back where you left."). Then go into a house and quit from inside:
-   next time you should come back just outside its door. `/coop test status` shows the spot the server has.
+   you appear, you should be moved back there ("Back where you left."). Then go into a house, stand in a corner and
+   quit from inside: next time you should get a loading screen into the house, then land in that corner ("Back
+   inside."). `/coop test status` shows the spot the server has.
+   Without rejoining: in a house, stand still 3 s, `/coop test pin`, walk out of the house, `/coop test back`.
+   If you stay outside, send me UE4SS.log: the add-on writes `ran coc ...` or `could not run coc ...` there.
 
 ## Test 1b: alone, with a pretend teammate
 
@@ -148,9 +154,9 @@ and the page show real names, lines, quest names and journal entries. For anothe
 
 ## Known limits
 
-* **Back where you left** only works when your local save starts you in the same exterior as the spot (Tamriel, or
-  the Shivering Isles). If your local save starts you inside a building, you stay there. Save your local game
-  outdoors once to avoid that.
+* **Back where you left** needs the pop-up add-on (`ui\`) to go back into a building. Without it, or if the game
+  ignores the add-on's console command, you come back outside, and only when your local save starts you in the same
+  world (Tamriel or the Shivering Isles) as your last outdoor spot.
 * **The overlay runs behind the talker.** The game reports a line when its result script runs, which is at the end of
   the line, so the watcher reads it after the talker has heard it. There is no voice.
 * **The keys** are Alt+L (listen in or leave a conversation), Alt+H (revive the teammate next to you) and Alt+G
