@@ -15,6 +15,7 @@
          background: var(--shade); border: 1px solid rgba(216,192,138,.35); border-radius: 2px;
          font-size: 1.6vh; letter-spacing: .08em; text-transform: uppercase; color: var(--gold-dim); white-space: nowrap; }
   .who b { color: var(--gold); font-weight: normal; }
+  .who .hint { margin-left: 1.4em; padding-left: 1.4em; border-left: 1px solid rgba(216,192,138,.3); color: var(--gold-dim); opacity: .8; text-transform: none; letter-spacing: .03em; }
   .panel { position: absolute; left: 50%; bottom: 7vh; transform: translateX(-50%); width: min(62vw, 1100px);
            background: linear-gradient(to bottom, rgba(10,8,6,.55), var(--shade)); border-top: 1px solid rgba(216,192,138,.45);
            border-bottom: 1px solid rgba(216,192,138,.45); padding: 2.2vh 3vw 2.6vh; text-align: center; }
@@ -57,6 +58,7 @@ function start(info) {
   $("who").append(document.createTextNode(info.frozen ? "Listening in · " : "Watching · "));
   const b = document.createElement("b"); b.textContent = talker; $("who").append(b);
   $("who").append(document.createTextNode(npc ? " talks with " + npc : " is in a conversation"));
+  const hint = document.createElement("span"); hint.className = "hint"; hint.textContent = "Alt+F to leave"; $("who").append(hint);
   $("npc").textContent = npc;
   $("topic").textContent = "";
   $("quest").textContent = "";

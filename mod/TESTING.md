@@ -21,6 +21,9 @@ What's new since 0.4:
 * **Menus during a conversation.** When the talker opens the barter, persuasion, training, repair or spell screen,
   the watchers' overlay says "Alice is bartering..." and waits for them to come back. The tag over their head says
   so too, and "Picking a lock" while they pick one.
+* **Alt+F: follow or leave a conversation.** Pressing Alt+F while you watch someone's conversation closes the overlay
+  and unfreezes you, and pressing it again brings you back. "Watchers follow a conversation: When they press Alt+F" on the page
+  stops pulling anyone in: you get a prompt ("Alice is talking to Ysabel. Alt+F to listen in.") and choose.
 * **Updates wait for the end of a conversation**, so a quest doesn't jump while you're talking.
 * **Chat messages**: "Alice advanced The Quest: journal text".
 * **Rewards handed out in conversation** (gold or items a line gives) go to everyone. Trades don't.
@@ -80,7 +83,9 @@ The server can play a made-up teammate called "Ghost". Type these in chat:
 2. `/coop test talk`: Ghost "talks" to an NPC for about 40 s. You should see the overlay with a few real lines
    (the NPC and topic; the sentences need the game's text, see below), and you should be unable to move until it
    ends. After the second line, the overlay should say "Ghost is bartering..." for a few seconds, and later
-   "Ghost is persuading...". `/coop test stop` ends it early. Set "Freeze watchers" to "Nobody" on the page and try again: overlay, no freeze.
+   "Ghost is persuading...".
+   Press Alt+F while it runs: the overlay should close and you can move. Press it again: it comes back with the last
+   lines. Then try `/coop test talk ask`: you only get a prompt, and Alt+F opens the overlay. `/coop test stop` ends it early. Set "Freeze watchers" to "Nobody" on the page and try again: overlay, no freeze.
 3. `/coop test effects MS93` lists the stages of a quest that have effects on the player, for example
    `20: teleport/items`. Pick a quest you haven't started and a stage with a teleport.
 4. `/coop test stage <quest> <stage>`: Ghost "reached" that stage. You get it as if a teammate did it live, and the
@@ -110,7 +115,14 @@ Do these standing next to each other, in the same place:
 4. **Death.** One of you dies (or `kill` in the console). The dead player should see "You are down...", the other
    gets a chat line. Stand next to them and press Alt+R: they should come back. Next time, wait 60 s or press
    Alt+G: they should come back next to the other player.
-5. **Leader only.** Set "Progress counts from" to "Leader only" and the leader to your name. When your friend
+5. **Walking around during a conversation.** This one decides the defaults, so please take notes. Set "Freeze
+   watchers" to "Nobody", find a few hostile creatures or a busy street, and have one of you talk to an NPC for a
+   minute while the other walks around and fights next to them. Then do it again with the talker being the one
+   who entered the area first, and again with the other one entering first. Tell me:
+   * whether the NPCs and creatures near the walker move and fight normally, or stand still;
+   * what the talker sees when their conversation ends: things jumping into place, or nothing odd;
+   * anything else that looked wrong.
+6. **Leader only.** Set "Progress counts from" to "Leader only" and the leader to your name. When your friend
    advances a quest on their own, you shouldn't get it. When you do, they should.
 
 ## What to send me
@@ -135,6 +147,8 @@ and the page shows quest ids. The text is in the game's localization file:
 
 * **The overlay runs behind the talker.** The game reports a line when its result script runs, which is at the end of
   the line, so the watcher reads it after the talker has heard it. There is no voice.
+* **Alt+F while frozen** relies on OblivionMP still hearing keys when the game has turned your controls off. If
+  it doesn't, tell me and I'll pick another way to leave.
 * **Menus are recognised by the original game's menu numbers.** If the remaster numbers them differently, the
   log won't show `is bartering`. Tell me which menu stayed silent.
 * **The NPC's name** comes from the line's own conditions when it names its speaker, otherwise from the NPC closest

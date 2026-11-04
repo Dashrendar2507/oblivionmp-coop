@@ -22,6 +22,9 @@ namespace CoopQuestSync.Server;
 /// their inventory), so nobody fights or wanders off beside a conversation that the game thinks is private.
 /// A witness who is in combat is never frozen.
 ///
+/// With "Follow conversations" set to "ask", nobody is pulled in: players who could watch get a prompt and press
+/// Alt+F to listen in. Either way, Alt+F while watching leaves the conversation (and unfreezes).
+///
 /// The dialogue plugin also keeps a token in the inventory while a menu is open (barter, persuasion, training...,
 /// lockpicking): the witnesses' overlay then says "Alice is bartering" and waits, and the tag over the talker says so.
 /// </summary>
@@ -37,7 +40,13 @@ public sealed partial class ConversationRelay(IEntities entities, IServerEvents 
         public string Npc = "";
         public readonly HashSet<PlayerId> Witnesses = new();
         public readonly HashSet<PlayerId> Frozen = new();
+        /// <summary>Players who may listen in with Alt+F (asked, or who left and may come back).</summary>
+        public readonly HashSet<PlayerId> Invited = new();
+        /// <summary>The last few lines, for someone who starts listening halfway.</summary>
+        public readonly List<string> Recent = new();
     }
+
+    private const int RecentLines = 3;
 
     private readonly Dictionary<PlayerId, Talk> _talks = new();
     private readonly Dictionary<PlayerId, uint> _dialogueSlot = new();
@@ -56,7 +65,12 @@ public sealed partial class ConversationRelay(IEntities entities, IServerEvents 
     /// <summary>A pretend conversation shown to one player, for testing alone (/coop test talk).</summary>
     private sealed class Ghost
     {
+        public string Name = "";
+        public string Npc = "";
         public bool Frozen;
+        public bool Watching;
+        public readonly List<string> Recent = new();
+        public string? Activity;
         /// <summary>Lines, and menus the ghost "opens" (Activity true), in order.</summary>
         public readonly Queue<(float At, bool Activity, string Json)> Lines = new();
         public float EndsAt;
@@ -67,10 +81,15 @@ public sealed partial class ConversationRelay(IEntities entities, IServerEvents 
     private void Start()
     {
         events.OnPlayerDisconnected += OnPlayerDisconnected;
+        rpc.FollowToggled += ToggleFollow;
         sync.SettingsChanged += () => { foreach (var talker in _talks.Keys.ToList()) End(talker); };
     }
 
-    private void Stop() => events.OnPlayerDisconnected -= OnPlayerDisconnected;
+    private void Stop()
+    {
+        events.OnPlayerDisconnected -= OnPlayerDisconnected;
+        rpc.FollowToggled -= ToggleFollow;
+    }
 
     private void OnPlayerDisconnected(PlayerId player, Entity _, LiteNetLib.DisconnectReason __)
     {
@@ -83,6 +102,7 @@ public sealed partial class ConversationRelay(IEntities entities, IServerEvents 
         {
             talk.Witnesses.Remove(player);
             talk.Frozen.Remove(player);
+            talk.Invited.Remove(player);
         }
     }
 
@@ -130,24 +150,79 @@ public sealed partial class ConversationRelay(IEntities entities, IServerEvents 
         if (!Overlay)
             return;
         var settings = sync.Settings;
+        var ask = settings.ConversationFollow == "ask";
         foreach (var m in mains)
         {
             var w = m.PlayerId;
             if (w == id || m.InDialogue || _talks.Values.Any(t => t.Witnesses.Contains(w)))
                 continue;
-            var near = sync.SameArea(id, w);
-            if (settings.ConversationOverlay == "area" && !near)
+            if (settings.ConversationOverlay == "area" && !sync.SameArea(id, w))
                 continue;
-            talk.Witnesses.Add(w);
-            var freeze = !m.InCombat && (settings.ConversationFreeze == "everyone" || settings.ConversationFreeze == "area" && near);
-            if (freeze)
-                talk.Frozen.Add(w);
-            rpc.SendConversationStarted(w, JsonSerializer.Serialize(new { talker = sync.Nickname(id), npc = talk.Npc, frozen = freeze }));
-            if (_activity.TryGetValue(id, out var doing))
-                rpc.SendConversationActivity(w, ActivityJson(doing));
+            if (ask)
+            {
+                talk.Invited.Add(w);
+                rpc.SendNotice(w, $"{sync.Nickname(id)} is talking to {(talk.Npc.Length > 0 ? talk.Npc : "someone")}. Alt+F to listen in.");
+            }
+            else
+                Watch(id, talk, m);
         }
-        logger.LogInformation("[QuestSync] {Player} is talking to {Npc}; {Count} witness(es), {Frozen} frozen.",
-            sync.Nickname(id), talk.Npc.Length > 0 ? talk.Npc : "someone", talk.Witnesses.Count, talk.Frozen.Count);
+        logger.LogInformation("[QuestSync] {Player} is talking to {Npc}; {Count} witness(es), {Frozen} frozen, {Asked} asked.",
+            sync.Nickname(id), talk.Npc.Length > 0 ? talk.Npc : "someone", talk.Witnesses.Count, talk.Frozen.Count, talk.Invited.Count);
+    }
+
+    /// <summary>Whether a witness stands still, per the settings: never in combat.</summary>
+    private bool ShouldFreeze(MainCharacter witness, bool near)
+    {
+        var mode = sync.Settings.ConversationFreeze;
+        return !witness.InCombat && (mode == "everyone" || mode == "area" && near);
+    }
+
+    /// <summary>Makes <paramref name="m"/> a witness of the conversation: the overlay opens on what was said so far.</summary>
+    private void Watch(PlayerId talker, Talk talk, MainCharacter m)
+    {
+        var w = m.PlayerId;
+        talk.Invited.Remove(w);
+        talk.Witnesses.Add(w);
+        var freeze = ShouldFreeze(m, sync.SameArea(talker, w));
+        if (freeze)
+            talk.Frozen.Add(w);
+        rpc.SendConversationStarted(w, JsonSerializer.Serialize(new { talker = sync.Nickname(talker), npc = talk.Npc, frozen = freeze }));
+        foreach (var json in talk.Recent)
+            rpc.SendConversationLine(w, json);
+        if (_activity.TryGetValue(talker, out var doing))
+            rpc.SendConversationActivity(w, ActivityJson(doing));
+    }
+
+    /// <summary>
+    /// Alt+F: leave the conversation you are watching (you can come back), or listen in on one you were offered.
+    /// </summary>
+    public void ToggleFollow(PlayerId player)
+    {
+        foreach (var (talker, talk) in _talks)
+            if (talk.Witnesses.Remove(player))
+            {
+                talk.Frozen.Remove(player);
+                talk.Invited.Add(player);
+                rpc.SendConversationEnded(player);
+                rpc.SendNotice(player, "You stopped listening. Alt+F to listen in again.");
+                logger.LogInformation("[QuestSync] {Player} stopped watching {Talker}.", sync.Nickname(player), sync.Nickname(talker));
+                return;
+            }
+        if (_ghosts.TryGetValue(player, out var ghost))
+        {
+            ToggleGhost(player, ghost);
+            return;
+        }
+        if (!entities.TryLookup(player, out MainCharacter me) || me.InDialogue)
+            return;
+        foreach (var (talker, talk) in _talks)
+            if (talk.Invited.Contains(player))
+            {
+                Watch(talker, talk, me);
+                logger.LogInformation("[QuestSync] {Player} listens in on {Talker}.", sync.Nickname(player), sync.Nickname(talker));
+                return;
+            }
+        rpc.SendNotice(player, "Nobody is talking near you.");
     }
 
     private void End(PlayerId talker)
@@ -236,6 +311,9 @@ public sealed partial class ConversationRelay(IEntities entities, IServerEvents 
                 speaker = speaker ?? talk.Npc,
                 quest = line.Quest is { } q ? data.QuestName(q) : null,
             });
+            talk.Recent.Add(json);
+            if (talk.Recent.Count > RecentLines)
+                talk.Recent.RemoveAt(0);
             foreach (var w in talk.Witnesses)
                 rpc.SendConversationLine(w, json);
         }
@@ -287,7 +365,7 @@ public sealed partial class ConversationRelay(IEntities entities, IServerEvents 
             var id = main.PlayerId;
             if (!sync.Players.TryGetValue(id, out var view))
                 continue;
-            var want = _talks.Values.Any(t => t.Frozen.Contains(id)) || _ghosts.TryGetValue(id, out var g) && g.Frozen;
+            var want = _talks.Values.Any(t => t.Frozen.Contains(id)) || _ghosts.TryGetValue(id, out var g) && g.Watching && g.Frozen;
             if (want == view.WantFrozen)
                 continue;
             view.WantFrozen = want;
@@ -299,14 +377,14 @@ public sealed partial class ConversationRelay(IEntities entities, IServerEvents 
     /// Test: shows <paramref name="witness"/> a conversation between a made-up player and an NPC, a few real lines
     /// from the game's dialogue, and freezes them as a witness in the same area would be.
     /// </summary>
-    public void StartGhost(MainCharacter witness, string ghostName)
+    public void StartGhost(MainCharacter witness, string ghostName, bool ask)
     {
         var id = witness.PlayerId;
         var settings = sync.Settings;
         var freeze = settings.ConversationFreeze != "off" && !witness.InCombat;
         var samples = data.SampleLines(4);
         var npc = samples.Select(l => l.Speaker).FirstOrDefault(n => n is not null) is { } key ? data.Name(key) : "Ysabel Andronicus";
-        var ghost = new Ghost { Frozen = freeze };
+        var ghost = new Ghost { Name = ghostName, Npc = npc, Frozen = freeze, Watching = !ask };
         var at = _clock + 2f;
         var index = 0;
         foreach (var line in samples)
@@ -332,17 +410,38 @@ public sealed partial class ConversationRelay(IEntities entities, IServerEvents 
         }
         ghost.EndsAt = at + 2f;
         _ghosts[id] = ghost;
-        rpc.SendConversationStarted(id, JsonSerializer.Serialize(new { talker = ghostName, npc, frozen = freeze }));
+        if (ask)
+            rpc.SendNotice(id, $"{ghostName} is talking to {npc}. Alt+F to listen in.");
+        else
+            rpc.SendConversationStarted(id, JsonSerializer.Serialize(new { talker = ghostName, npc, frozen = freeze }));
         logger.LogInformation("[QuestSync] Test: {Player} watches {Ghost} talk to {Npc} for {Seconds:0} s (frozen: {Frozen}).",
             sync.Nickname(id), ghostName, npc, ghost.EndsAt - _clock, freeze);
+    }
+
+    /// <summary>Alt+F during a test conversation: stop or start watching it, as with a real one.</summary>
+    private void ToggleGhost(PlayerId id, Ghost ghost)
+    {
+        ghost.Watching = !ghost.Watching;
+        if (!ghost.Watching)
+        {
+            rpc.SendConversationEnded(id);
+            rpc.SendNotice(id, "You stopped listening. Alt+F to listen in again.");
+            return;
+        }
+        rpc.SendConversationStarted(id, JsonSerializer.Serialize(new { talker = ghost.Name, npc = ghost.Npc, frozen = ghost.Frozen }));
+        foreach (var json in ghost.Recent)
+            rpc.SendConversationLine(id, json);
+        if (ghost.Activity is not null)
+            rpc.SendConversationActivity(id, ghost.Activity);
     }
 
     /// <summary>Ends a test conversation early.</summary>
     public bool StopGhost(PlayerId id)
     {
-        if (!_ghosts.Remove(id))
+        if (!_ghosts.Remove(id, out var ghost))
             return false;
-        rpc.SendConversationEnded(id);
+        if (ghost.Watching)
+            rpc.SendConversationEnded(id);
         return true;
     }
 
@@ -353,6 +452,16 @@ public sealed partial class ConversationRelay(IEntities entities, IServerEvents 
             while (ghost.Lines.Count > 0 && ghost.Lines.Peek().At <= _clock)
             {
                 var (_, activity, json) = ghost.Lines.Dequeue();
+                if (activity)
+                    ghost.Activity = json;
+                else
+                {
+                    ghost.Recent.Add(json);
+                    if (ghost.Recent.Count > RecentLines)
+                        ghost.Recent.RemoveAt(0);
+                }
+                if (!ghost.Watching)
+                    continue;
                 if (activity)
                     rpc.SendConversationActivity(id, json);
                 else

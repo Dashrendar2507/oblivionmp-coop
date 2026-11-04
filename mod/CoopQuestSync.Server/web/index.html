@@ -220,6 +220,7 @@ const choices = {
   progressFrom: [["anyone", "Anyone"], ["leader", "Leader only"]],
   conversationOverlay: [["everyone", "Everyone"], ["area", "Same area only"], ["off", "Off"]],
   conversationFreeze: [["area", "Same area"], ["everyone", "Everyone"], ["off", "Nobody"]],
+  conversationFollow: [["auto", "Automatically"], ["ask", "When they press Alt+F"]],
   death: [["revive", "Down, wait for a revive"], ["respawn", "Respawn next to the party"], ["off", "Game default"]],
   scaling: [["default", "Server default (halfway)"], ["lowest", "Lowest player level"], ["mid", "Halfway"], ["highest", "Highest player level"]],
   difficultyDealt: ["Unset", "Novice", "Apprentice", "Adept", "Journeyman", "Expert", "Master"].map(t => [t, t === "Unset" ? "Game default" : t]),
@@ -256,6 +257,7 @@ function renderSettings() {
   </div>
   <div class="sgroup"><h3>Conversations</h3>
     ${srow("Show others' conversations to", "An overlay like the dialogue screen; watchers can't pick topics.", sel("conversationOverlay", choices.conversationOverlay, st.conversationOverlay))}
+    ${srow("Watchers follow a conversation", "Either way, Alt+F while watching leaves it.", sel("conversationFollow", choices.conversationFollow, st.conversationFollow))}
     ${srow("Freeze watchers", "Players in combat are never frozen.", sel("conversationFreeze", choices.conversationFreeze, st.conversationFreeze))}
     ${srow("Share rewards handed out in conversation", "Not trades (lines that also take something).", chk("shareDialogueRewards", st.shareDialogueRewards))}
     ${srow("Share quest items", "Keys, letters... picked up by one player go to everyone.", chk("shareQuestItems", st.shareQuestItems))}

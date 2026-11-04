@@ -14,6 +14,9 @@ public sealed partial class CoopRpc
 {
     public event Action<PlayerId>? ReviveRequested;
     public event Action<PlayerId>? GiveUpRequested;
+    public event Action<PlayerId>? FollowToggled;
+
+    partial void OnToggleFollow(RpcContext context) => FollowToggled?.Invoke(context.Sender);
 
     partial void OnReviveNearest(RpcContext context) => ReviveRequested?.Invoke(context.Sender);
 

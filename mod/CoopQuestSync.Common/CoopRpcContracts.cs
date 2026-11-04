@@ -41,6 +41,9 @@ public static partial class CoopRpcContracts
     /// <summary>The player pressed the revive key: the server looks for a downed player close by.</summary>
     [ClientToServer] public static partial void ReviveNearest();
 
+    /// <summary>Alt+F: leave the conversation the player is watching, or listen in on one they were offered.</summary>
+    [ClientToServer] public static partial void ToggleFollow();
+
     /// <summary>A downed player gives up waiting and respawns next to the party.</summary>
     [ClientToServer] public static partial void GiveUp();
 }

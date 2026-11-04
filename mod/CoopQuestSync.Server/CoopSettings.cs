@@ -43,6 +43,12 @@ public sealed class CoopSettings
     /// <summary>Who sees someone's conversation: "everyone", "area" (same interior or exterior space) or "off".</summary>
     public string ConversationOverlay { get; set; } = "everyone";
 
+    /// <summary>
+    /// "auto": whoever may see a conversation is shown it. "ask": they get a prompt and press Alt+F to listen in.
+    /// Alt+F while watching always leaves.
+    /// </summary>
+    public string ConversationFollow { get; set; } = "auto";
+
     /// <summary>Who stands still while someone talks: "area", "everyone" or "off". Players in combat are never frozen.</summary>
     public string ConversationFreeze { get; set; } = "area";
 
@@ -93,6 +99,7 @@ public sealed class CoopSettings
         ProgressFrom = ProgressFrom is "leader" ? "leader" : "anyone";
         ConversationOverlay = ConversationOverlay is "area" or "off" ? ConversationOverlay : "everyone";
         ConversationFreeze = ConversationFreeze is "everyone" or "off" ? ConversationFreeze : "area";
+        ConversationFollow = ConversationFollow is "ask" ? "ask" : "auto";
         Death = Death is "respawn" or "off" ? Death : "revive";
         ReviveSeconds = Math.Clamp(ReviveSeconds, 5, 600);
         ReviveRange = Math.Clamp(ReviveRange, 50, 5000);
