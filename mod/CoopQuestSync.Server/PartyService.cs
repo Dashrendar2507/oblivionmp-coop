@@ -40,7 +40,29 @@ public sealed partial class PartyService(IEntities entities, IServerEvents event
     private readonly Dictionary<PlayerId, Downed> _downed = new();
     private readonly Dictionary<PlayerId, bool> _wasDead = new();
     /// <summary>Players just resurrected who should be put next to someone: (when, who to stand by).</summary>
-    private readonly Dictionary<PlayerId, (float At, PlayerId Anchor)> _moves = new();
+    private readonly Dictionary<PlayerId, (float At, PlayerId? Anchor, Vector3? Spot)> _moves = new();
+
+    /// <summary>
+    /// Where each player recently stood on solid ground, in their current area, so a respawn can avoid the place
+    /// they died (the bottom of a cliff, under the map, in deep water).
+    /// </summary>
+    private sealed class Trail
+    {
+        public AreaId? Area;
+        public Vector3? Entry;
+        public readonly List<(float At, Vector3 Pos)> Samples = new();
+        public float LastSample;
+    }
+
+    private const float TrailEverySeconds = 1f;
+    private const float TrailKeepSeconds = 120f;
+    /// <summary>A respawn uses a spot from at least this long before the death, so the fall itself is skipped.</summary>
+    private const float SafeLookbackSeconds = 6f;
+    /// <summary>Faster than this up or down (cm/s) counts as falling or jumping, not standing.</summary>
+    private const float GroundedSpeed = 80f;
+
+    private readonly Dictionary<PlayerId, Trail> _trails = new();
+    private readonly Dictionary<PlayerId, float> _diedAt = new();
     private string _lastStatus = "";
     private float _clock;
     private float _elapsed;
@@ -73,6 +95,8 @@ public sealed partial class PartyService(IEntities entities, IServerEvents event
         _downed.Remove(player);
         _wasDead.Remove(player);
         _moves.Remove(player);
+        _trails.Remove(player);
+        _diedAt.Remove(player);
     }
 
     /// <summary>Level scaling and difficulty, from the web page's settings.</summary>
@@ -114,8 +138,13 @@ public sealed partial class PartyService(IEntities entities, IServerEvents event
             var was = _wasDead.GetValueOrDefault(id);
             _wasDead[id] = dead;
 
+            if (!dead && !_downed.ContainsKey(id))
+                Remember(main);
             if (dead && !was)
+            {
+                _diedAt[id] = _clock;
                 OnDied(id, settings);
+            }
             else if (!dead && was)
             {
                 if (_downed.Remove(id))
@@ -134,21 +163,30 @@ public sealed partial class PartyService(IEntities entities, IServerEvents event
             }
         }
 
-        // Respawned players: put them next to their anchor once the game has brought them back.
-        foreach (var (id, (at, anchor)) in _moves.ToList())
+        // Respawned players: once the game has brought them back, put them next to their anchor, or on their last
+        // safe spot when nobody is in their area.
+        foreach (var (id, (at, anchor, spot)) in _moves.ToList())
         {
             if (_clock < at)
                 continue;
             _moves.Remove(id);
-            if (!entities.TryLookup(id, out MainCharacter me) || !entities.TryLookup(anchor, out MainCharacter by))
+            if (!entities.TryLookup(id, out MainCharacter me))
                 continue;
-            if (!sync.SameArea(id, anchor))
+            if (anchor is { } a && sync.SameArea(id, a) && entities.TryLookup(a, out MainCharacter by))
             {
-                rpc.SendNotice(id, $"{sync.Nickname(anchor)} is somewhere else; you are back where you fell.");
-                continue;
+                me.Position = by.Position + new Vector3(SpawnOffset, 0, 0);
+                logger.LogInformation("[QuestSync] {Player} respawned next to {Anchor}.", sync.Nickname(id), sync.Nickname(a));
             }
-            me.Position = by.Position + new Vector3(SpawnOffset, 0, 0);
-            logger.LogInformation("[QuestSync] {Player} respawned next to {Anchor}.", sync.Nickname(id), sync.Nickname(anchor));
+            else if (spot is { } p)
+            {
+                me.Position = p;
+                rpc.SendNotice(id, anchor is { } other
+                    ? $"{sync.Nickname(other)} is somewhere else; you are back where you last stood safely."
+                    : "You are back where you last stood safely.");
+                logger.LogInformation("[QuestSync] {Player} respawned on their last safe spot.", sync.Nickname(id));
+            }
+            else
+                rpc.SendNotice(id, "You are back where you fell.");
         }
 
         SendStatus(settings);
@@ -232,12 +270,49 @@ public sealed partial class PartyService(IEntities entities, IServerEvents event
         _downed.Remove(id);
         rpc.SendResurrect(id);
         var anchor = Anchor(id);
-        if (anchor is { } a)
-        {
-            _moves[id] = (_clock + MoveAfterResurrectSeconds, a);
+        _moves[id] = (_clock + MoveAfterResurrectSeconds, anchor, SafeSpot(id));
+        if (anchor is { } a && sync.SameArea(id, a))
             rpc.SendNotice(id, $"Respawning next to {sync.Nickname(a)}.");
-        }
         logger.LogInformation("[QuestSync] {Player} respawns ({Why}).", sync.Nickname(id), why);
+    }
+
+    /// <summary>Records where the player stands, every second, when they are on the ground in their area.</summary>
+    private void Remember(MainCharacter main)
+    {
+        var id = main.PlayerId;
+        if (!_trails.TryGetValue(id, out var trail))
+            _trails[id] = trail = new Trail();
+        var area = sync.Players.TryGetValue(id, out var view) ? view.Area : null;
+        if (area is null)
+            return;
+        if (trail.Area is not { } known || !known.Equals(area.Value))
+        {
+            // A new area (through a door, or fast travel): start over; the first good spot is the way in.
+            trail.Area = area;
+            trail.Entry = null;
+            trail.Samples.Clear();
+        }
+        if (_clock - trail.LastSample < TrailEverySeconds)
+            return;
+        if (MathF.Abs(main.VerticalSpeed) > GroundedSpeed || main.Hp <= 0)
+            return;
+        trail.LastSample = _clock;
+        var pos = main.Position;
+        trail.Entry ??= pos;
+        trail.Samples.Add((_clock, pos));
+        trail.Samples.RemoveAll(s => _clock - s.At > TrailKeepSeconds);
+    }
+
+    /// <summary>The last spot the player stood on safely, from a few seconds before they died; else where they entered the area.</summary>
+    private Vector3? SafeSpot(PlayerId id)
+    {
+        if (!_trails.TryGetValue(id, out var trail))
+            return null;
+        var died = _diedAt.GetValueOrDefault(id, _clock);
+        for (var i = trail.Samples.Count - 1; i >= 0; i--)
+            if (trail.Samples[i].At <= died - SafeLookbackSeconds)
+                return trail.Samples[i].Pos;
+        return trail.Entry;
     }
 
     /// <summary>The leader when they are alive and not the one respawning, else the first living player by name.</summary>

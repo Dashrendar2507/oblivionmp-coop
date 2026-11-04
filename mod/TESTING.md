@@ -80,7 +80,9 @@ The server can play a made-up teammate called "Ghost". Type these in chat:
    chat line says which effects you should get. Then turn Live Teleport off on the page, and try another teleport
    stage: you should get the stage but stay where you are.
 5. Death: open the console and type `kill`. You should see "You are down...". Either `/coop test revive` (Ghost
-   revives you), or press Alt+G, or wait 60 s: you come back to life where you fell (Ghost has no body to stand next to).
+   revives you, where you fell), or press Alt+G, or wait 60 s: you come back where you last stood on solid ground,
+   a few seconds before you died (Ghost has no body to stand next to). To check the fall case, jump off something
+   high: you should come back at the top, not at the bottom.
 
 ## Test 2: two players (when your friend can join)
 
@@ -127,7 +129,9 @@ and the page shows quest ids. The text is in the game's localization file:
 * **The NPC's name** comes from the line's own conditions when it names its speaker, otherwise from the NPC closest
   to the talker.
 * **Respawning next to someone** only works when they are in the same area (the same interior, or both outside). If
-  not, you come back where you fell.
+  not, you come back where you last stood on solid ground, at least 6 s before you died, so a fall or a drop out of
+  the map doesn't kill you again. If you hadn't been in that area that long, you come back where you entered it.
+  A teammate's revive (Alt+R) brings you back where you fell; use Alt+G if your body is somewhere unreachable.
 * **Stage scripts that say "player"** still act on each player's own game. The switches decide whether that happens
   for the players who didn't reach the stage themselves.
 * **Quest items and dialogue rewards** from DLC plugins need the right load order (see `GamePlugins` below).
