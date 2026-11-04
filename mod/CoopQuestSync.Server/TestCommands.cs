@@ -115,7 +115,10 @@ public sealed partial class TestCommands(IChat chat, IEntities entities, QuestTo
                 var allowed = CoopSettings.Categories.Where(cat => sync.Settings.Allowed(phase, cat));
                 Reply(sender, $"Phase {view.Phase}{(view.CatchingUp ? " (catching up)" : "")}, area {view.Area?.ToString() ?? "unknown"}, "
                     + $"talking {view.InDialogue}, menu {talks.Activity(sender) ?? "none"}, in combat {view.InCombat}, frozen {view.WantFrozen}. "
-                    + $"Effect switches now ({phase}): {string.Join(", ", allowed)}. Dialogue text loaded: {(data.HasText ? "yes" : "no")}.");
+                    + $"Effect switches now ({phase}): {string.Join(", ", allowed)}. Dialogue text loaded: {(data.HasText ? "yes" : "no")}. "
+                    + (sync.Returns.TryGetValue(sync.Nickname(sender), out var spot)
+                        ? $"Last outdoor spot: {spot.Area} ({spot.X:0}, {spot.Y:0}, {spot.Z:0})."
+                        : "No outdoor spot recorded yet."));
                 break;
             }
 

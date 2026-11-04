@@ -267,6 +267,7 @@ function renderSettings() {
   <div class="sgroup"><h3>Party</h3>
     ${srow("When a player dies", "The revive key brings back a downed teammate next to you; the respawn key respawns.", sel("death", choices.death, st.death))}
     ${srow("Seconds before respawning", "", num("reviveSeconds", st.reviveSeconds))}
+    ${srow("Put players back where they left", "When they join. Outdoors: the same spot. Inside a building: outside its door.", chk("returnOnJoin", st.returnOnJoin))}
     ${srow("Keys", "Alt + a letter the game doesn't use (K is the chat). Follow: listen in or leave a conversation.", `Follow ${txt("keyFollow", st.keyFollow)} Revive ${txt("keyRevive", st.keyRevive)} Respawn ${txt("keyRespawn", st.keyRespawn)}`)}
     ${srow("Revive distance (cm)", "400 is about four metres.", num("reviveRange", st.reviveRange))}
     ${srow("Tags over heads", "Talking, bartering, picking a lock, down.", chk("statusTags", st.statusTags))}

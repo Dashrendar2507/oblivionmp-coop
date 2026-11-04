@@ -25,6 +25,8 @@ What's new since 0.4:
   and unfreezes you, and pressing it again brings you back. "Watchers follow a conversation: When they press Alt+L"
   on the page stops pulling anyone in: a banner at the top says who is talking, for as long as they talk, and you
   choose. `/coop follow` in chat does the same as the key.
+* **Back where you left.** When you join, you come back where you left instead of where your local save put you:
+  the same spot if you left outdoors, or outside the door if you left from inside a building.
 * **Updates wait for the end of a conversation**, so a quest doesn't jump while you're talking.
 * **Chat messages**: "Alice advanced The Quest: journal text".
 * **Rewards handed out in conversation** (gold or items a line gives) go to everyone. Trades don't.
@@ -75,6 +77,9 @@ shared progress, so a restart keeps them.
    when you close it, and the page shows "bartering" next to your name meanwhile. Try persuasion the same way, and
    picking a lock (`is picking a lock.`). Opening a chest should not show anything.
 5. Rejoin once. Your quests should come back as before, silently.
+6. Walk somewhere outdoors, away from where your local save starts you, and quit. Join again: a few seconds after
+   you appear, you should be moved back there ("Back where you left."). Then go into a house and quit from inside:
+   next time you should come back just outside its door. `/coop test status` shows the spot the server has.
 
 ## Test 1b: alone, with a pretend teammate
 
@@ -143,6 +148,9 @@ and the page show real names, lines, quest names and journal entries. For anothe
 
 ## Known limits
 
+* **Back where you left** only works when your local save starts you in the same exterior as the spot (Tamriel, or
+  the Shivering Isles). If your local save starts you inside a building, you stay there. Save your local game
+  outdoors once to avoid that.
 * **The overlay runs behind the talker.** The game reports a line when its result script runs, which is at the end of
   the line, so the watcher reads it after the talker has heard it. There is no voice.
 * **The keys** are Alt+L (listen in or leave a conversation), Alt+H (revive the teammate next to you) and Alt+G
@@ -165,6 +173,8 @@ and the page show real names, lines, quest names and journal entries. For anothe
 * **Quest items and dialogue rewards** from DLC plugins need the right load order (see `GamePlugins` below).
 
 ## Settings file
+
+(Also in the state file: each player's last outdoor spot, for "Back where you left".)
 
 `config.json` in the server's `mods\CoopQuestSync\server\` folder, all optional:
 

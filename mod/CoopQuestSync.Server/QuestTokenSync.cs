@@ -65,6 +65,12 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
     /// </summary>
     public SortedSet<string> ResetQuests { get; } = new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>Where each player (by nickname) last stood outdoors. See <see cref="ReturnOnJoin"/>.</summary>
+    public Dictionary<string, ReturnSpot> Returns { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Saves the state file on the next pass.</summary>
+    public void MarkDirty() => _dirty = true;
+
     /// <summary>The leader whose progress alone is shared, or null when anyone's progress counts.</summary>
     public string? SourcePlayer => Settings.ProgressFrom == "leader" && Settings.Leader.Length > 0 ? Settings.Leader : null;
 
@@ -717,6 +723,7 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
         public string? SourcePlayer { get; set; }
         public string[]? ResetQuests { get; set; }
         public CoopSettings? Settings { get; set; }
+        public Dictionary<string, ReturnSpot>? Returns { get; set; }
     }
 
     private void LoadState()
@@ -738,6 +745,8 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
                         AddShared(new QuestStage(name, s));
             foreach (var quest in state.ResetQuests ?? [])
                 ResetQuests.Add(quest);
+            foreach (var (player, spot) in state.Returns ?? new())
+                Returns[player] = spot;
             if (state.AutoSync is { } auto)
                 AutoSync = auto;
             if (state.Settings is not null)
@@ -767,6 +776,7 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
                 AutoSync = AutoSync,
                 ResetQuests = ResetQuests.ToArray(),
                 Settings = Settings,
+                Returns = Returns,
             };
             var tmp = StatePath + ".tmp";
             File.WriteAllText(tmp, JsonSerializer.Serialize(state, new JsonSerializerOptions { WriteIndented = true }));
