@@ -13,11 +13,70 @@ namespace CoopQuestSync.Client;
 ///
 /// Only commands built here are written, from checked values, and the add-on only runs commands of the same shapes,
 /// so nothing the server sends can become another console command.
+///
+/// The add-on comes with this mod (the server sends it to every player, in addon\). UE4SS starts add-ons before
+/// this mod runs, so a missing or old add-on is copied into place now and works from the next start of the game.
 /// </summary>
 [Service]
 public sealed partial class ConsoleBridge(IUserInterface ui, ILogger logger)
 {
     private static readonly Regex CellId = new("^[A-Za-z0-9_]{1,64}$");
+    private static readonly string[] AddonFiles = ["enabled.txt", Path.Combine("Scripts", "main.lua")];
+
+    private string? _pendingNotice;
+    private float _noticeIn = 12f;
+
+    private void Start() => InstallAddon();
+
+    private void Update()
+    {
+        if (_pendingNotice is null)
+            return;
+        _noticeIn -= Time.DeltaTime;
+        if (_noticeIn > 0)
+            return;
+        ui.ShowMessage(_pendingNotice, MessagePosition.Center, 10f);
+        _pendingNotice = null;
+    }
+
+    /// <summary>Copies the add-on into the game's Mods folder when it is missing or older than this mod's copy.</summary>
+    private void InstallAddon()
+    {
+        try
+        {
+            var source = Path.Combine(Path.GetDirectoryName(typeof(ConsoleBridge).Assembly.Location)!, "addon", "CoopQuestSyncUI");
+            if (!Directory.Exists(source))
+            {
+                logger.LogWarning("[QuestSync] No add-on in {Source} to install.", source);
+                return;
+            }
+            var changed = new List<string>();
+            foreach (var file in AddonFiles)
+            {
+                var from = Path.Combine(source, file);
+                var to = Path.Combine(Folder, file);
+                if (!File.Exists(from))
+                    continue;
+                if (File.Exists(to) && File.ReadAllBytes(to).AsSpan().SequenceEqual(File.ReadAllBytes(from)))
+                    continue;
+                Directory.CreateDirectory(Path.GetDirectoryName(to)!);
+                File.Copy(from, to, overwrite: true);
+                changed.Add(file);
+            }
+            if (changed.Count == 0)
+            {
+                logger.LogInformation("[QuestSync] The CoopQuestSyncUI add-on is up to date in {Folder}.", Folder);
+                return;
+            }
+            logger.LogInformation("[QuestSync] Installed the CoopQuestSyncUI add-on in {Folder} ({Files}). It starts with the next start of the game.",
+                Folder, string.Join(", ", changed));
+            _pendingNotice = "Co-op: the CoopQuestSyncUI add-on was installed or updated. Restart the game once to turn it on.";
+        }
+        catch (Exception e)
+        {
+            logger.LogWarning("[QuestSync] Could not install the CoopQuestSyncUI add-on in {Folder}: {Error}", Folder, e.Message);
+        }
+    }
 
     private static string Folder => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
         "ReadyM.Launcher", "Oblivion", "Mods", "CoopQuestSyncUI");

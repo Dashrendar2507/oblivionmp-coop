@@ -122,7 +122,7 @@ public sealed partial class TestCommands(IChat chat, IEntities entities, QuestTo
                     break;
                 var phase = view.Phase != QuestTokenSync.Phase.Ready ? "rejoin" : view.CatchingUp ? "join" : "live";
                 var allowed = CoopSettings.Categories.Where(cat => sync.Settings.Allowed(phase, cat));
-                Reply(sender, $"Phase {view.Phase}{(view.CatchingUp ? " (catching up)" : "")}, area {view.Area?.ToString() ?? "unknown"}, "
+                Reply(sender, $"Phase {view.Phase}{(view.CatchingUp ? " (catching up)" : "")}, area {(view.Area is { } area ? GameData.AreaKey(area) : "unknown")}, "
                     + $"talking {view.InDialogue}, menu {talks.Activity(sender) ?? "none"}, in combat {view.InCombat}, frozen {view.WantFrozen}. "
                     + $"Effect switches now ({phase}): {string.Join(", ", allowed)}. Dialogue text loaded: {(data.HasText ? "yes" : "no")}. "
                     + returns.Describe(sender));

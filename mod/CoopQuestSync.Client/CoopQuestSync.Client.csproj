@@ -14,5 +14,9 @@
         <None Update="web\**\*">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
+        <!-- The UE4SS add-on travels with the client mod; ConsoleBridge installs it in the game's Mods folder. -->
+        <None Include="..\..\ui\CoopQuestSyncUI\**\*" Link="addon\CoopQuestSyncUI\%(RecursiveDir)%(Filename)%(Extension)">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
     </ItemGroup>
 </Project>

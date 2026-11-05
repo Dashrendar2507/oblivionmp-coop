@@ -60,9 +60,10 @@ shared progress, so a restart keeps them.
    Both plugins now need every plugin that comes with the game (Knights.esp, the DLC*.esp files, AltarESPMain.esp and
    AltarDeluxe.esp) to be loaded. They are on by default. If the game doesn't load our plugins any more, send me
    your `Plugins.txt`.
-4. **Each player:** replace the pop-up add-on with the `ui\CoopQuestSyncUI` folder from the zip (same place as for
-   0.3: `%AppData%\ReadyM.Launcher\Oblivion\Mods`). It now also runs the console command that takes you back
-   inside a building.
+4. **The UE4SS add-on installs itself.** Your last log showed it never started (UE4SS listed only OblivionMP's own
+   mod), which is also why the Ghost ship box was never hidden. The add-on now comes with the mod: on your first
+   join, the client copies it to `%AppData%\ReadyM.Launcher\Oblivion\Mods\CoopQuestSyncUI` and says "Restart the
+   game once". After that restart, UE4SS.log should have lines starting with `[CoopQuestSyncUI]`.
 5. Restart the server. Its log should show:
    * `Loaded 287 quests / 2696 stages from the token map`
    * `Game data: 11019 dialogue lines, ... names, 24730 text entries` (the game's text, from `strings.json`)

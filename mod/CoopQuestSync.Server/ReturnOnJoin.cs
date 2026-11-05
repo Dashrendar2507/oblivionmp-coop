@@ -105,7 +105,7 @@ public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents event
             var id = main.PlayerId;
             if (!sync.Players.TryGetValue(id, out var view) || view.Area is not { } areaId)
                 continue;
-            var area = areaId.ToString();
+            var area = GameData.AreaKey(areaId);
             if (!_sessions.TryGetValue(id, out var s))
                 _sessions[id] = s = new Session();
             if (s.Area != area)
@@ -140,7 +140,7 @@ public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents event
                     s.Going = null;
                     logger.LogWarning("[QuestSync] {Player}: the game didn't take them into {Cell} (is the CoopQuestSyncUI add-on installed? see UE4SS.log).",
                         name, going.Cell);
-                    if (sync.Outdoors.TryGetValue(name, out var outside) && outside.Area == area)
+                    if (sync.Outdoors.TryGetValue(name, out var outside) && Fix(outside).Area == area)
                         Place(main, name, s, outside, "outside instead: couldn't take you back inside");
                     else
                         s.Resolved = true;
@@ -164,9 +164,20 @@ public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents event
         }
     }
 
+    /// <summary>Spots saved before 0.5's last fix hold "AreaId[...]" and no cell: bring them up to date.</summary>
+    private ReturnSpot Fix(ReturnSpot spot)
+    {
+        if (spot.Area.StartsWith("AreaId[", StringComparison.Ordinal) && spot.Area.EndsWith(']'))
+            spot.Area = spot.Area[7..^1];
+        if (GameData.IsInterior(spot.Area))
+            spot.Cell ??= data.InteriorCell(spot.Area);
+        return spot;
+    }
+
     /// <summary>Starts bringing a player to <paramref name="spot"/>: a position write, or the console's coc first.</summary>
     private void GoTo(MainCharacter main, string name, string area, Session s, ReturnSpot spot)
     {
+        Fix(spot);
         if (spot.Area == area)
         {
             Place(main, name, s, spot, "back where you left");
@@ -180,7 +191,7 @@ public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents event
             logger.LogInformation("[QuestSync] {Player} left inside {Cell}: asking their game to go there.", name, cell);
             return;
         }
-        if (sync.Outdoors.TryGetValue(name, out var outside) && outside.Area == area)
+        if (sync.Outdoors.TryGetValue(name, out var outside) && Fix(outside).Area == area && !GameData.IsInterior(area))
         {
             Place(main, name, s, outside, "back outside where you were");
             return;
@@ -209,7 +220,7 @@ public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents event
         if (main.IsDead || MathF.Abs(main.VerticalSpeed) > GroundedSpeed || _clock - s.LastRecord < RecordEverySeconds)
             return;
         s.LastRecord = _clock;
-        var interior = area.StartsWith("L_PersistentDungeon", StringComparison.Ordinal);
+        var interior = GameData.IsInterior(area);
         var cell = interior ? data.InteriorCell(area) : null;
         if (interior && cell is null && _unknownAreas.Add(area))
             logger.LogWarning("[QuestSync] Interior {Area}: no cell found for it, so a player who leaves here comes back outside.", area);
@@ -238,10 +249,21 @@ public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents event
         var name = sync.Nickname(id);
         if (!_pinned.TryGetValue(id, out var spot) && !sync.Returns.TryGetValue(name, out spot))
             return "Nothing to go back to: /coop test pin first.";
+        Fix(spot);
         if (!_sessions.TryGetValue(id, out var s))
             _sessions[id] = s = new Session { Started = true };
-        GoTo(main, name, areaId.ToString(), s, spot);
-        return s.Going is not null ? $"Asking your game to go into {spot.Cell}..." : "Done.";
+        var here = GameData.AreaKey(areaId);
+        if (spot.Area == here)
+        {
+            GoTo(main, name, here, s, spot);
+            return "You are in the same place as that spot: moved you onto it.";
+        }
+        if (GameData.IsInterior(spot.Area) && spot.Cell is null)
+            return $"That spot is in {spot.Area}, which isn't in the table of interiors, so I can't take you there.";
+        GoTo(main, name, here, s, spot);
+        return s.Going is not null
+            ? $"Asking your game to go into {spot.Cell} (the add-on runs: coc {spot.Cell})..."
+            : $"That spot is in {spot.Area} and you are in {here}: the server can't take you there.";
     }
 
     /// <summary>For /coop test status.</summary>

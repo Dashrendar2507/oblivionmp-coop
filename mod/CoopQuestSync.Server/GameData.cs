@@ -160,23 +160,28 @@ public sealed partial class GameData(QuestSyncConfig config, ILogger logger)
     }
 
     /// <summary>
-    /// The editor id of the interior an area id names (OblivionMP builds interior area ids from the cell's form id),
-    /// for the console's coc command; null for an exterior or a cell the tables don't know.
+    /// An area id as text: "L_Tamriel", "L_PersistentDungeon-80A" (AreaId.ToString() wraps it in "AreaId[...]").
     /// </summary>
-    public string? InteriorCell(string areaId)
+    public static string AreaKey(ReadyM.Api.Idents.AreaId area)
+    {
+        var s = area.ToString();
+        return s.StartsWith("AreaId[", StringComparison.Ordinal) && s.EndsWith(']') ? s[7..^1] : s;
+    }
+
+    public static bool IsInterior(string areaKey) => areaKey.StartsWith("L_PersistentDungeon", StringComparison.Ordinal);
+
+    /// <summary>
+    /// The editor id of the interior an area names, for the console's coc command; null for an exterior or a cell the
+    /// tables don't know. OblivionMP names an interior "L_PersistentDungeon-" + the cell's form id in hexadecimal, in
+    /// the players' load order (checked against OblivionAreaIds.BuildInterior).
+    /// </summary>
+    public string? InteriorCell(string areaKey)
     {
         EnsureLoaded();
-        if (!areaId.StartsWith("L_PersistentDungeon", StringComparison.Ordinal))
+        var m = Regex.Match(areaKey, "^L_PersistentDungeon-([0-9A-Fa-f]{1,8})$");
+        if (!m.Success || !uint.TryParse(m.Groups[1].Value, System.Globalization.NumberStyles.HexNumber, null, out var formId))
             return null;
-        var m = Regex.Match(areaId, "([0-9A-Fa-f]+)$");
-        if (!m.Success)
-            return null;
-        // The number's base isn't documented: decimal if that names a known cell, else hexadecimal.
-        foreach (var style in new[] { System.Globalization.NumberStyles.None, System.Globalization.NumberStyles.HexNumber })
-            if (uint.TryParse(m.Groups[1].Value, style, null, out var formId)
-                && FromGame(formId) is { } id && _cells.TryGetValue(id, out var cell))
-                return cell;
-        return null;
+        return FromGame(formId) is { } id && _cells.TryGetValue(id, out var cell) ? cell : null;
     }
 
     /// <summary>The name of an NPC or creature, by its base form id in the game's numbering.</summary>

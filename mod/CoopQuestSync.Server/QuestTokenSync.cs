@@ -698,7 +698,7 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
                 name = Nickname(id),
                 phase = view.ModIndex is null ? "NoPlugin" : view.CatchingUp ? "CatchingUp" : view.Phase.ToString(),
                 stages = view.Stages.GroupBy(s => s.Quest).ToDictionary(g => g.Key, g => g.Select(s => s.Stage).Order().ToArray()),
-                area = view.Area?.ToString(),
+                area = view.Area is { } a ? GameData.AreaKey(a) : null,
                 talking = view.InDialogue,
                 combat = view.InCombat,
                 frozen = view.WantFrozen,
