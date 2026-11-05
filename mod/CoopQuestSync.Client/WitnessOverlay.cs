@@ -1,4 +1,6 @@
 using Microsoft.Extensions.Logging;
+using OblivionMp.Sdk;
+using OblivionMpCSharpMod;
 using ReadyM.Cef;
 using ReadyM.Cef.Rpc;
 using ReadyM.SDK.Attributes;
@@ -10,12 +12,29 @@ namespace CoopQuestSync.Client;
 /// it takes no mouse or keyboard, so the witness cannot pick topics (the topic list is the talker's alone).
 /// </summary>
 [Service]
-public sealed partial class WitnessOverlay(CefHost cef, OverlayPage page, ILogger logger)
+public sealed partial class WitnessOverlay(CefHost cef, OverlayPage page, IInput input, ILogger logger)
 {
     private const string Host = "coopwitness";
 
     private ViewportHandle _viewport;
     private bool _created;
+    private bool _active;     // a conversation is on (or offered)
+    private bool _visible;
+    private float _menuFor;   // how long a menu (map, inventory, chat...) has had the keyboard
+
+    /// <summary>Hides the overlay while this player has a menu open, such as the map, and brings it back after.</summary>
+    private void Update()
+    {
+        if (!_active)
+            return;
+        _menuFor = input.CanApplyInput() ? 0 : _menuFor + Time.DeltaTime;
+        var want = _menuFor < 0.25f;
+        if (want == _visible)
+            return;
+        _visible = want;
+        cef.SetVisible(_viewport, want);
+        logger.LogInformation("[QuestSync] Witness overlay {State}.", want ? "shown again: menu closed" : "hidden: a menu is open");
+    }
 
     private void Start()
     {
@@ -28,6 +47,9 @@ public sealed partial class WitnessOverlay(CefHost cef, OverlayPage page, ILogge
     {
         EnsureCreated();
         page.Show(json);
+        _active = true;
+        _menuFor = 0;
+        _visible = true;
         cef.SetVisible(_viewport, true);
     }
 
@@ -48,6 +70,8 @@ public sealed partial class WitnessOverlay(CefHost cef, OverlayPage page, ILogge
         if (!_created)
             return;
         page.Hide();
+        _active = false;
+        _visible = false;
         cef.SetVisible(_viewport, false);
     }
 

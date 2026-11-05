@@ -99,20 +99,37 @@ local function allowed(cmd)
     return false
 end
 
+-- The local player's controller: the one with a Player (FindFirstOf can return another controller, with no player).
+local function playerController()
+    local ok, helpers = pcall(require, "UEHelpers")
+    if ok and helpers and helpers.GetPlayerController then
+        local pc = helpers.GetPlayerController()
+        if pc and pc:IsValid() then
+            return pc
+        end
+    end
+    for _, pc in ipairs(FindAllOf("PlayerController") or {}) do
+        if pc:IsValid() and pc.Player and pc.Player:IsValid() then
+            return pc
+        end
+    end
+    return nil
+end
+
 -- The game's console takes Oblivion commands. Two ways in from UE4SS; the log says which one worked.
 local function runConsole(cmd)
-    local pc = FindFirstOf("PlayerController")
-    if not pc or not pc:IsValid() then
+    local pc = playerController()
+    if not pc then
         return false, "no player controller"
     end
     local ok, err = pcall(function()
         local ksl = StaticFindObject("/Script/Engine.Default__KismetSystemLibrary")
-        ksl:ExecuteConsoleCommand(pc, cmd, pc)
+        ksl:ExecuteConsoleCommand(pc.Player, cmd, pc)
     end)
     if ok then
         return true, "KismetSystemLibrary.ExecuteConsoleCommand"
     end
-    local ok2, err2 = pcall(function() pc:ConsoleCommand(cmd, false) end)
+    local ok2, err2 = pcall(function() pc:ConsoleCommand(cmd, true) end)
     if ok2 then
         return true, "PlayerController.ConsoleCommand"
     end
