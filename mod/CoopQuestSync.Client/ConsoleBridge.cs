@@ -21,7 +21,10 @@ namespace CoopQuestSync.Client;
 public sealed partial class ConsoleBridge(IUserInterface ui, ILogger logger)
 {
     private static readonly Regex CellId = new("^[A-Za-z0-9_]{1,64}$");
-    private static readonly string[] AddonFiles = ["enabled.txt", Path.Combine("Scripts", "main.lua")];
+    private static readonly string[] AddonFiles = ["enabled.txt", Path.Combine("Scripts", "main.lua"), Path.Combine("Scripts", "coop.lua")];
+
+    /// <summary>coop.lua is reloaded by the running add-on within seconds; the other files only load when the game starts.</summary>
+    private static readonly string LiveFile = Path.Combine("Scripts", "coop.lua");
 
     private string? _pendingNotice;
     private float _noticeIn = 12f;
@@ -68,15 +71,20 @@ public sealed partial class ConsoleBridge(IUserInterface ui, ILogger logger)
                 logger.LogInformation("[QuestSync] The CoopQuestSyncUI add-on is up to date in {Folder}.", Folder);
                 return;
             }
-            logger.LogInformation("[QuestSync] Installed the CoopQuestSyncUI add-on in {Folder} ({Files}). It starts with the next start of the game.",
-                Folder, string.Join(", ", changed));
-            _pendingNotice = "Co-op: the CoopQuestSyncUI add-on was installed or updated. Restart the game once to turn it on.";
+            var needsRestart = changed.Any(f => f != LiveFile);
+            logger.LogInformation("[QuestSync] Installed the CoopQuestSyncUI add-on in {Folder} ({Files}). {When}",
+                Folder, string.Join(", ", changed), needsRestart ? "It starts with the next start of the game." : "The running add-on picks it up in a few seconds.");
+            if (needsRestart)
+                _pendingNotice = "Co-op: the CoopQuestSyncUI add-on was installed or updated. Restart the game once to turn it on.";
         }
         catch (Exception e)
         {
             logger.LogWarning("[QuestSync] Could not install the CoopQuestSyncUI add-on in {Folder}: {Error}", Folder, e.Message);
         }
     }
+
+    /// <summary>Exists while the add-on sees a menu open (map, inventory...).</summary>
+    public static string MenuFlag => Path.Combine(Folder, "menu-open");
 
     private static string Folder => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
         "ReadyM.Launcher", "Oblivion", "Mods", "CoopQuestSyncUI");

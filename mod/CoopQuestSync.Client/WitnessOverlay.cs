@@ -20,14 +20,22 @@ public sealed partial class WitnessOverlay(CefHost cef, OverlayPage page, IInput
     private bool _created;
     private bool _active;     // a conversation is on (or offered)
     private bool _visible;
-    private float _menuFor;   // how long a menu (map, inventory, chat...) has had the keyboard
+    private float _menuFor;   // how long a menu (map, inventory, chat...) has been open
+    private float _checkIn;
+    private bool _menuFlag;   // the CoopQuestSyncUI add-on sees a menu open
 
     /// <summary>Hides the overlay while this player has a menu open, such as the map, and brings it back after.</summary>
     private void Update()
     {
         if (!_active)
             return;
-        _menuFor = input.CanApplyInput() ? 0 : _menuFor + Time.DeltaTime;
+        _checkIn -= Time.DeltaTime;
+        if (_checkIn <= 0)
+        {
+            _checkIn = 0.2f;
+            _menuFlag = File.Exists(ConsoleBridge.MenuFlag);
+        }
+        _menuFor = input.CanApplyInput() && !_menuFlag ? 0 : _menuFor + Time.DeltaTime;
         var want = _menuFor < 0.25f;
         if (want == _visible)
             return;

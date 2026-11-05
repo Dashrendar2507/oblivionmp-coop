@@ -262,6 +262,9 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
                     break;
 
                 case Phase.Handshake when _clock - view.LastBumpAt > BumpEverySeconds:
+                    // Quest scripts don't run on the loading screen: only count bumps once the player is in the world.
+                    if (view.Area is null)
+                        view.Bumps = 0;
                     if (view.Bumps < MaxBumps)
                         Bump(main, view);
                     else
