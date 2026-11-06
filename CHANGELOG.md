@@ -5,6 +5,9 @@
 * **Travel to a conversation**: while a teammate talks to an NPC, Alt+Y takes you next to them, whether you're
   listening in or not, into their building or another world space too (through the add-on). Setting "Travel to a
   conversation"; `/coop join` does the same.
+* **Calm fights**: `/coop calm` (your area), `/coop calm <name>` (their area, and their bounty), `/coop calm all`
+  and `/coop calm near`, and **Calm** buttons on the web page, for fights that went wrong. Through the add-on.
+* The server log says who fights where and in whose game (`Combat:` lines), to see what is shared already.
 
 * **Voices for watchers (experimental)**: while listening in, you hear the NPC's voice with each line, from nowhere,
   using the game's own sounds. Setting "Watchers hear the voices". `/coop test voice` plays one.

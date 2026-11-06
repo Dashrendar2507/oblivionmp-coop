@@ -15,7 +15,7 @@ version without the Deluxe dependency can be built.
 
 ### Chat commands aren't limited to admins
 
-Any player can type `/qs reset`, `/qs push` or `/qs source` in chat. Only play with people you trust for now, and
+Any player can type `/qs reset`, `/qs push`, `/qs source` or `/coop calm` in chat. Only play with people you trust for now, and
 keep a copy of `coop-quest-sync-state.json` if your playthrough matters to you. The web page is only open on the
 server computer by default.
 
@@ -58,6 +58,11 @@ still works. Only English has been tried.
 ## Party
 
 * **Friendly fire can't be turned off.** OblivionMP doesn't tell mods who hit whom.
+* **Fights aren't shared yet.** When one player starts a fight, the others' games don't join it on purpose. NPCs run
+  in one player's game (the area's master), and the server can't order an NPC to attack a given player. The server
+  log now says who fights where (`Combat:` lines), to find out what OblivionMP already shares.
+* **`/coop calm` stops fights, not grudges.** An NPC that is still hostile (an enemy faction, a low disposition) can
+  start again. Guards also come back while you still have a bounty: calm that player by name to clear it.
 * **Followers and companions** aren't shared or synced (not possible with OblivionMP's SDK 1.0).
 * **Respawning next to someone only works in the same area** (both outside, or the same interior). Otherwise you
   come back where you last stood on solid ground.

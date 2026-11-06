@@ -104,6 +104,13 @@ reaches the stage always gets everything. These switches decide what everyone el
 | `/qs source <name>\|all` | Share only one player's progress, or everyone's. |
 | `/qs reset` | Reset every shared quest. |
 | `/coop follow`, `/coop join`, `/coop revive`, `/coop giveup` | Same as the keys. |
+| `/coop calm` | Stop the fights in your area: each NPC fighting there stops, and guards stop chasing the players there. For a fight that went wrong, such as a quest giver turned hostile. |
+| `/coop calm <name>` | The same in that player's area, and their bounty goes to 0. |
+| `/coop calm all` | Every area with a player in it. |
+| `/coop calm near` | The NPC closest to you (within 15 m), fighting or not. |
+
+`/coop calm` needs the CoopQuestSyncUI add-on in the players' games: it runs the console's `StopCombat`,
+`scaonactor` and `SetCrimeGold 0`. The web page has the same, as **Calm** on each player and **Calm all fights**.
 
 Quests are named by their editor id (`MS93`, `MQ01`...). The web page shows each quest's id next to its name.
 

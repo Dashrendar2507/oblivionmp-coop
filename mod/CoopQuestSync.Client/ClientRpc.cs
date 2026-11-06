@@ -27,6 +27,12 @@ public sealed partial class ClientRpc(WitnessOverlay overlay, PartyTags tags, Co
 
     partial void OnGoToWorld(string place) => console.GoToWorld(place);
 
+    partial void OnStopCombat(string refs) => console.StopCombat(refs);
+
+    partial void OnStopChase() => console.Run("player.scaonactor");
+
+    partial void OnClearBounty() => console.Run("player.SetCrimeGold 0");
+
     partial void OnPlayVoice(string voice) => console.Voice(voice);
 
     partial void OnNotice(string text) => ui.ShowMessage(text, MessagePosition.Center, 5f);

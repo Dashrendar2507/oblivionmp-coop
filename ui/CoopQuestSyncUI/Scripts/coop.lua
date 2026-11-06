@@ -5,8 +5,9 @@
 -- What it does:
 --   * Hides HUD pop-ups while CoopQuestSync.esp replays quest stages (the plugin frames every batch with two
 --     Message lines), and always hides the "Co-op quest token" item notices.
---   * Runs console commands that the co-op client mod writes into command.txt (only `coc <cell>`
---     and `cow <world space> <x> <y>`).
+--   * Runs console commands that the co-op client mod writes into command.txt, one a line, only of the shapes in
+--     ALLOWED: `coc <cell>`, `cow <world space> <x> <y>`, `<ref>.StopCombat`, `player.scaonactor` and
+--     `player.SetCrimeGold 0`.
 --   * Tells the co-op client mod when a menu (map, inventory...) is open, through the file menu-open, so the
 --     conversation overlay can step aside.
 --   * Plays the voice of a line in someone else's conversation, from nowhere, when the co-op client mod writes it
@@ -28,7 +29,14 @@ local COMMAND_FILE = FOLDER .. "command.txt"
 local MENU_FILE = FOLDER .. "menu-open"
 local VOICE_FILE = FOLDER .. "voice.txt"
 local LANGUAGE_FILE = FOLDER .. "language.txt"
-local ALLOWED = { "^coc [%w_]+$", "^cow [%w_]+ %-?%d+ %-?%d+$" }
+local COMMAND_TAKEN = FOLDER .. "command.run"
+local ALLOWED = {
+    "^coc [%w_]+$",                 -- into a building (back where you left, travel to a teammate)
+    "^cow [%w_]+ %-?%d+ %-?%d+$",   -- to another world space
+    "^%x+%.StopCombat$",            -- /coop calm: an NPC stops fighting
+    "^player%.scaonactor$",         -- /coop calm: guards stop chasing you
+    "^player%.SetCrimeGold 0$",     -- /coop calm: your bounty goes to 0
+}
 
 S.muted = S.muted or false
 S.mutedAt = S.mutedAt or 0
@@ -161,21 +169,38 @@ local function runConsole(cmd)
     return false, table.concat(errors, " / ")
 end
 
+-- The client adds commands to command.txt, one a line. Take the file first (a rename, so lines added meanwhile go
+-- to a new file), then run its lines in order.
 function S.pollCommand()
-    local f = io.open(COMMAND_FILE, "r")
+    os.remove(COMMAND_TAKEN)
+    if not os.rename(COMMAND_FILE, COMMAND_TAKEN) then
+        return -- no file, or the client is writing it: next time
+    end
+    local f = io.open(COMMAND_TAKEN, "r")
     if not f then
         return
     end
-    local cmd = (f:read("*l") or ""):gsub("%s+$", "")
+    local commands = {}
+    for line in f:lines() do
+        local cmd = line:gsub("%s+$", "")
+        if cmd ~= "" then
+            if allowed(cmd) then
+                commands[#commands + 1] = cmd
+            else
+                log("refused command: " .. cmd)
+            end
+        end
+    end
     f:close()
-    os.remove(COMMAND_FILE)
-    if not allowed(cmd) then
-        log("refused command: " .. cmd)
+    os.remove(COMMAND_TAKEN)
+    if #commands == 0 then
         return
     end
     ExecuteInGameThread(function()
-        local ok, how = runConsole(cmd)
-        log((ok and "ran " or "could not run ") .. cmd .. " (" .. how .. ")")
+        for _, cmd in ipairs(commands) do
+            local ok, how = runConsole(cmd)
+            log((ok and "ran " or "could not run ") .. cmd .. " (" .. how .. ")")
+        end
     end)
 end
 

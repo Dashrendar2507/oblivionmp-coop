@@ -47,6 +47,18 @@ public static partial class CoopRpcContracts
     /// </summary>
     [ServerToClient] public static partial void GoToWorld(string place);
 
+    /// <summary>
+    /// Stop these NPCs' fights (ref ids in hexadecimal, separated by spaces): the add-on runs
+    /// <c>&lt;ref&gt;.StopCombat</c> for each. From /coop calm.
+    /// </summary>
+    [ServerToClient] public static partial void StopCombat(string refs);
+
+    /// <summary>Guards stop chasing this player: the add-on runs <c>player.scaonactor</c>. From /coop calm.</summary>
+    [ServerToClient] public static partial void StopChase();
+
+    /// <summary>The player's bounty goes to 0: the add-on runs <c>player.SetCrimeGold 0</c>. From /coop calm.</summary>
+    [ServerToClient] public static partial void ClearBounty();
+
     /// <summary>Test: play one voice line now ("imperial_m ms26_ms26filecharges_000363be_1").</summary>
     [ServerToClient] public static partial void PlayVoice(string voice);
 

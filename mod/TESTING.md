@@ -131,6 +131,14 @@ The server can play a made-up teammate called "Ghost". Type these in chat:
    4. If you can, pin a spot inside a city (Chorrol, Skingrad...) and travel there from outside, or the other way:
       that's the `cow` route. Send the server log and UE4SS.log either way (lines with `travel`, `coc`, `cow`).
 
+8. Calming fights (new). Save first: this makes someone angry on purpose.
+   1. Hit a townsperson (not a guard) until they fight back, then `/coop calm near`: they should stop fighting.
+   2. Steal something in front of a guard, or hit them, so they chase you. `/coop calm <your name>`: the guard
+      should stop, and your bounty should be 0 (check the journal or a guard's dialogue).
+   3. Pick a fight with a few creatures and `/coop calm`: they stop for a moment; hostile creatures will usually
+      start again, which is expected.
+   Send the server log (lines with `Combat:` and `Calm:`) and UE4SS.log (lines with `StopCombat`, `scaonactor`).
+
 ## Test 2: two players (when your friend can join)
 
 Do these standing next to each other, in the same place:
@@ -158,7 +166,13 @@ Do these standing next to each other, in the same place:
    * whether the NPCs and creatures near the walker move and fight normally, or stand still;
    * what the talker sees when their conversation ends: things jumping into place, or nothing odd;
    * anything else that looked wrong.
-6. **Leader only.** Set "Progress counts from" to "Leader only" and the leader to your name. When your friend
+6. **Fights.** This one tells me what to build next, so please take notes. One of you (not the one who entered
+   the area first) attacks a townsperson or a guard, while the other stands nearby. Tell me:
+   * whether the NPC fights both of you, or only the attacker;
+   * whether the other player's game acts as "in combat" (combat music, can't wait or fast travel);
+   * what the server log says (`Combat: ... fights in ..., run by ...'s game`).
+   Then try `/coop calm` and the web page's **Calm** button.
+7. **Leader only.** Set "Progress counts from" to "Leader only" and the leader to your name. When your friend
    advances a quest on their own, you shouldn't get it. When you do, they should.
 
 ## What to send me

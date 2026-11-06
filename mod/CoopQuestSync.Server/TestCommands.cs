@@ -18,20 +18,28 @@ namespace CoopQuestSync.Server;
 ///   /coop test voice [voice line] - play a voice line now (a random one, or e.g. "imperial_m ms26_ms26filecharges_000363be_1")
 ///   /coop test pin / back     - remember where you stand, then go back there as a join would (into a building too).
 ///                               During /coop test talk, the join key travels to the pinned spot, as if Ghost stood there
+/// /coop calm [player | all | near]: stop fights that went wrong (your area; a player's area and bounty; every area;
+/// the NPC closest to you). See CombatService.
 ///   /coop test status         - what the server knows about you: phase, area, talking, menu, frozen, switches
 /// </summary>
 [Service]
 public sealed partial class TestCommands(IChat chat, IEntities entities, QuestTokenSync sync, GameData data,
-    ConversationRelay talks, PartyService party, ReturnOnJoin returns, CoopRpc rpc)
+    ConversationRelay talks, PartyService party, ReturnOnJoin returns, CombatService combat, CoopRpc rpc)
 {
     private const string Ghost = "Ghost";
-    private const string Usage = "/coop follow | join | revive | giveup, or /coop test talk [ask] | stop | stage <quest> <stage> | effects <quest> | revive | voice | pin | back | status";
+    private const string Usage = "/coop follow | join | revive | giveup, /coop calm [player | all | near], or /coop test talk [ask] | stop | stage <quest> <stage> | effects <quest> | revive | voice | pin | back | status";
 
     private void Start() => chat.AddCommand("coop", Usage, Run);
 
     private void Run(IChat c, PlayerId sender, string arguments)
     {
         var parts = arguments.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length >= 1 && parts[0].Equals("calm", StringComparison.OrdinalIgnoreCase))
+        {
+            var result = combat.Calm(sender, string.Join(' ', parts.Skip(1)));
+            Reply(sender, result);
+            return;
+        }
         // Same as the keys, for when a key doesn't get through.
         if (parts.Length == 1)
             switch (parts[0].ToLowerInvariant())
@@ -154,7 +162,7 @@ public sealed partial class TestCommands(IChat chat, IEntities entities, QuestTo
                 Reply(sender, $"Phase {view.Phase}{(view.CatchingUp ? " (catching up)" : "")}, area {(view.Area is { } area ? GameData.AreaKey(area) : "unknown")}, "
                     + $"talking {view.InDialogue}, menu {talks.Activity(sender) ?? "none"}, in combat {view.InCombat}, frozen {view.WantFrozen}. "
                     + $"Effect switches now ({phase}): {string.Join(", ", allowed)}. Dialogue text loaded: {(data.HasText ? "yes" : "no")}. "
-                    + returns.Describe(sender));
+                    + returns.Describe(sender) + " " + combat.Describe());
                 break;
             }
 
