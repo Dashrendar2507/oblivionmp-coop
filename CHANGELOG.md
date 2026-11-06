@@ -1,0 +1,36 @@
+# Changelog
+
+## 0.5.0 (public test)
+
+* **Stage effects for everyone, with switches.** Quest stage scripts that act on the player are tagged Teleport,
+  Combat, Items, Status, Faction ranks or Cut scene (446 stages in 181 quests). Each tag has a switch for live,
+  on join and on rejoin.
+* **Knights of the Nine, the DLCs and the remaster's own plugins** are covered (287 quests).
+* **Shared conversations**: an overlay shows teammates' conversations, players in the same area are frozen until
+  they end, and menus (barter, persuasion, training, lockpicking...) are announced. Alt+L leaves or follows a
+  conversation, and following can be made opt-in.
+* **Revive and respawn**: you go down instead of dying. Alt+H revives a teammate, Alt+G respawns next to the party.
+* **Back where you left**: on join you come back where you left, inside buildings too.
+* "Leader only" progress, chat announcements, shared dialogue rewards, optional quest-item sharing, tags over
+  heads, level scaling and difficulty.
+* Every setting is on the web page and kept across restarts. Keys can be changed there.
+* The `CoopQuestSyncUI` UE4SS add-on now installs itself on the first join (restart the game once).
+* Players no longer copy plugins by hand: the launcher installs them on join.
+* `/coop test` commands to try everything alone with a pretend teammate.
+
+## 0.4.0
+
+* Web admin page on port 9060: every quest, its stages and who has them; give a stage to everyone, reset a quest.
+* Source player: share only one player's progress.
+* The tutorial (MQ01) is no longer shared: it caused pop-ups on rejoin.
+
+## 0.3.0
+
+* All vanilla quests.
+* Silent catch-up on join (no quest pop-ups), through the `CoopQuestSyncUI` add-on.
+* Join handshake, and rewards from replayed stages are taken back.
+
+## 0.2.0
+
+* First working sync, for two quests: a stage finished in one game reaches the server and the other players, and
+  comes back after a rejoin.
