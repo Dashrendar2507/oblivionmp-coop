@@ -52,8 +52,9 @@ That's it for the host. The server hands the mod to every player when they join.
 The remaster keeps its text (NPC names, dialogue, journal entries) outside the plugins. That text belongs to
 Bethesda, so the mod never ships it. Instead it reads the text from each player's own copy of the game:
 
-* **Players** (the conversation overlay): each player's game reads its own text when it starts, in the language the
-  game is set to. Nothing to do. With several languages in one party, everyone reads in their own.
+* **Players** (the conversation overlay): the CoopQuestSyncUI add-on looks each line's text up in the running game,
+  in the language the game is set to. Nothing to do. With several languages in one party, everyone reads in their
+  own.
 * **The server** (the web page and chat lines): when the game is installed on the server computer through Steam, the
   server reads it once on its first start and keeps what the mod uses in `strings.json` next to the server DLL.
   Please don't share that file. On a dedicated host without the game, the page shows names worked out from the

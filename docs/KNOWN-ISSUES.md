@@ -21,9 +21,10 @@ server computer by default.
 
 ### The game's text comes from the players' own games
 
-Each player's game reads its own text for the overlay. The server reads the text only when the game is installed
-on the server computer; on a dedicated host the web page shows names worked out from the game's ids. If the game's
-text is Oodle-compressed, reading it also needs `oo2core_9_win64.dll` on that computer (the mod never downloads it);
+Each player's add-on looks the overlay's text up in the running game. The server reads the text from the game's
+files only when the game is installed on the server computer; on a dedicated host the web page shows names worked
+out from the game's ids. The remaster's text is Oodle-compressed, so reading the files also needs
+`oo2core_9_win64.dll` on that computer (the mod never downloads it);
 the log says so, and the FModel route in [INSTALL.md](INSTALL.md#real-names-and-lines-on-the-page-and-the-overlay)
 still works. Only English has been tried.
 

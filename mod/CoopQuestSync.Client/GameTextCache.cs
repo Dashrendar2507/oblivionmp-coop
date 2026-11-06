@@ -14,11 +14,23 @@ namespace CoopQuestSync.Client;
 ///
 /// The language comes from the game itself: the CoopQuestSyncUI add-on writes it to language.txt. Without the
 /// add-on, the language in the game's settings file, then Windows' language, then English.
+///
+/// The remaster's own .pak keeps its text Oodle-compressed, which this mod can only read where an Oodle library is
+/// on the computer. So the add-on also looks text up in the running game, which has it loaded in its language:
+/// this side writes the keys it lacks to text-request.txt, the add-on answers in text-reply.txt.
 /// </summary>
 [Service]
 public sealed partial class GameTextCache(ILogger logger)
 {
     private volatile Dictionary<string, string>? _text;
+    /// <summary>Text the add-on looked up in the running game; an empty value: the game has none for that key.</summary>
+    private readonly Dictionary<string, string> _fromGame = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _asked = new(StringComparer.Ordinal);
+    private float _clock;
+    private float _pollIn;
+    private float _firstAskAt = -1;
+    private bool _addonAnswers;
+    private bool _addonSilent;
     private float _waited;
     private bool _started;
 
@@ -30,6 +42,13 @@ public sealed partial class GameTextCache(ILogger logger)
     /// <summary>Waits a few seconds for the add-on to say the game's language, then reads the text in the background.</summary>
     private void Update()
     {
+        _clock += Time.DeltaTime;
+        _pollIn -= Time.DeltaTime;
+        if (_pollIn <= 0)
+        {
+            _pollIn = 0.1f;
+            ReadReplies();
+        }
         if (_started)
             return;
         _waited += Time.DeltaTime;
@@ -120,7 +139,127 @@ public sealed partial class GameTextCache(ILogger logger)
     }
 
     private string? Text(string? key)
-        => key is not null && _text is { } text && text.TryGetValue(key, out var value) && value.Length > 0 ? value : null;
+    {
+        if (key is null)
+            return null;
+        if (_text is { } text && text.TryGetValue(key, out var value) && value.Length > 0)
+            return value;
+        return _fromGame.TryGetValue(key, out var game) && game.Length > 0 ? game : null;
+    }
+
+    private static readonly string[] KeyFields = ["npcKey", "speakerKey", "topicKey", "questKey"];
+
+    /// <summary>
+    /// The text keys of a message from the server that nobody has looked up yet. Empty when the game's files were
+    /// read, or when the add-on doesn't answer (not installed): then there is nothing to wait for.
+    /// </summary>
+    public List<string> Missing(string json)
+    {
+        var missing = new List<string>();
+        if (_text is not null || _addonSilent)
+            return missing;
+        try
+        {
+            if (JsonNode.Parse(json) is not JsonObject o)
+                return missing;
+            var keys = KeyFields.Select(f => o[f]?.GetValue<string>()).ToList();
+            if (o["keys"] is JsonArray array)
+                keys.AddRange(array.Select(k => k?.GetValue<string>()));
+            foreach (var key in keys)
+                if (key is not null && key.StartsWith("LOC_", StringComparison.Ordinal) && !_fromGame.ContainsKey(key) && !missing.Contains(key))
+                    missing.Add(key);
+        }
+        catch
+        {
+            // not one of ours: nothing to wait for
+        }
+        return missing;
+    }
+
+    /// <summary>Asks the add-on for these keys (once each).</summary>
+    public void Request(IEnumerable<string> keys)
+    {
+        var fresh = keys.Where(k => _asked.Add(k)).ToList();
+        if (fresh.Count == 0)
+            return;
+        try
+        {
+            if (!Directory.Exists(AddonFolder))
+            {
+                _addonSilent = true;
+                return;
+            }
+            File.AppendAllText(Path.Combine(AddonFolder, "text-request.txt"), string.Join("\n", fresh) + "\n");
+            if (_firstAskAt < 0)
+                _firstAskAt = _clock;
+        }
+        catch (Exception e)
+        {
+            logger.LogWarning("[QuestSync] Couldn't ask the add-on for the game's text: {Error}", e.Message);
+        }
+    }
+
+    /// <summary>The add-on writes a line break as \n and a backslash as \\.</summary>
+    private static string Unescape(string s)
+    {
+        if (!s.Contains('\\'))
+            return s;
+        var b = new System.Text.StringBuilder(s.Length);
+        for (var i = 0; i < s.Length; i++)
+        {
+            if (s[i] == '\\' && i + 1 < s.Length)
+            {
+                i++;
+                b.Append(s[i] == 'n' ? '\n' : s[i]);
+            }
+            else
+                b.Append(s[i]);
+        }
+        return b.ToString();
+    }
+
+    /// <summary>Takes in the add-on's answers.</summary>
+    private void ReadReplies()
+    {
+        if (_firstAskAt >= 0 && !_addonAnswers && !_addonSilent && _clock - _firstAskAt > 6f)
+        {
+            _addonSilent = true;
+            logger.LogWarning("[QuestSync] The CoopQuestSyncUI add-on doesn't answer text requests (not installed, or an older one): the overlay shows the server's text.");
+        }
+        var reply = Path.Combine(AddonFolder, "text-reply.txt");
+        var taken = Path.Combine(AddonFolder, "text-reply.read");
+        try
+        {
+            if (!File.Exists(reply))
+                return;
+            File.Move(reply, taken, overwrite: true);
+            int found = 0, total = 0;
+            foreach (var line in File.ReadAllLines(taken))
+            {
+                var tab = line.IndexOf('\t');
+                if (tab <= 0)
+                    continue;
+                var text = Unescape(line[(tab + 1)..]);
+                _fromGame[line[..tab]] = text;
+                total++;
+                if (text.Length > 0)
+                    found++;
+            }
+            File.Delete(taken);
+            if (!_addonAnswers)
+                logger.LogInformation("[QuestSync] The game's text comes from the running game (CoopQuestSyncUI add-on): {Found} of {Total} found.", found, total);
+            _addonAnswers = true;
+            _addonSilent = false;
+        }
+        catch (IOException)
+        {
+            // the add-on is writing it: next time
+        }
+        catch (Exception e)
+        {
+            logger.LogWarning("[QuestSync] Couldn't read the add-on's text: {Error}", e.Message);
+        }
+    }
 
     /// <summary>
     /// A conversation message from the server with this player's text swapped in where their game has it:
@@ -128,7 +267,7 @@ public sealed partial class GameTextCache(ILogger logger)
     /// </summary>
     public string Localize(string json)
     {
-        if (_text is null)
+        if (_text is null && _fromGame.Count == 0)
             return json;
         try
         {

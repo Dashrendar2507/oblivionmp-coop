@@ -9,12 +9,15 @@
   and `/coop calm near`, and **Calm** buttons on the web page, for fights that went wrong. Through the add-on.
 * **The follow key is now Alt+U** (it was Alt+L; L also hides the game's interface, compass included). A server
   that had L moves to U.
+* The add-on's console commands (pin/back, travel, calm) use the call other Oblivion Remastered mods use, and the
+  add-on no longer keeps the game's player controller across a load (a likely cause of crashes on loading a save).
+* Voices are looked up in the game's own folders (one per race and sex).
 * A revive or respawn waits until the chat or menu is closed (getting up with the chat open left it stuck).
 * The server log says who fights where and in whose game (`Combat:` lines), to see what is shared already.
 
 * **Voices for watchers (experimental)**: while listening in, you hear the NPC's voice with each line, from nowhere,
   using the game's own sounds. Setting "Watchers hear the voices". `/coop test voice` plays one.
-* **No game text to set up**: each player's game reads its own text for the overlay, in the language the game is set
+* **No game text to set up**: each player's add-on looks the overlay's text up in the running game, in the language the game is set
   to. The server reads it too when the game is installed on the server computer (`GameFolder` and `Language` in
   `config.json`), for the web page. The FModel route still works as a backup. Nothing is ever downloaded.
 * The dialogue plugin no longer carries the voice actors' direction notes.

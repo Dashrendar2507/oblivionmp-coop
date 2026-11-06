@@ -185,8 +185,11 @@ Do these standing next to each other, in the same place:
 
 The text now comes from the games themselves:
 
-* **Your game** reads its own text for the overlay, in your game's language. UE4SS.log should show
-  `[CoopQuestSyncUI] game language: en` and then `Game text ready: ... entries`.
+* **Your game** gives the overlay its text, in your game's language: the add-on looks it up in the running game
+  (reading the game's files needs an Oodle library that isn't on your PC). To test it, move `strings.json` out of
+  the server folder first (so the server sends no text), then `/coop test talk`. UE4SS.log should show
+  `[CoopQuestSyncUI] string tables: ...` and `text: found 5 of 5 key(s)`, and the overlay real sentences. Put
+  `strings.json` back after.
 * **The server** makes `strings.json` itself from the game on its PC, the first time it starts without one. To test
   that: move your current `strings.json` out of `mods\CoopQuestSync\server` (keep it somewhere), start the server,
   and look for `Wrote ...strings.json: ... of the ... texts the mod uses`.

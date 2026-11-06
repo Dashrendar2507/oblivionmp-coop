@@ -13,6 +13,9 @@
 --   * Plays the voice of a line in someone else's conversation, from nowhere, when the co-op client mod writes it
 --     into voice.txt ("imperial_m ms26_ms26filecharges_000363be_1"; "stop" ends it).
 --   * Writes the game's language to language.txt, so the co-op client mod reads the game's text in that language.
+--   * Looks up the game's own text (names, dialogue, quest names) by key for the co-op client mod, in the language
+--     the game runs in: keys in text-request.txt, answers in text-reply.txt. The game's files are compressed in a
+--     way the mod can't read, but the running game has the text at hand.
 --   * Writes the class of every new UI widget to UE4SS.log once, to find widgets that need handling.
 
 local S = CQS or {}
@@ -29,6 +32,9 @@ local COMMAND_FILE = FOLDER .. "command.txt"
 local MENU_FILE = FOLDER .. "menu-open"
 local VOICE_FILE = FOLDER .. "voice.txt"
 local LANGUAGE_FILE = FOLDER .. "language.txt"
+local TEXT_REQUEST = FOLDER .. "text-request.txt"
+local TEXT_TAKEN = FOLDER .. "text-request.run"
+local TEXT_REPLY = FOLDER .. "text-reply.txt"
 local COMMAND_TAKEN = FOLDER .. "command.run"
 local ALLOWED = {
     "^coc [%w_]+$",                 -- into a building (back where you left, travel to a teammate)
@@ -110,29 +116,61 @@ end
 
 -- The local player's controller ---------------------------------------------------------------------------------
 
--- The one with a Player: FindFirstOf can return another controller, with no player.
+-- The one with a Player (the local player's). Never kept across a map load: a controller from before the load
+-- points at freed memory, and touching it crashes the game. So the cached one is dropped when a map starts loading
+-- or a new controller appears, and looked up again every couple of seconds anyway.
+S.pc = nil
+S.pcAt = 0
+S.loading = false
+S.loadingAt = 0
+
 local function playerController()
-    if S.pc and S.pc:IsValid() then
+    if S.loading and os.time() - S.loadingAt < 30 then
+        return nil
+    end
+    S.loading = false
+    if S.pc and os.time() - S.pcAt < 2 then
         return S.pc
     end
     S.pc = nil
-    local ok, helpers = pcall(require, "UEHelpers")
-    if ok and type(helpers) == "table" and helpers.GetPlayerController then
-        local okPc, pc = pcall(helpers.GetPlayerController)
-        if okPc and pc and pc:IsValid() then
-            S.pc = pc
-            return pc
-        end
-    end
     for _, pc in ipairs(FindAllOf("PlayerController") or {}) do
         local good = false
-        pcall(function() good = pc:IsValid() and pc.Player and pc.Player:IsValid() end)
+        pcall(function() good = pc:IsValid() and pc.Player ~= nil and pc.Player:IsValid() end)
         if good then
             S.pc = pc
+            S.pcAt = os.time()
             return pc
         end
     end
     return nil
+end
+
+function S.forgetController(why)
+    S.pc = nil
+    if why then
+        S.loading = why == "loading"
+        S.loadingAt = os.time()
+    end
+end
+
+-- A function's parameters, written to the log once, for when a call fails.
+local function describe(path)
+    if S.described[path] then
+        return
+    end
+    S.described[path] = true
+    local fn = StaticFindObject(path)
+    if not fn or not fn:IsValid() then
+        log("  " .. path .. ": not found")
+        return
+    end
+    local params = {}
+    pcall(function()
+        fn:ForEachProperty(function(prop)
+            params[#params + 1] = prop:GetFName():ToString() .. ":" .. prop:GetClass():GetFName():ToString()
+        end)
+    end)
+    log("  " .. path .. "(" .. table.concat(params, ", ") .. ")")
 end
 
 -- Console commands -----------------------------------------------------------------------------------------------
@@ -146,26 +184,28 @@ local function allowed(cmd)
     return false
 end
 
--- Two ways into the game's console from UE4SS; the log says which one worked, or why neither did.
+-- Two ways into the game's console from UE4SS; the log says which one worked, or why neither did. The first is
+-- the one other Oblivion Remastered mods use: KismetSystemLibrary with the local player as the world context.
 local function runConsole(cmd)
     local pc = playerController()
     if not pc then
         return false, "no player controller"
     end
     local errors = {}
-    local ok, err = pcall(function() pc:ConsoleCommand(cmd, true) end)
-    if ok then
-        return true, "PlayerController.ConsoleCommand"
-    end
-    errors[#errors + 1] = tostring(err)
-    ok, err = pcall(function()
+    local ok, err = pcall(function()
         local ksl = StaticFindObject("/Script/Engine.Default__KismetSystemLibrary")
-        ksl:ExecuteConsoleCommand(pc, cmd, pc)
+        ksl:ExecuteConsoleCommand(pc.Player, cmd, pc)
     end)
     if ok then
         return true, "KismetSystemLibrary.ExecuteConsoleCommand"
     end
-    errors[#errors + 1] = tostring(err)
+    errors[#errors + 1] = tostring(err):gsub("\n.*", "")
+    ok, err = pcall(function() pc:ConsoleCommand(cmd, true) end)
+    if ok then
+        return true, "PlayerController.ConsoleCommand"
+    end
+    errors[#errors + 1] = tostring(err):gsub("\n.*", "")
+    describe("/Script/Engine.KismetSystemLibrary:ExecuteConsoleCommand")
     return false, table.concat(errors, " / ")
 end
 
@@ -207,29 +247,20 @@ end
 -- Voices ---------------------------------------------------------------------------------------------------------
 --
 -- The remaster plays each spoken line with a Wwise event named after the original voice file:
--- Play_<race>_<sex>_<quest>_<topic>_<line form id>_<n>, some with an extra "altvoice" or "beggar" after the sex, or
--- "_sid" at the end. Where the game keeps those events isn't known yet, so this tries the likely places, learns the
--- right one from any voice event the game loads itself, and writes what it tried to UE4SS.log.
+-- Play_<race>_<sex>_[altvoice_|beggar_]<quest>_<topic>_<line form id>_<n>[_sid], kept in a folder per voice:
+-- /Game/WwiseAudio/Events/Voice/oblivion/<race>/<sex>/[altvoice/] (seen in the game, 2026-11-06). The root is
+-- learned again from any voice event the game loads itself, in case it differs.
 
-local GUESSED_FOLDERS = {
-    "/Game/WwiseAudio/Events/",
-    "/Game/WwiseAudio/Events/English(US)/",
-    "/Game/WwiseAudio/Event/",
-    "/Game/WwiseAudio/Event/English(US)/",
-    "/Game/WwiseAudio/Events/Dialogue/",
-    "/Game/WwiseAudio/Events/VO/",
-    "/Game/Audio/Events/",
-    "/Game/Audio/Wwise/Events/",
-}
+S.voiceRoot = S.voiceRoot or "/Game/WwiseAudio/Events/Voice/oblivion/"
 
 local function looksLikeVoice(name)
     return name:lower():find("play_[%a_]+_[mf]_[%w_]+_%x%x%x%x%x%x%x%x_%d") ~= nil
 end
 
--- "AkAudioEvent /Game/X/Y/Play_a.Play_a" -> "/Game/X/Y/"
-local function folderOf(fullName)
+-- "AkAudioEvent /Game/X/Voice/oblivion/dark_elf/m/altvoice/Play_a.Play_a" -> "/Game/X/Voice/oblivion/"
+local function rootOf(fullName)
     local path = fullName:match("^%S+%s+(%S+)$") or fullName
-    return path:match("^(.*/)[^/]*$")
+    return path:match("^(.*/)[%w_]+/[mf]/[^/]*$") or path:match("^(.*/)[%w_]+/[mf]/[%w_]+/[^/]*$")
 end
 
 function S.onNewAkEvent(event)
@@ -241,96 +272,49 @@ function S.onNewAkEvent(event)
         return
     end
     S.voiceEventsLogged = S.voiceEventsLogged + 1
-    local folder = folderOf(name)
-    if folder and folder ~= S.voiceFolder then
-        S.voiceFolder = folder
-        S.voiceFolderFound = true
-        log("learned where voice events live: " .. folder)
+    local root = rootOf(name)
+    if root and root ~= S.voiceRoot then
+        S.voiceRoot = root
+        log("learned where voice events live: " .. root)
     end
     log("voice event loaded by the game: " .. name)
 end
 
--- A function's parameters, written to the log once, for when a call fails.
-local function describe(path)
-    if S.described[path] then
-        return
-    end
-    S.described[path] = true
-    local fn = StaticFindObject(path)
-    if not fn or not fn:IsValid() then
-        log("  " .. path .. ": not found")
-        return
-    end
-    local params = {}
-    pcall(function()
-        fn:ForEachProperty(function(prop)
-            params[#params + 1] = prop:GetFName():ToString() .. ":" .. prop:GetClass():GetFName():ToString()
-        end)
-    end)
-    log("  " .. path .. "(" .. table.concat(params, ", ") .. ")")
-end
-
-local function voiceNames(voice, line)
+-- Where the event for this line can be: "/Game/.../dark_elf/m/altvoice/Play_dark_elf_m_altvoice_x.Play_..."
+local function voicePaths(voice, line)
     local race, sex = voice:match("^(.+)_([mf])$")
     if not race then
         return {}
     end
-    local names = {}
-    for _, variant in ipairs({ "", "altvoice_", "beggar_" }) do
-        local base = "Play_" .. race .. "_" .. sex .. "_" .. variant .. line
-        names[#names + 1] = base
-        names[#names + 1] = base .. "_sid"
+    local paths = {}
+    for _, variant in ipairs({ "", "altvoice", "beggar" }) do
+        local folder = S.voiceRoot .. race .. "/" .. sex .. "/" .. (variant ~= "" and variant .. "/" or "")
+        local base = "Play_" .. race .. "_" .. sex .. "_" .. (variant ~= "" and variant .. "_" or "") .. line
+        for _, name in ipairs({ base, base .. "_sid" }) do
+            paths[#paths + 1] = folder .. name .. "." .. name
+        end
     end
-    return names
+    return paths
 end
 
 local function findEvent(voice, line)
-    local names = voiceNames(voice, line)
-    local folders = {}
-    if S.voiceFolder then
-        folders[#folders + 1] = S.voiceFolder
-    end
-    for _, f in ipairs(GUESSED_FOLDERS) do
-        if f ~= S.voiceFolder then
-            folders[#folders + 1] = f
+    local paths = voicePaths(voice, line)
+    for _, path in ipairs(paths) do
+        local ok, obj = pcall(StaticFindObject, path)
+        if ok and obj and obj:IsValid() then
+            return obj, path
         end
     end
-    -- Already loaded?
-    for _, folder in ipairs(folders) do
-        for _, name in ipairs(names) do
-            local path = folder .. name .. "." .. name
-            local ok, obj = pcall(StaticFindObject, path)
-            if ok and obj and obj:IsValid() then
-                S.voiceFolderFound = true
-                return obj, path
-            end
+    if type(LoadAsset) ~= "function" then
+        return nil, "this UE4SS has no LoadAsset"
+    end
+    for _, path in ipairs(paths) do
+        local ok, obj = pcall(LoadAsset, path)
+        if ok and obj and obj:IsValid() then
+            return obj, path
         end
     end
-    -- Load it. Loading what isn't there costs a little each time, so after a few misses stop guessing until the
-    -- game shows where its voice events are.
-    if (S.voiceMisses or 0) >= 3 and not S.voiceFolderFound then
-        return nil, "nothing found in the first lines; waiting to learn where voice events live (talk to an NPC yourself)"
-    end
-    if type(LoadAsset) == "function" then
-        for _, folder in ipairs(folders) do
-            for _, name in ipairs(names) do
-                local path = folder .. name .. "." .. name
-                local ok, obj = pcall(LoadAsset, path)
-                if ok and obj and obj:IsValid() then
-                    if folder ~= S.voiceFolder then
-                        S.voiceFolder = folder
-                        log("voice events live in " .. folder)
-                    end
-                    S.voiceFolderFound = true
-                    return obj, path
-                end
-            end
-        end
-    else
-        log("this UE4SS has no LoadAsset")
-    end
-    S.voiceMisses = (S.voiceMisses or 0) + 1
-    return nil, table.concat(names, " / ") .. " in " .. #folders .. " folders"
+    return nil, table.concat(paths, " / ")
 end
 
 local function statics()
@@ -407,7 +391,9 @@ function S.playVoice(spec)
     end
 end
 
+-- Also answers text requests: the 100 ms loop calls this, so a game running an older coop.lua picks it up on reload.
 function S.pollVoice()
+    pcall(S.pollText)
     local f = io.open(VOICE_FILE, "r")
     if not f then
         return
@@ -419,6 +405,137 @@ function S.pollVoice()
         local ok, err = pcall(S.playVoice, spec)
         if not ok then
             log("voice failed: " .. tostring(err))
+        end
+    end)
+end
+
+-- The game's text ------------------------------------------------------------------------------------------------
+--
+-- The remaster keeps its text in string tables, one per kind, named after the key's prefix: LOC_FN_ (full names) in
+-- ST_FullNames, LOC_RT_ (dialogue) in ST_ResponseTexts, and so on. The running game has them loaded, in its language.
+
+local TEXT_TABLES = {
+    FN = "ST_FullNames", RT = "ST_ResponseTexts", LE = "ST_LogEntries", DE = "ST_Descriptions",
+    BK = "ST_BookContent", SC = "ST_ScriptContent", HC = "ST_HardcodedContent", AD = "ST_AltarDynamicTexts",
+    AS = "ST_AltarStaticTexts", ME = "ST_MissingEntries",
+}
+
+S.tableIds = S.tableIds or nil
+
+-- The registered string tables' ids, by short name ("ST_FullNames" -> "/Game/.../ST_FullNames.ST_FullNames").
+local function tableIds()
+    if S.tableIds then
+        return S.tableIds
+    end
+    local ids = {}
+    local ok, err = pcall(function()
+        local lib = StaticFindObject("/Script/Engine.Default__KismetStringTableLibrary")
+        local list = lib:GetRegisteredStringTables()
+        list:ForEach(function(_, element)
+            local id = element:get():ToString()
+            local short = id:match("([%w_]+)$")
+            if short then
+                ids[short] = id
+            end
+        end)
+    end)
+    local count = 0
+    for _ in pairs(ids) do count = count + 1 end
+    if count > 0 then
+        S.tableIds = ids
+        log("string tables: " .. count .. (ids.ST_FullNames and (" (names: " .. ids.ST_FullNames .. ")") or ""))
+    elseif not S.tablesWarned then
+        S.tablesWarned = true
+        log("no string tables found" .. (ok and "" or (": " .. tostring(err):gsub("\n.*", ""))))
+    end
+    return ids
+end
+
+local function usable(text, key)
+    return type(text) == "string" and text ~= "" and text ~= key and not text:find("MISSING STRING TABLE ENTRY", 1, true)
+end
+
+function S.lookupText(key)
+    local prefix = key:match("^LOC_(%u%u)_")
+    local namespace = prefix and TEXT_TABLES[prefix]
+    if not namespace then
+        return nil
+    end
+    local lib = StaticFindObject("/Script/Engine.Default__KismetTextLibrary")
+    if not lib or not lib:IsValid() then
+        return nil
+    end
+    -- The string table by its id: the localised text.
+    local id = tableIds()[namespace]
+    if id then
+        local ok, text = pcall(function() return lib:TextFromStringTable(FName(id), key):ToString() end)
+        if ok and usable(text, key) then
+            return text
+        end
+        if not ok and not S.textWarned then
+            S.textWarned = true
+            log("TextFromStringTable failed: " .. tostring(text):gsub("\n.*", ""))
+            describe("/Script/Engine.KismetTextLibrary:TextFromStringTable")
+        end
+    end
+    -- Or the localisation table by namespace and key.
+    local ok, text = pcall(function()
+        local out = {}
+        lib:FindTextInLocalizationTable(namespace, key, out, "")
+        local value = out.OutText or out[3]
+        return value and value:ToString()
+    end)
+    if ok and usable(text, key) then
+        return text
+    end
+    if not ok and not S.findWarned then
+        S.findWarned = true
+        log("FindTextInLocalizationTable failed: " .. tostring(text):gsub("\n.*", ""))
+        describe("/Script/Engine.KismetTextLibrary:FindTextInLocalizationTable")
+    end
+    return nil
+end
+
+-- Answers the client's text requests: "key<TAB>text" a line, with line breaks in the text written as \n.
+function S.pollText()
+    os.remove(TEXT_TAKEN)
+    if not os.rename(TEXT_REQUEST, TEXT_TAKEN) then
+        return
+    end
+    local f = io.open(TEXT_TAKEN, "r")
+    if not f then
+        return
+    end
+    local keys = {}
+    for line in f:lines() do
+        local key = line:match("^(LOC_[%w_&%-]+)%s*$")
+        if key and #keys < 500 then
+            keys[#keys + 1] = key
+        end
+    end
+    f:close()
+    os.remove(TEXT_TAKEN)
+    if #keys == 0 then
+        return
+    end
+    ExecuteInGameThread(function()
+        local lines, found = {}, 0
+        for _, key in ipairs(keys) do
+            local ok, text = pcall(S.lookupText, key)
+            text = ok and text or ""
+            if text ~= "" then
+                found = found + 1
+            end
+            lines[#lines + 1] = key .. "\t" .. text:gsub("\\", "\\\\"):gsub("\r?\n", "\\n"):gsub("\t", " ")
+        end
+        local out = io.open(TEXT_REPLY, "a")
+        if out then
+            out:write(table.concat(lines, "\n") .. "\n")
+            out:close()
+        end
+        if not S.textLogged or found < #keys then
+            S.textLogged = true
+            log("text: found " .. found .. " of " .. #keys .. " key(s)" .. (found < #keys and (", e.g. not " .. keys[1]) or ""))
         end
     end)
 end
@@ -484,6 +601,19 @@ ExecuteInGameThread(function()
         log("language: " .. tostring(err))
     end
 end)
+
+-- Added after the first registration, so a game already running with an older coop.lua gets them on reload too.
+if not S.registeredLoadHooks then
+    S.registeredLoadHooks = true
+    -- Drop the cached controller whenever it may go away (see playerController).
+    pcall(NotifyOnNewObject, "/Script/Engine.PlayerController", function() S.forgetController() end)
+    if type(RegisterLoadMapPreHook) == "function" then
+        pcall(RegisterLoadMapPreHook, function() S.forgetController("loading") end)
+    end
+    if type(RegisterLoadMapPostHook) == "function" then
+        pcall(RegisterLoadMapPostHook, function() S.forgetController("loaded") end)
+    end
+end
 
 if not S.registered then
     S.registered = true
