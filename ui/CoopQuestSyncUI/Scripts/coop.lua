@@ -10,6 +10,7 @@
 --     conversation overlay can step aside.
 --   * Plays the voice of a line in someone else's conversation, from nowhere, when the co-op client mod writes it
 --     into voice.txt ("imperial_m ms26_ms26filecharges_000363be_1"; "stop" ends it).
+--   * Writes the game's language to language.txt, so the co-op client mod reads the game's text in that language.
 --   * Writes the class of every new UI widget to UE4SS.log once, to find widgets that need handling.
 
 local S = CQS or {}
@@ -25,6 +26,7 @@ local FOLDER = (os.getenv("APPDATA") or "") .. "\\ReadyM.Launcher\\Oblivion\\Mod
 local COMMAND_FILE = FOLDER .. "command.txt"
 local MENU_FILE = FOLDER .. "menu-open"
 local VOICE_FILE = FOLDER .. "voice.txt"
+local LANGUAGE_FILE = FOLDER .. "language.txt"
 local ALLOWED = { "^coc [%w_]+$" }
 
 S.muted = S.muted or false
@@ -395,6 +397,34 @@ function S.pollVoice()
     end)
 end
 
+-- The game's language ----------------------------------------------------------------------------------------------
+
+function S.writeLanguage()
+    local lib = StaticFindObject("/Script/Engine.Default__KismetInternationalizationLibrary")
+    if not lib or not lib:IsValid() then
+        log("can't tell the game's language (no KismetInternationalizationLibrary)")
+        return
+    end
+    local found = nil
+    for _, fn in ipairs({ "GetCurrentLanguage", "GetCurrentCulture" }) do
+        local ok, value = pcall(function() return lib[fn](lib):ToString() end)
+        if ok and type(value) == "string" and value:match("^[%a][%w%-]+$") then
+            found = value
+            break
+        end
+    end
+    if not found then
+        log("can't tell the game's language")
+        return
+    end
+    local f = io.open(LANGUAGE_FILE, "w")
+    if f then
+        f:write(found)
+        f:close()
+    end
+    log("game language: " .. found)
+end
+
 -- Menus ----------------------------------------------------------------------------------------------------------
 
 -- A menu (map, inventory, journal...) shows the mouse cursor; walking around doesn't.
@@ -421,6 +451,13 @@ function S.checkMenu()
 end
 
 -- Hooks and loops, registered once per game start ------------------------------------------------------------------
+
+ExecuteInGameThread(function()
+    local ok, err = pcall(S.writeLanguage)
+    if not ok then
+        log("language: " .. tostring(err))
+    end
+end)
 
 if not S.registered then
     S.registered = true

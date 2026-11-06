@@ -4,8 +4,9 @@
 
 * **Voices for watchers (experimental)**: while listening in, you hear the NPC's voice with each line, from nowhere,
   using the game's own sounds. Setting "Watchers hear the voices". `/coop test voice` plays one.
-* **No game text to set up**: the server makes `strings.json` itself from the game installed on the server
-  computer, on its first start (`GameFolder` and `Language` in `config.json`). The FModel route still works.
+* **No game text to set up**: each player's game reads its own text for the overlay, in the language the game is set
+  to. The server reads it too when the game is installed on the server computer (`GameFolder` and `Language` in
+  `config.json`), for the web page. The FModel route still works as a backup. Nothing is ever downloaded.
 * The dialogue plugin no longer carries the voice actors' direction notes.
 * The add-on reloads its logic while the game runs, so add-on updates no longer need a restart.
 * The conversation overlay steps aside while the map or another menu is open.

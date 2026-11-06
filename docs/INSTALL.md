@@ -50,21 +50,26 @@ That's it for the host. The server hands the mod to every player when they join.
 ### Real names and lines on the page and the overlay
 
 The remaster keeps its text (NPC names, dialogue, journal entries) outside the plugins. That text belongs to
-Bethesda, so the mod never ships it. Instead, the server reads it from **your own copy of the game** the first time
-it starts, and keeps only what the mod uses in `strings.json` next to the server DLL. Please don't share that file.
+Bethesda, so the mod never ships it. Instead it reads the text from each player's own copy of the game:
 
-This works when the game is installed on the server computer through Steam. The start-up log says what happened:
+* **Players** (the conversation overlay): each player's game reads its own text when it starts, in the language the
+  game is set to. Nothing to do. With several languages in one party, everyone reads in their own.
+* **The server** (the web page and chat lines): when the game is installed on the server computer through Steam, the
+  server reads it once on its first start and keeps what the mod uses in `strings.json` next to the server DLL.
+  Please don't share that file. On a dedicated host without the game, the page shows names worked out from the
+  game's ids instead ("Ysabel Andronicus" from `LOC_FN_YsabelAndronicus`); everything else works.
 
-* `Wrote ...strings.json: 24730 of the ... texts the mod uses`: done, nothing else to do.
-* `Couldn't find Oblivion Remastered on this computer`: put the game's folder (the one with
-  `OblivionRemastered.exe`) in `config.json` as `"GameFolder"` and restart the server. See
-  [the settings](USING.md#configjson-server-host-optional).
-* Anything else: make `strings.json` by hand, below.
+The server's start-up log says what happened:
 
-For another language, set `"Language"` in `config.json` (`de`, `fr`, `es`, `it`...), delete `strings.json` and
-restart the server.
+* `Wrote ...strings.json: 24730 of the ... texts the mod uses`: done.
+* `Oblivion Remastered isn't installed on this computer`: either nothing to do (a dedicated host), or put the
+  game's folder (the one with `OblivionRemastered.exe`) in `config.json` as `"GameFolder"` and restart the server.
+  See [the settings](USING.md#configjson-server-host-optional).
 
-**By hand**, if the server can't read the game (for example, a server on another computer than the game):
+For the server's page in another language, set `"Language"` in `config.json` (`de`, `fr`, `es`, `it`...), delete
+`strings.json` and restart the server.
+
+**By hand**, as a backup if reading the game doesn't work (the log says why):
 
 1. Install [FModel](https://fmodel.app) and point it at the game (`OblivionRemastered\Content\Paks`).
 2. Find `Localization/Game/en/Game.locres` (or your language instead of `en`), right-click it and choose

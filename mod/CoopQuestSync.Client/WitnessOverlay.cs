@@ -12,7 +12,7 @@ namespace CoopQuestSync.Client;
 /// it takes no mouse or keyboard, so the witness cannot pick topics (the topic list is the talker's alone).
 /// </summary>
 [Service]
-public sealed partial class WitnessOverlay(CefHost cef, OverlayPage page, IInput input, ConsoleBridge console, ILogger logger)
+public sealed partial class WitnessOverlay(CefHost cef, OverlayPage page, IInput input, ConsoleBridge console, GameTextCache text, ILogger logger)
 {
     private const string Host = "coopwitness";
 
@@ -62,7 +62,7 @@ public sealed partial class WitnessOverlay(CefHost cef, OverlayPage page, IInput
     public void Started(string json)
     {
         EnsureCreated();
-        page.Show(json);
+        page.Show(text.Localize(json));
         _active = true;
         _menuFor = 0;
         _visible = true;
@@ -72,7 +72,7 @@ public sealed partial class WitnessOverlay(CefHost cef, OverlayPage page, IInput
     public void Line(string json)
     {
         EnsureCreated();
-        page.AddLine(json);
+        page.AddLine(text.Localize(json));
     }
 
     public void Activity(string json)

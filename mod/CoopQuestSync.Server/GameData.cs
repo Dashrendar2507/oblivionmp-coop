@@ -205,6 +205,13 @@ public sealed partial class GameData(QuestSyncConfig config, ILogger logger)
     public string? NpcName(uint gameBaseId)
         => FromGame(gameBaseId) is { } id && _npcs.TryGetValue(id, out var key) ? Name(key) : null;
 
+    /// <summary>An NPC's name key (LOC_FN_...), by its base form id in the game's numbering.</summary>
+    public string? NpcKey(uint gameBaseId)
+        => FromGame(gameBaseId) is { } id && _npcs.TryGetValue(id, out var key) ? key : null;
+
+    /// <summary>A quest's name key, by its editor id.</summary>
+    public string? QuestKey(string editorId) => Map.Quest(editorId)?.Name;
+
     /// <summary>An NPC's voice ("imperial_m"), by its base form id in the game's numbering.</summary>
     public string? VoiceOf(uint gameBaseId)
         => FromGame(gameBaseId) is { } id && _voices.TryGetValue(id, out var voice) ? voice : null;

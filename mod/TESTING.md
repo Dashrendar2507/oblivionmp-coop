@@ -159,10 +159,16 @@ Do these standing next to each other, in the same place:
 
 ## Getting the game's text (for the overlay and the page)
 
-The server now makes `strings.json` itself from the game installed on your PC, the first time it starts without
-one. To test that: move your current `strings.json` out of `mods\CoopQuestSync\server` (keep it somewhere), start
-the server, and look for `Wrote ...strings.json: ... of the ... texts the mod uses`. If it says something else
-instead, send me the server log and put your old `strings.json` back. `strings.json` is still never in the zip.
+The text now comes from the games themselves:
+
+* **Your game** reads its own text for the overlay, in your game's language. UE4SS.log should show
+  `[CoopQuestSyncUI] game language: en` and then `Game text ready: ... entries`.
+* **The server** makes `strings.json` itself from the game on its PC, the first time it starts without one. To test
+  that: move your current `strings.json` out of `mods\CoopQuestSync\server` (keep it somewhere), start the server,
+  and look for `Wrote ...strings.json: ... of the ... texts the mod uses`.
+
+If either says something else, send me the logs and put your old `strings.json` back. `strings.json` is never in
+the zip.
 
 ## Known limits
 

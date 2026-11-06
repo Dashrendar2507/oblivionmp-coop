@@ -19,4 +19,7 @@
         <EmbeddedResource Include="..\Content\voices.json" LogicalName="CoopQuestSync.voices.json" />
         <EmbeddedResource Include="web\index.html" LogicalName="CoopQuestSync.web.index.html" />
     </ItemGroup>
+    <ItemGroup>
+        <Compile Include="..\Shared\GameFiles.cs" Link="GameFiles.cs" />
+    </ItemGroup>
 </Project>
