@@ -21,7 +21,7 @@ If anything goes differently from what's written here, that's worth a [bug repor
 ### Install
 
 1. Download the newest `CoopQuestSync-x.y.z.zip` from the
-   [Releases page](https://github.com/Dashrendar2507/OB-MP-coop-mod/releases).
+   [Releases page](https://github.com/Dashrendar2507/oblivionmp-coop/releases).
 2. Stop the server if it's running.
 3. Open the zip. Copy the `CoopQuestSync` folder into the server's `mods` folder. It should end up like this:
 
