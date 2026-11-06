@@ -25,12 +25,15 @@ namespace CoopQuestSync.Server;
 /// With "Follow conversations" set to "ask", nobody is pulled in: players who could watch get a prompt and press
 /// the follow key (Alt+L by default) to listen in. Either way, that key while watching leaves the conversation.
 ///
+/// The join key (Alt+Y by default) takes a player who is offered or watching a conversation to the talker, wherever
+/// they are, so the party can gather for a quest (setting "Travel to a conversation").
+///
 /// The dialogue plugin also keeps a token in the inventory while a menu is open (barter, persuasion, training...,
 /// lockpicking): the witnesses' overlay then says "Alice is bartering" and waits, and the tag over the talker says so.
 /// </summary>
 [Service]
 public sealed partial class ConversationRelay(IEntities entities, IServerEvents events, QuestTokenSync sync, GameData data,
-    CoopRpc rpc, ILogger logger)
+    ReturnOnJoin travel, CoopRpc rpc, ILogger logger)
 {
     private const float ScanSeconds = 0.25f;
     private const float NpcSearchRange = 600f;
@@ -87,6 +90,8 @@ public sealed partial class ConversationRelay(IEntities entities, IServerEvents 
     {
         events.OnPlayerDisconnected += OnPlayerDisconnected;
         rpc.FollowToggled += ToggleFollow;
+        rpc.JoinRequested += Join;
+        travel.Arrived += OnArrived;
         sync.SettingsChanged += () => { foreach (var talker in _talks.Keys.ToList()) End(talker); };
     }
 
@@ -94,6 +99,8 @@ public sealed partial class ConversationRelay(IEntities entities, IServerEvents 
     {
         events.OnPlayerDisconnected -= OnPlayerDisconnected;
         rpc.FollowToggled -= ToggleFollow;
+        rpc.JoinRequested -= Join;
+        travel.Arrived -= OnArrived;
     }
 
     private void OnPlayerDisconnected(PlayerId player, Entity _, LiteNetLib.DisconnectReason __)
@@ -141,6 +148,9 @@ public sealed partial class ConversationRelay(IEntities entities, IServerEvents 
     /// <summary>"Alt+L": shown on the overlay ("Alt+L to leave").</summary>
     private string FollowKey => sync.Settings.Key("follow");
 
+    /// <summary>"Alt+Y" when players may travel to a conversation (shown on the overlay), else null.</summary>
+    private string? JoinKey => sync.Settings.ConversationTeleport ? sync.Settings.Key("join") : null;
+
     private void Begin(MainCharacter talker, List<MainCharacter> mains)
     {
         var id = talker.PlayerId;
@@ -183,7 +193,7 @@ public sealed partial class ConversationRelay(IEntities entities, IServerEvents 
     private void Offer(PlayerId talker, Talk talk, PlayerId w)
     {
         talk.Invited.Add(w);
-        rpc.SendConversationStarted(w, JsonSerializer.Serialize(new { key = FollowKey, talker = sync.Nickname(talker), npc = talk.Npc, npcKey = talk.NpcKey, offer = true }));
+        rpc.SendConversationStarted(w, JsonSerializer.Serialize(new { key = FollowKey, join = JoinKey, talker = sync.Nickname(talker), npc = talk.Npc, npcKey = talk.NpcKey, offer = true }));
     }
 
     /// <summary>Whether a witness stands still, per the settings: never in combat.</summary>
@@ -202,7 +212,7 @@ public sealed partial class ConversationRelay(IEntities entities, IServerEvents 
         var freeze = ShouldFreeze(m, sync.SameArea(talker, w));
         if (freeze)
             talk.Frozen.Add(w);
-        rpc.SendConversationStarted(w, JsonSerializer.Serialize(new { key = FollowKey, talker = sync.Nickname(talker), npc = talk.Npc, npcKey = talk.NpcKey, frozen = freeze }));
+        rpc.SendConversationStarted(w, JsonSerializer.Serialize(new { key = FollowKey, join = JoinKey, talker = sync.Nickname(talker), npc = talk.Npc, npcKey = talk.NpcKey, frozen = freeze }));
         foreach (var json in talk.Recent)
             rpc.SendConversationLine(w, json);
         if (_activity.TryGetValue(talker, out var doing))
@@ -237,6 +247,45 @@ public sealed partial class ConversationRelay(IEntities entities, IServerEvents 
                 return;
             }
         rpc.SendNotice(player, "Nobody is talking near you.");
+    }
+
+    /// <summary>
+    /// The join key: travel to the player whose conversation this player is offered or watching. During a test
+    /// conversation, Ghost "stands" where the player pinned (/coop test pin).
+    /// </summary>
+    public void Join(PlayerId player)
+    {
+        if (!sync.Settings.ConversationTeleport)
+        {
+            rpc.SendNotice(player, "Travelling to a conversation is turned off on the server's page.");
+            return;
+        }
+        if (!entities.TryLookup(player, out MainCharacter me) || me.InDialogue)
+            return;
+        if (_ghosts.ContainsKey(player))
+        {
+            rpc.SendNotice(player, "Test: " + travel.TestBack(player));
+            return;
+        }
+        foreach (var (talker, talk) in _talks)
+            if (talk.Witnesses.Contains(player) || talk.Invited.Contains(player))
+            {
+                logger.LogInformation("[QuestSync] {Player} travels to {Talker}'s conversation.", sync.Nickname(player), sync.Nickname(talker));
+                if (travel.Bring(player, talker) is { } message)
+                    rpc.SendNotice(player, message);
+                return;
+            }
+        rpc.SendNotice(player, "Nobody is talking right now.");
+    }
+
+    /// <summary>A watcher who travelled to the conversation stands still beside it, as one who was there would.</summary>
+    private void OnArrived(PlayerId player)
+    {
+        if (!entities.TryLookup(player, out MainCharacter m))
+            return;
+        foreach (var (talker, talk) in _talks)
+            if (talk.Witnesses.Contains(player) && !talk.Frozen.Contains(player) && ShouldFreeze(m, sync.SameArea(talker, player)))
+                talk.Frozen.Add(player);
     }
 
     private void End(PlayerId talker)
@@ -443,8 +492,8 @@ public sealed partial class ConversationRelay(IEntities entities, IServerEvents 
         ghost.EndsAt = at + 2f;
         _ghosts[id] = ghost;
         rpc.SendConversationStarted(id, JsonSerializer.Serialize(ask
-            ? new { key = FollowKey, talker = ghostName, npc, npcKey, frozen = false, offer = true }
-            : new { key = FollowKey, talker = ghostName, npc, npcKey, frozen = freeze, offer = false }));
+            ? new { key = FollowKey, join = JoinKey, talker = ghostName, npc, npcKey, frozen = false, offer = true }
+            : new { key = FollowKey, join = JoinKey, talker = ghostName, npc, npcKey, frozen = freeze, offer = false }));
         logger.LogInformation("[QuestSync] Test: {Player} watches {Ghost} talk to {Npc} for {Seconds:0} s (frozen: {Frozen}).",
             sync.Nickname(id), ghostName, npc, ghost.EndsAt - _clock, freeze);
     }
@@ -455,10 +504,10 @@ public sealed partial class ConversationRelay(IEntities entities, IServerEvents 
         ghost.Watching = !ghost.Watching;
         if (!ghost.Watching)
         {
-            rpc.SendConversationStarted(id, JsonSerializer.Serialize(new { key = FollowKey, talker = ghost.Name, npc = ghost.Npc, npcKey = ghost.NpcKey, offer = true }));
+            rpc.SendConversationStarted(id, JsonSerializer.Serialize(new { key = FollowKey, join = JoinKey, talker = ghost.Name, npc = ghost.Npc, npcKey = ghost.NpcKey, offer = true }));
             return;
         }
-        rpc.SendConversationStarted(id, JsonSerializer.Serialize(new { key = FollowKey, talker = ghost.Name, npc = ghost.Npc, npcKey = ghost.NpcKey, frozen = ghost.Frozen }));
+        rpc.SendConversationStarted(id, JsonSerializer.Serialize(new { key = FollowKey, join = JoinKey, talker = ghost.Name, npc = ghost.Npc, npcKey = ghost.NpcKey, frozen = ghost.Frozen }));
         foreach (var json in ghost.Recent)
             rpc.SendConversationLine(id, json);
         if (ghost.Activity is not null)

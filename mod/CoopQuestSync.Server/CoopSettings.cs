@@ -52,6 +52,9 @@ public sealed class CoopSettings
     /// <summary>Watchers hear the NPC's voice with each line (played by the CoopQuestSyncUI add-on).</summary>
     public bool WitnessVoices { get; set; } = true;
 
+    /// <summary>Players offered or watching a conversation can travel to the talker with the join key.</summary>
+    public bool ConversationTeleport { get; set; } = true;
+
     /// <summary>Who stands still while someone talks: "area", "everyone" or "off". Players in combat are never frozen.</summary>
     public string ConversationFreeze { get; set; } = "area";
 
@@ -79,12 +82,14 @@ public sealed class CoopSettings
     /// <summary>The co-op keys: Alt + these. Letters (or key names such as F6) the game doesn't use; K is the chat.</summary>
     public string KeyFollow { get; set; } = "L";
 
+    public string KeyJoin { get; set; } = "Y";
+
     public string KeyRevive { get; set; } = "H";
 
     public string KeyRespawn { get; set; } = "G";
 
     /// <summary>"Alt+L", for messages.</summary>
-    public string Key(string action) => "Alt+" + action switch { "follow" => KeyFollow, "revive" => KeyRevive, _ => KeyRespawn };
+    public string Key(string action) => "Alt+" + action switch { "follow" => KeyFollow, "join" => KeyJoin, "revive" => KeyRevive, _ => KeyRespawn };
 
     /// <summary>Tags over players' heads: "Talking", "Down".</summary>
     public bool StatusTags { get; set; } = true;
@@ -122,6 +127,7 @@ public sealed class CoopSettings
         Scaling = Scaling is "lowest" or "mid" or "highest" ? Scaling : "default";
         Leader ??= "";
         KeyFollow = CleanKey(KeyFollow, "L");
+        KeyJoin = CleanKey(KeyJoin, "Y");
         KeyRevive = CleanKey(KeyRevive, "H");
         KeyRespawn = CleanKey(KeyRespawn, "G");
         DifficultyDealt ??= "Unset";

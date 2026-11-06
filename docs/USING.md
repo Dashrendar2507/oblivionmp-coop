@@ -5,6 +5,7 @@
 | Key | What it does | Chat command |
 | --- | --- | --- |
 | **Alt+L** | While someone talks to an NPC: leave the overlay (and stop being frozen), or listen in again. | `/coop follow` |
+| **Alt+Y** | While someone talks to an NPC: travel to them, listening in or not (into their building or city too). | `/coop join` |
 | **Alt+H** | Revive the downed teammate standing next to you. | `/coop revive` |
 | **Alt+G** | While you're down: give up and respawn next to the party. | `/coop giveup` |
 
@@ -19,7 +20,8 @@ under **Keys** on the web page; every player's game switches within a few second
   back: OblivionMP doesn't keep the game's quests between sessions, so the mod sets them again every time you join.
 * **Conversations.** When a teammate talks to an NPC, you see what's said on an overlay, and you stand still until
   they're done if you're in the same area. The overlay tells you when they open the barter, persuasion, training,
-  repair or spell screen, or pick a lock. Press **Alt+L** to leave or come back.
+  repair or spell screen, or pick a lock. Press **Alt+L** to leave or come back, and **Alt+Y** to travel to the
+  talker, so the party can gather for a quest without missing what's said.
 * **Death.** You go down instead of dying ("You are down..."). A teammate next to you presses **Alt+H** to bring you
   back where you fell. After 60 seconds, or when you press **Alt+G**, you respawn next to the party leader (or the
   first other player by name, if the leader is the one down). If nobody is in your area, you come back where you
@@ -71,6 +73,7 @@ reaches the stage always gets everything. These switches decide what everyone el
 | --- | --- | --- |
 | Show others' conversations to | Everyone | Everyone, same area only, or off. |
 | Watchers follow a conversation | Automatically | Or "when they press the follow key": a banner says who is talking and you choose. |
+| Travel to a conversation | On | The join key (Alt+Y) takes a player to whoever is talking. Into another building or city, it needs the CoopQuestSyncUI add-on. |
 | Freeze watchers | Same area | Same area, everyone, or nobody. Players in combat are never frozen. |
 | Share rewards handed out in conversation | On | Gold or items a line gives. Not trades. |
 | Share quest items | Off | Keys, letters... picked up by one player go to everyone. |
@@ -83,7 +86,7 @@ reaches the stage always gets everything. These switches decide what everyone el
 | Seconds before respawning | 60 | How long a downed player waits for a revive. |
 | Revive distance | 400 cm | About four metres. |
 | Put players back where they left | On | On join. |
-| Keys | L, H, G | The letters for Alt+L, Alt+H, Alt+G. |
+| Keys | L, Y, H, G | The letters for Alt+L, Alt+Y, Alt+H, Alt+G. |
 | Tags over heads | On | Talking, bartering, picking a lock, down. |
 | Level of spawns and loot | Server default (halfway) | Lowest player level, halfway, or highest player level. |
 | Difficulty, damage dealt / taken | Game default | Novice to Master. |
@@ -100,7 +103,7 @@ reaches the stage always gets everything. These switches decide what everyone el
 | `/qs auto on\|off` | Turn automatic sharing on or off. |
 | `/qs source <name>\|all` | Share only one player's progress, or everyone's. |
 | `/qs reset` | Reset every shared quest. |
-| `/coop follow`, `/coop revive`, `/coop giveup` | Same as the keys. |
+| `/coop follow`, `/coop join`, `/coop revive`, `/coop giveup` | Same as the keys. |
 
 Quests are named by their editor id (`MS93`, `MQ01`...). The web page shows each quest's id next to its name.
 

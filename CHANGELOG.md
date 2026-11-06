@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+* **Travel to a conversation**: while a teammate talks to an NPC, Alt+Y takes you next to them, whether you're
+  listening in or not, into their building or another world space too (through the add-on). Setting "Travel to a
+  conversation"; `/coop join` does the same.
+
 * **Voices for watchers (experimental)**: while listening in, you hear the NPC's voice with each line, from nowhere,
   using the game's own sounds. Setting "Watchers hear the voices". `/coop test voice` plays one.
 * **No game text to set up**: each player's game reads its own text for the overlay, in the language the game is set

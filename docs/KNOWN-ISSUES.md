@@ -51,6 +51,9 @@ still works. Only English has been tried.
 * **Letting watchers walk around** during someone's conversation ("Freeze watchers: Nobody") hasn't been tested
   much. NPCs near the walker may stand still or jump into place. Reports welcome.
 * **The compass may disappear** while a co-op banner or overlay is on screen.
+* **Travelling to a conversation (Alt+Y)** into another building or world space relies on the add-on running the
+  console's `coc` or `cow` command. You arrive on a spot the talker walked through a moment ago, or a step beside
+  them, which in a tight room can be against a wall.
 
 ## Party
 
@@ -65,8 +68,9 @@ still works. Only English has been tried.
 
 * Going back **inside a building** relies on the `CoopQuestSyncUI` add-on running the console's `coc` command.
   If that fails, you come back outside, by the door.
-* Going back **outside** only works when your local save starts you in the same world (Tamriel or the Shivering
-  Isles) as your last outdoor spot.
+* Going back **outside** in another world space (a city, the Shivering Isles) relies on the add-on running the
+  console's `cow` command; the server then puts you on your spot. Without the add-on, it only works when your local
+  save starts you in the same world space as your last outdoor spot.
 * OblivionMP has no way for mods to save your character, so your spot is only as fresh as the last time the server
   saw you.
 

@@ -32,7 +32,7 @@ public static partial class CoopRpcContracts
     /// </summary>
     [ServerToClient] public static partial void PartyStatus(string json);
 
-    /// <summary>The co-op keys, Alt + these letters. json: { follow, revive, respawn }.</summary>
+    /// <summary>The co-op keys, Alt + these letters. json: { follow, join, revive, respawn }.</summary>
     [ServerToClient] public static partial void Keys(string json);
 
     /// <summary>
@@ -40,6 +40,12 @@ public static partial class CoopRpcContracts
     /// add-on. Used to bring a player back inside the building they left from.
     /// </summary>
     [ServerToClient] public static partial void GoToCell(string cell);
+
+    /// <summary>
+    /// Go to this exterior world space, near this cell ("Tamriel 3 24"): the add-on runs <c>cow Tamriel 3 24</c>.
+    /// Used to bring a player to a teammate in another world space (a city, the Shivering Isles...).
+    /// </summary>
+    [ServerToClient] public static partial void GoToWorld(string place);
 
     /// <summary>Test: play one voice line now ("imperial_m ms26_ms26filecharges_000363be_1").</summary>
     [ServerToClient] public static partial void PlayVoice(string voice);
@@ -55,6 +61,9 @@ public static partial class CoopRpcContracts
 
     /// <summary>The follow key: leave the conversation the player is watching, or listen in on one they were offered.</summary>
     [ClientToServer] public static partial void ToggleFollow();
+
+    /// <summary>The join key: travel to the player whose conversation this player is offered or watching.</summary>
+    [ClientToServer] public static partial void JoinTalker();
 
     /// <summary>A downed player gives up waiting and respawns next to the party.</summary>
     [ClientToServer] public static partial void GiveUp();

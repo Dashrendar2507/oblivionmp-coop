@@ -16,7 +16,8 @@ namespace CoopQuestSync.Server;
 ///   /coop test effects Q      - list the stages of quest Q that have effects, and which
 ///   /coop test revive         - Ghost revives you while you are down (die first: console "kill")
 ///   /coop test voice [voice line] - play a voice line now (a random one, or e.g. "imperial_m ms26_ms26filecharges_000363be_1")
-///   /coop test pin / back     - remember where you stand, then go back there as a join would (into a building too)
+///   /coop test pin / back     - remember where you stand, then go back there as a join would (into a building too).
+///                               During /coop test talk, the join key travels to the pinned spot, as if Ghost stood there
 ///   /coop test status         - what the server knows about you: phase, area, talking, menu, frozen, switches
 /// </summary>
 [Service]
@@ -24,7 +25,7 @@ public sealed partial class TestCommands(IChat chat, IEntities entities, QuestTo
     ConversationRelay talks, PartyService party, ReturnOnJoin returns, CoopRpc rpc)
 {
     private const string Ghost = "Ghost";
-    private const string Usage = "/coop follow | revive | giveup, or /coop test talk [ask] | stop | stage <quest> <stage> | effects <quest> | revive | voice | pin | back | status";
+    private const string Usage = "/coop follow | join | revive | giveup, or /coop test talk [ask] | stop | stage <quest> <stage> | effects <quest> | revive | voice | pin | back | status";
 
     private void Start() => chat.AddCommand("coop", Usage, Run);
 
@@ -36,6 +37,7 @@ public sealed partial class TestCommands(IChat chat, IEntities entities, QuestTo
             switch (parts[0].ToLowerInvariant())
             {
                 case "follow": talks.ToggleFollow(sender); return;
+                case "join": talks.Join(sender); return;
                 case "revive": party.ReviveNearest(sender); return;
                 case "giveup": party.GiveUp(sender); return;
             }

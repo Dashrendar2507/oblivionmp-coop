@@ -5,7 +5,8 @@
 -- What it does:
 --   * Hides HUD pop-ups while CoopQuestSync.esp replays quest stages (the plugin frames every batch with two
 --     Message lines), and always hides the "Co-op quest token" item notices.
---   * Runs console commands that the co-op client mod writes into command.txt (only `coc <cell>`).
+--   * Runs console commands that the co-op client mod writes into command.txt (only `coc <cell>`
+--     and `cow <world space> <x> <y>`).
 --   * Tells the co-op client mod when a menu (map, inventory...) is open, through the file menu-open, so the
 --     conversation overlay can step aside.
 --   * Plays the voice of a line in someone else's conversation, from nowhere, when the co-op client mod writes it
@@ -27,7 +28,7 @@ local COMMAND_FILE = FOLDER .. "command.txt"
 local MENU_FILE = FOLDER .. "menu-open"
 local VOICE_FILE = FOLDER .. "voice.txt"
 local LANGUAGE_FILE = FOLDER .. "language.txt"
-local ALLOWED = { "^coc [%w_]+$" }
+local ALLOWED = { "^coc [%w_]+$", "^cow [%w_]+ %-?%d+ %-?%d+$" }
 
 S.muted = S.muted or false
 S.mutedAt = S.mutedAt or 0

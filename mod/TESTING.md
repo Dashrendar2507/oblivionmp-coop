@@ -122,6 +122,15 @@ The server can play a made-up teammate called "Ghost". Type these in chat:
    If you hear nothing, send UE4SS.log: the lines with `voice` say what the add-on found and what it tried. I can
    fix most of it without you restarting the game, because the add-on now picks up its own updates.
 
+7. Travel to a conversation (new). The banner and the overlay now also say "Alt+Y to join Ghost".
+   1. Stand somewhere and `/coop test pin` (Ghost will "stand" there).
+   2. Walk away, out of the building too, then `/coop test talk ask`.
+   3. Press Alt+Y without listening in: you should be taken to the pinned spot (inside the building first, if it
+      was in one). Do it again with `/coop test talk` (listening in): same, and you should stand still on arrival
+      if "Freeze watchers" is "Same area".
+   4. If you can, pin a spot inside a city (Chorrol, Skingrad...) and travel there from outside, or the other way:
+      that's the `cow` route. Send the server log and UE4SS.log either way (lines with `travel`, `coc`, `cow`).
+
 ## Test 2: two players (when your friend can join)
 
 Do these standing next to each other, in the same place:
@@ -132,7 +141,8 @@ Do these standing next to each other, in the same place:
    * see a "Talking" tag over the talker.
    Then the talker opens Barter: the watcher's overlay should say "... is bartering..." until they close it, and the
    tag over the talker should read "Bartering".
-   Then try it with the watcher in another building: they should see the overlay but can still move.
+   Then try it with the watcher in another building: they should see the overlay but can still move. The watcher
+   presses Alt+Y: they should arrive next to the talker (inside the building), standing still until the talk ends.
 2. **Shared progress.** One of you advances a quest. The other should get it within a few seconds, with the
    chat line "X advanced ...". If the stage had a reward, both should get it.
 3. **Stage effects.** Find a quest stage that moves you (the page shows a "Teleport" tag). When one of you
@@ -173,14 +183,15 @@ the zip.
 ## Known limits
 
 * **Back where you left** needs the pop-up add-on (`ui\`) to go back into a building. Without it, or if the game
-  ignores the add-on's console command, you come back outside, and only when your local save starts you in the same
-  world (Tamriel or the Shivering Isles) as your last outdoor spot.
+  ignores the add-on's console command, you come back outside. Outdoors in another world space (a city, the
+  Shivering Isles), the add-on runs `cow` first; without it you only come back when your local save starts you in
+  the same world space as your last outdoor spot.
 * **The overlay runs behind the talker.** The game reports a line when its result script runs, which is at the end of
   the line, so the watcher reads it after the talker has heard it. There is no voice.
-* **The keys** are Alt+L (listen in or leave a conversation), Alt+H (revive the teammate next to you) and Alt+G
+* **The keys** are Alt+L (listen in or leave a conversation), Alt+Y (travel to the talker), Alt+H (revive the teammate next to you) and Alt+G
   (respawn when you are down). The game also sees the letter, so if one of them does something in the game too,
   pick another letter under **Keys** on the page; every player's game switches within a few seconds. K is the
-  chat. `/coop follow`, `/coop revive` and `/coop giveup` in chat do the same as the keys. The client log shows
+  chat. `/coop follow`, `/coop join`, `/coop revive` and `/coop giveup` in chat do the same as the keys. The client log shows
   `Alt+L (follow) pressed.` when a key gets through.
 * **You can still look around while listening in.** The game's freeze stops walking and fighting, but not the
   camera, and I haven't found a way for a mod to lock it. Looking around doesn't affect anyone else.

@@ -21,6 +21,7 @@ namespace CoopQuestSync.Client;
 public sealed partial class ConsoleBridge(IUserInterface ui, ILogger logger)
 {
     private static readonly Regex CellId = new("^[A-Za-z0-9_]{1,64}$");
+    private static readonly Regex WorldPlace = new("^[A-Za-z0-9_]{1,64} -?[0-9]{1,4} -?[0-9]{1,4}$");
     private static readonly Regex VoiceId = new("^[a-z0-9_]{1,40} [a-z0-9_]{1,120}$");
     private static readonly string[] AddonFiles = ["enabled.txt", Path.Combine("Scripts", "main.lua"), Path.Combine("Scripts", "coop.lua")];
 
@@ -101,6 +102,17 @@ public sealed partial class ConsoleBridge(IUserInterface ui, ILogger logger)
         Write("coc " + cell);
     }
 
+    /// <summary>Takes the player to a cell of an exterior world space: <c>cow &lt;world&gt; &lt;x&gt; &lt;y&gt;</c>.</summary>
+    public void GoToWorld(string place)
+    {
+        if (!WorldPlace.IsMatch(place))
+        {
+            logger.LogWarning("[QuestSync] Ignored a place that isn't one: {Place}", place);
+            return;
+        }
+        Write("cow " + place);
+    }
+
     /// <summary>
     /// Plays one spoken line of dialogue, heard from nowhere, such as "imperial_m ms26_ms26filecharges_000363be_1"
     /// (written to voice.txt). The add-on finds the game's own sound for it.
@@ -126,7 +138,7 @@ public sealed partial class ConsoleBridge(IUserInterface ui, ILogger logger)
             {
                 logger.LogWarning("[QuestSync] The CoopQuestSyncUI add-on isn't installed ({Folder}); can't run: {Command}", Folder, command);
                 if (!quiet)
-                    ui.ShowMessage("Co-op: install the CoopQuestSyncUI add-on to be taken back inside.", MessagePosition.Center, 6f);
+                    ui.ShowMessage("Co-op: install the CoopQuestSyncUI add-on to travel there.", MessagePosition.Center, 6f);
                 return;
             }
             var tmp = Path.Combine(Folder, file + ".tmp");
