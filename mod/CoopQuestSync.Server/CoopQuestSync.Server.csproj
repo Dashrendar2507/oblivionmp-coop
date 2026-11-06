@@ -9,7 +9,13 @@
         <PackageReference Include="ReadyM.Oblivion.Chat.Server" Version="1.0.0" />
     </ItemGroup>
     <ItemGroup>
+        <ProjectReference Include="..\CoopQuestSync.Common\CoopQuestSync.Common.csproj" />
+    </ItemGroup>
+    <ItemGroup>
         <EmbeddedResource Include="..\Content\tokens.json" LogicalName="CoopQuestSync.tokens.json" />
+        <EmbeddedResource Include="..\Content\dialogue.json" LogicalName="CoopQuestSync.dialogue.json" />
+        <EmbeddedResource Include="..\Content\npcs.json" LogicalName="CoopQuestSync.npcs.json" />
+        <EmbeddedResource Include="..\Content\cells.json" LogicalName="CoopQuestSync.cells.json" />
         <EmbeddedResource Include="web\index.html" LogicalName="CoopQuestSync.web.index.html" />
     </ItemGroup>
 </Project>

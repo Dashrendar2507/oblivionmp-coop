@@ -3,11 +3,12 @@
 $modName = "CoopQuestSync"
 $clientProject = "CoopQuestSync.Client"
 $serverProject = "CoopQuestSync.Server"
-$clientBuildFiles = @("CoopQuestSync.Client.dll")
-$serverBuildFiles = @("CoopQuestSync.Server.dll")
+$clientBuildFiles = @("CoopQuestSync.Client.dll", "CoopQuestSync.Common.dll", "web/index.html", "addon/CoopQuestSyncUI/enabled.txt", "addon/CoopQuestSyncUI/Scripts/main.lua", "addon/CoopQuestSyncUI/Scripts/coop.lua")
+$serverBuildFiles = @("CoopQuestSync.Server.dll", "CoopQuestSync.Common.dll")
 $manifestFiles = @("manifest.json")
 $clientContentFiles = @(
-    "CoopQuestSync.esp"
+    "CoopQuestSync.esp",
+    "CoopQuestSyncDialogue.esp"
 )
 $serverContentFiles = @()
 $clientDebugBuildFiles = @("CoopQuestSync.Client.pdb")

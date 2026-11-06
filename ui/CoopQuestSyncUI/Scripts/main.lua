@@ -1,80 +1,55 @@
--- CoopQuestSyncUI: hides HUD pop-ups while CoopQuestSync.esp replays quest stages.
+-- CoopQuestSyncUI: the UE4SS half of the CoopQuestSync co-op mod.
 --
--- The plugin frames every batch of replayed stages with two Message lines. Everything the HUD would show
--- between them (quest updates, items added or removed by stage scripts) is hidden, so catching up on join is
--- silent. The plugin's own hidden token items never show a pop-up. Each pop-up the add-on sees is written to
--- UE4SS.log, which helps when something slips through.
---
--- The hook (VHUDSubtitleViewModel:ConsumeNotification, then shortening Notification.ShowSeconds) is the
--- technique the Oblivion Archipelago bridge uses for the same job.
-
-local START = "Co-op: syncing quest progress..."
-local FINISH = "Co-op: quest progress synced"
-local TOKEN = "Co-op quest token"
-local MUTE_TIMEOUT = 120 -- seconds; never stay muted forever if the closing line is lost
-local HIDDEN = 0.0001
-
-local muted = false
-local mutedAt = 0
-local hiddenCount = 0
+-- This file only loads coop.lua (next to it), and loads it again whenever it changes. The co-op mod updates
+-- coop.lua when the player joins a server with a newer version, so changes take effect within seconds instead of
+-- needing a restart of the game. Only a change to this file needs a restart.
 
 local function log(text)
     print("[CoopQuestSyncUI] " .. text .. "\n")
 end
 
-local function onNotification(param)
-    local okVm, vm = pcall(function() return param:get() end)
-    if not okVm or not vm or not vm.Notification then
-        return
+local function scriptsFolder()
+    local source = debug.getinfo(1, "S").source or ""
+    local folder = source:match("^@(.*[\\/])")
+    if folder then
+        return folder
     end
-    local okText, text = pcall(function() return vm.Notification.Text:ToString() end)
-    if not okText or type(text) ~= "string" then
-        return
+    if source:sub(1, 1) == "@" then
+        return "" -- started from its own folder
     end
-    local isQuest = false
-    pcall(function() isQuest = vm.Notification.bIsQuest end)
-
-    if muted and os.clock() - mutedAt > MUTE_TIMEOUT then
-        log("mute timed out")
-        muted = false
-    end
-
-    local hide = false
-    if text == START then
-        muted = true
-        mutedAt = os.clock()
-        hiddenCount = 0
-        hide = true
-    elseif text == FINISH then
-        if muted then
-            log("batch done, hid " .. hiddenCount .. " pop-up(s)")
-        end
-        muted = false
-    elseif text:find(TOKEN, 1, true) then
-        hide = true
-    elseif muted then
-        hide = true
-        hiddenCount = hiddenCount + 1
-    end
-
-    log((hide and "hide" or "show") .. (isQuest and " quest" or "") .. ": " .. text)
-    if hide then
-        pcall(function() vm.Notification.ShowSeconds = HIDDEN end)
-    end
+    return (os.getenv("APPDATA") or "") .. "\\ReadyM.Launcher\\Oblivion\\Mods\\CoopQuestSyncUI\\Scripts\\"
 end
 
--- The HUD class may not be loaded when UE4SS starts mods, so keep trying until the hook takes.
-local tries = 0
-LoopAsync(2000, function()
-    tries = tries + 1
-    local ok, err = pcall(RegisterHook, "Function /Script/Altar.VHUDSubtitleViewModel:ConsumeNotification", onNotification)
-    if ok then
-        log("hooked HUD notifications")
-        return true
+local LOGIC = scriptsFolder() .. "coop.lua"
+local current = nil
+
+local function reload()
+    local f = io.open(LOGIC, "rb")
+    if not f then
+        if current ~= false then
+            log("no coop.lua in " .. LOGIC)
+            current = false
+        end
+        return
     end
-    if tries == 1 or tries % 30 == 0 then
-        log("waiting for the HUD (" .. tostring(err) .. ")")
+    local code = f:read("*a")
+    f:close()
+    if code == current then
+        return
     end
+    current = code
+    local chunk, err = load(code, "@coop.lua")
+    if not chunk then
+        log("coop.lua has an error: " .. tostring(err))
+        return
+    end
+    local ok, runErr = pcall(chunk)
+    log(ok and "coop.lua loaded" or ("coop.lua failed: " .. tostring(runErr)))
+end
+
+reload()
+LoopAsync(3000, function()
+    reload()
     return false
 end)
 

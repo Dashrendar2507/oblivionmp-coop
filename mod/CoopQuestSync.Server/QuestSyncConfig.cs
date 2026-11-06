@@ -37,4 +37,15 @@ public sealed partial class QuestSyncConfig
 
     /// <summary>Where the server keeps the shared quest progress. A relative path is from the server's working folder.</summary>
     public string StateFile { get; set; } = "coop-quest-sync-state.json";
+
+    /// <summary>
+    /// The players' load order, as in the game's Plugins.txt (the plugins before ours). Only used to find items and
+    /// NPCs of the DLC and the remaster's own plugins; vanilla ones work whatever this says.
+    /// </summary>
+    public string GamePlugins { get; set; } =
+        "Oblivion.esm,DLCBattlehornCastle.esp,DLCFrostcrag.esp,DLCHorseArmor.esp,DLCMehrunesRazor.esp,DLCOrrery.esp," +
+        "DLCShiveringIsles.esp,DLCSpellTomes.esp,DLCThievesDen.esp,DLCVileLair.esp,Knights.esp,AltarESPMain.esp,AltarDeluxe.esp,AltarESPLocal.esp";
+
+    /// <summary>The game's text (key -> text), made with plugin/tools/locres.py. Empty: strings.json next to the DLL.</summary>
+    public string StringsFile { get; set; } = "";
 }

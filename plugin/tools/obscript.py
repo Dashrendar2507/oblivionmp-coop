@@ -17,6 +17,9 @@ FUNCS = {
     "removeitem":    (0x1052, ["ref", "int"]),
     "startquest":    (0x1036, ["ref"]),
     "stopquest":     (0x1037, ["ref"]),
+    # no parameter block at all: just opcode and a zero length
+    "enableplayercontrols":  (0x1060, None),
+    "disableplayercontrols": (0x1061, None),
 }
 BLOCKS = {"gamemode": 0, "menumode": 1, "onactivate": 2, "onadd": 3}
 OPS = {"||": 1, "&&": 2, "==": 3, "!=": 3, "<": 3, ">": 3, "<=": 3, ">=": 3,
@@ -64,6 +67,10 @@ class Script:
 
     # ---- params for command / function calls ----
     def params(self, kinds, args):
+        if kinds is None:
+            if args:
+                raise CompileError(f"expected no params, got {args}")
+            return b""
         if len(args) != len(kinds):
             raise CompileError(f"expected {len(kinds)} params, got {args}")
         out = struct.pack("<H", len(kinds))
@@ -113,7 +120,7 @@ class Script:
             elif re.fullmatch(r"\d+(?:\.\d+)?", t):
                 emit(t.encode())
             elif base in FUNCS:
-                nargs = len(FUNCS[base][1])
+                nargs = len(FUNCS[base][1] or [])
                 args = toks[i + 1:i + 1 + nargs]
                 hasref, prefix, op, p, _ = self.call(t, args)
                 b = (b"\x72" + prefix if hasref else b"") + b"\x58" + struct.pack("<HH", op, len(p)) + p
@@ -147,7 +154,9 @@ class Script:
             elif kw == "begin":
                 mode = BLOCKS[words[1].lower()]
                 param = None
-                if len(words) > 2:
+                if len(words) > 2 and words[2].isdigit():
+                    param = b"\x01\x00\x6e" + struct.pack("<i", int(words[2]))   # MenuMode 1008
+                elif len(words) > 2:
                     param = b"\x01\x00\x72" + struct.pack("<H", self.ref_index(words[2]))
                 stmts.append(["begin", (mode, param)])
             elif kw == "end":
