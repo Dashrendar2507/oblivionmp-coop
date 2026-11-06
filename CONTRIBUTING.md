@@ -79,4 +79,6 @@ private way to share it.
 
 Pull requests are welcome. The [README](README.md#for-developers) explains how the mod works, how to generate the
 plugins and how to build. Please open an issue first for anything bigger than a small fix, so we can agree on the
-approach. Never commit any of the game's own files (`Oblivion.esm`, `Game.locres`, `strings.json`...).
+approach. Never commit or ship any of the game's own files (`Oblivion.esm`, the DLC plugins, `Game.locres`,
+`strings.json`...). The **No game files** check fails a pull request that adds one. Before uploading a release
+zip, run `python3 -I tools/check_no_game_files.py CoopQuestSync-x.y.z.zip`.

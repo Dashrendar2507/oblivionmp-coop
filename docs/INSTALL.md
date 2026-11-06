@@ -50,8 +50,9 @@ That's it for the host. The server hands the mod to every player when they join.
 ### Optional: real names and lines on the page and the overlay
 
 The remaster keeps its text (NPC names, dialogue, journal entries) outside the plugins, so without help the
-overlay and the web page show keys such as `LOC_FN_YsabelAndronicus` instead of words. If your zip has a
-`strings.json` in `CoopQuestSync\server\`, you're done. If not, you can make one from your own game:
+overlay and the web page show keys such as `LOC_FN_YsabelAndronicus` instead of words. The text belongs to
+Bethesda, so the mod never ships it: each server host makes a `strings.json` from their own copy of the game.
+Please don't share your `strings.json` either.
 
 1. Install [FModel](https://fmodel.app) and point it at the game (`OblivionRemastered\Content\Paks`).
 2. Find `Localization/Game/en/Game.locres` (or your language instead of `en`), right-click it and choose

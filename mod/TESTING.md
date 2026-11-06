@@ -149,9 +149,11 @@ Do these standing next to each other, in the same place:
 
 ## Getting the game's text (for the overlay and the page)
 
-Done: the zip's `server` folder now has `strings.json`, made from the `Game.locres` you sent (English). The overlay
-and the page show real names, lines, quest names and journal entries. For another language, export that language's
-`Game.locres` the same way (FModel, `Localization/Game/<language>/Game.locres`, Export Raw Data) and send it.
+The release zips never include `strings.json`: it is the game's own text. Make it from your own `Game.locres`
+(FModel, `Localization/Game/<language>/Game.locres`, Export Raw Data), then
+`python3 -I plugin/tools/locres.py Game.locres strings.json --keys mod/Content`, and put it in the server's
+`mods\CoopQuestSync\server\` folder. See `docs/INSTALL.md`. The overlay and the page then show real names, lines,
+quest names and journal entries.
 
 ## Known limits
 

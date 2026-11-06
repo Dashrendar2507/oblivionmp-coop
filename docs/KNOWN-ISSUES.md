@@ -23,7 +23,7 @@ server computer by default.
 
 Without the game's text file (see [INSTALL.md](INSTALL.md#optional-real-names-and-lines-on-the-page-and-the-overlay)),
 the conversation overlay and the web page show keys such as `LOC_FN_YsabelAndronicus` instead of names and lines.
-Only English has been tried.
+The mod can't ship the game's text, so each server host makes their own. Only English has been tried.
 
 ## Quests
 

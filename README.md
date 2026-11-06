@@ -114,6 +114,8 @@ The OblivionMP SDK can't read or set the game's own quests, so a small game plug
 - `ui/CoopQuestSyncUI/`: a UE4SS Lua add-on that hides HUD pop-ups while stages are replayed (so catching up is
   silent) and runs `coc` for "back where you left". The client installs it by itself.
 - `probe/`: the Phase 0 test mod (inventory logging and `/qsprobe`).
+- `tools/check_no_game_files.py`: fails when the game's own files (`strings.json`, `*.locres`, `*.esm`, the DLC
+  plugins) are in the repository or in a release zip. CI runs it on every push.
 
 ### Generating the plugins
 
