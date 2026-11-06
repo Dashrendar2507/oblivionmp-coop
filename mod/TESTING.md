@@ -149,11 +149,11 @@ Do these standing next to each other, in the same place:
 
 ## Getting the game's text (for the overlay and the page)
 
-The release zips never include `strings.json`: it is the game's own text. Make it from your own `Game.locres`
-(FModel, `Localization/Game/<language>/Game.locres`, Export Raw Data), then
-`python3 -I plugin/tools/locres.py Game.locres strings.json --keys mod/Content`, and put it in the server's
-`mods\CoopQuestSync\server\` folder. See `docs/INSTALL.md`. The overlay and the page then show real names, lines,
-quest names and journal entries.
+`strings.json` (made from the `Game.locres` you sent, English) is NOT in the zip: it holds the game's own text, so it
+never ships in the repo or a release. Keep the copy already in your server's `mods\CoopQuestSync\server` folder when
+you update. If it's gone, copy `strings.json` from the project files (coop-quest-sync/0.5) into that folder. Without
+it the overlay and the page show ids instead of names and lines. For another language, export that language's
+`Game.locres` the same way (FModel, `Localization/Game/<language>/Game.locres`, Export Raw Data) and send it.
 
 ## Known limits
 
