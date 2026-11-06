@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Co-op Quest Sync</title>
+<style>
+  :root {
+    --bg: #f6f5f2; --panel: #ffffff; --ink: #1d1c1a; --muted: #6b6760; --line: #e2dfd8;
+    --accent: #7a4b16; --accent-ink: #ffffff; --good: #2f7a3e; --warn: #9a5b00; --bad: #a33a2b; --chip: #efece6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #161514; --panel: #1f1e1c; --ink: #ecebe7; --muted: #a39f97; --line: #34322e;
+            --accent: #d9a35f; --accent-ink: #1b1309; --good: #6cc47d; --warn: #e2a64a; --bad: #e57c6c; --chip: #2a2825; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  header { padding: 16px 20px; border-bottom: 1px solid var(--line); background: var(--panel); display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; }
+  h1 { font-size: 18px; margin: 0 auto 0 0; }
+  main { padding: 16px 20px 40px; max-width: 1200px; margin: 0 auto; }
+  label { color: var(--muted); }
+  select, input[type=search] { font: inherit; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; }
+  input[type=search] { width: min(320px, 100%); }
+  button { font: inherit; border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 6px; padding: 4px 10px; cursor: pointer; }
+  button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  button.danger { color: var(--bad); }
+  button:disabled { opacity: .5; cursor: default; }
+  .switch { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; color: var(--ink); }
+  .players { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  .player { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; }
+  .player b { display: block; }
+  .phase { font-size: 12px; color: var(--muted); }
+  .phase.Ready { color: var(--good); } .phase.Restoring, .phase.Handshake { color: var(--warn); } .phase.NoPlugin { color: var(--bad); }
+  .tools { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 10px; }
+  .count { color: var(--muted); margin-left: auto; }
+  table { width: 100%; border-collapse: collapse; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-weight: 600; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .03em; }
+  tr.quest { cursor: pointer; }
+  tr.quest:hover td { background: var(--chip); }
+  .edid { color: var(--muted); font-size: 12px; }
+  .bar { height: 6px; background: var(--chip); border-radius: 3px; overflow: hidden; width: 90px; display: inline-block; vertical-align: middle; margin-right: 6px; }
+  .bar i { display: block; height: 100%; background: var(--accent); }
+  .detail td { background: var(--bg); padding: 10px 14px 14px; }
+  .stage { display: grid; grid-template-columns: 52px 1fr auto auto; gap: 4px 12px; align-items: start; padding: 6px 0; border-bottom: 1px dashed var(--line); }
+  .stage:last-child { border-bottom: 0; }
+  .num { font-variant-numeric: tabular-nums; color: var(--muted); }
+  .marks { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+  .mark { font-size: 12px; padding: 1px 7px; border-radius: 10px; background: var(--chip); color: var(--muted); white-space: nowrap; }
+  .mark.on { background: color-mix(in srgb, var(--good) 18%, transparent); color: var(--good); }
+  .note { font-size: 12px; color: var(--warn); }
+  .qactions { display: flex; gap: 8px; margin-top: 10px; }
+  .empty { padding: 30px; text-align: center; color: var(--muted); }
+  #err { color: var(--bad); }
+  @media (max-width: 640px) { .stage { grid-template-columns: 40px 1fr; } .marks, .stage > button { grid-column: 2; justify-content: flex-start; } .hide-sm { display: none; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Co-op Quest Sync</h1>
+  <label class="switch"><input type="checkbox" id="auto"> Auto sync</label>
+  <label>Shared progress comes from
+    <select id="source"></select>
+  </label>
+  <button class="danger" id="resetAll">Reset all shared progress</button>
+  <span id="err"></span>
+</header>
+<main>
+  <div class="players" id="players"></div>
+  <div class="tools">
+    <input type="search" id="q" placeholder="Search quests or journal text">
+    <select id="filter">
+      <option value="any">Started by anyone</option>
+      <option value="shared">In shared progress</option>
+      <option value="all">All quests</option>
+    </select>
+    <span class="count" id="count"></span>
+  </div>
+  <table>
+    <thead><tr id="head"></tr></thead>
+    <tbody id="rows"></tbody>
+  </table>
+</main>
+<script>
+"use strict";
+let map = null, state = null, open = new Set(), password = "";
+try { password = sessionStorage.getItem("cqs-pw") || ""; } catch (e) {}
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+async function api(path, body) {
+  const opts = { headers: { "X-Admin-Password": password } };
+  if (body) { opts.method = "POST"; opts.body = JSON.stringify(body); opts.headers["X-Requested-With"] = "fetch"; opts.headers["Content-Type"] = "application/json"; }
+  const r = await fetch(path, opts);
+  if (r.status === 401) {
+    const pw = prompt("Admin password for the quest sync page:");
+    if (pw === null) throw new Error("password needed");
+    password = pw;
+    try { sessionStorage.setItem("cqs-pw", pw); } catch (e) {}
+    return api(path, body);
+  }
+  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.statusText);
+  return r.json();
+}
+
+async function act(body) {
+  try { await api("/api/action", body); $("err").textContent = ""; setTimeout(refresh, 400); }
+  catch (e) { $("err").textContent = "Could not do that: " + e.message; }
+}
+
+async function refresh() {
+  try {
+    if (!map) map = await api("/api/map");
+    state = await api("/api/state");
+    $("err").textContent = "";
+    render();
+  } catch (e) { $("err").textContent = "Server not reachable: " + e.message; }
+}
+
+function stagesOf(set, quest) { return new Set((set && set[quest]) || []); }
+
+function render() {
+  $("auto").checked = state.auto;
+  const names = state.players.map(p => p.name);
+  const sources = [["", "Everyone"], ...names.map(n => [n, n])];
+  if (state.source && !names.includes(state.source)) sources.push([state.source, state.source + " (offline)"]);
+  const sel = $("source");
+  if (document.activeElement !== sel) {
+    sel.innerHTML = sources.map(([v, t]) => `<option value="${esc(v)}">${esc(t)}</option>`).join("");
+    sel.value = state.source || "";
+  }
+
+  $("players").innerHTML = state.players.length
+    ? state.players.map(p => `<div class="player"><b>${esc(p.name)}</b><span class="phase ${esc(p.phase)}">${esc(phaseText(p.phase))}</span>
+        · ${Object.values(p.stages).reduce((a, s) => a + s.length, 0)} stages</div>`).join("")
+    : `<div class="player"><span class="phase">Nobody is connected.</span></div>`;
+
+  $("head").innerHTML = `<th>Quest</th><th>Shared</th>` + state.players.map(p => `<th class="hide-sm">${esc(p.name)}</th>`).join("");
+
+  const term = $("q").value.trim().toLowerCase();
+  const filter = $("filter").value;
+  const quests = map.quests.filter(q => {
+    const anyone = state.shared[q.editorId] || state.players.some(p => p.stages[q.editorId]);
+    if (filter === "shared" && !state.shared[q.editorId]) return false;
+    if (filter === "any" && !anyone) return false;
+    if (!term) return true;
+    return (q.name || "").toLowerCase().includes(term) || q.editorId.toLowerCase().includes(term)
+      || q.stages.some(s => (s.text || "").toLowerCase().includes(term));
+  }).sort((a, b) => (a.name || a.editorId).localeCompare(b.name || b.editorId));
+
+  $("count").textContent = `${quests.length} of ${map.quests.length} quests`;
+  if (!quests.length) {
+    $("rows").innerHTML = `<tr><td colspan="${2 + state.players.length}" class="empty">${filter === "all" ? "No quests match." : "No quest progress yet. Choose \"All quests\" to see everything."}</td></tr>`;
+    return;
+  }
+  $("rows").innerHTML = quests.map(q => row(q)).join("");
+}
+
+function phaseText(p) {
+  return { Ready: "in sync", Restoring: "restoring progress", Handshake: "joining", NoPlugin: "plugin not found" }[p] || p;
+}
+
+function row(q) {
+  const shared = stagesOf(state.shared, q.editorId);
+  const total = q.stages.length;
+  const pct = Math.round(100 * shared.size / total);
+  let html = `<tr class="quest" data-q="${esc(q.editorId)}">
+    <td><b>${esc(q.name || q.editorId)}</b> <span class="edid">${esc(q.editorId)}${q.sync ? "" : " · local only"}</span></td>
+    <td>${q.sync ? `<span class="bar"><i style="width:${pct}%"></i></span>${shared.size}/${total}` : "–"}</td>`
+    + state.players.map(p => `<td class="hide-sm">${(p.stages[q.editorId] || []).length || ""}</td>`).join("") + `</tr>`;
+  if (open.has(q.editorId)) {
+    html += `<tr class="detail"><td colspan="${2 + state.players.length}">` + q.stages.map(s => {
+      const marks = (q.sync ? [`<span class="mark ${shared.has(s.stage) ? "on" : ""}">shared</span>`] : [])
+        .concat(state.players.map(p => `<span class="mark ${stagesOf(p.stages, q.editorId).has(s.stage) ? "on" : ""}">${esc(p.name)}</span>`));
+      const btn = q.sync && !shared.has(s.stage)
+        ? `<button class="primary" data-push="${esc(q.editorId)}" data-stage="${s.stage}" title="Add to shared progress and give it to every player in game">Give to everyone</button>` : `<span></span>`;
+      return `<div class="stage"><span class="num">${s.stage}</span>
+        <span>${esc(s.text || "(no journal entry)")}${s.replay ? "" : `<br><span class="note">Not replayed when someone joins (teleport, cut scene or menu).</span>`}</span>
+        <span class="marks">${marks.join("")}</span>${btn}</div>`;
+    }).join("") + (q.sync ? `<div class="qactions"><button class="danger" data-reset="${esc(q.editorId)}">Reset this quest</button></div>` : "")
+      + `</td></tr>`;
+  }
+  return html;
+}
+
+$("rows").addEventListener("click", e => {
+  const push = e.target.closest("[data-push]");
+  if (push) { act({ action: "push", quest: push.dataset.push, stage: Number(push.dataset.stage) }); return; }
+  const reset = e.target.closest("[data-reset]");
+  if (reset) {
+    if (confirm("Reset this quest?\n\nIt leaves the shared progress, and its hidden tokens are taken from everyone in game. "
+      + "The game can't undo a quest while someone is playing, so each player keeps it until they rejoin."))
+      act({ action: "reset-quest", quest: reset.dataset.reset });
+    return;
+  }
+  const tr = e.target.closest("tr.quest");
+  if (tr) { const q = tr.dataset.q; open.has(q) ? open.delete(q) : open.add(q); render(); }
+});
+$("auto").addEventListener("change", e => act({ action: "auto", on: e.target.checked }));
+$("source").addEventListener("change", e => act({ action: "source", name: e.target.value }));
+$("resetAll").addEventListener("click", () => {
+  if (confirm("Reset every shared quest?\n\nThe shared progress is cleared and the hidden tokens are taken from everyone, including players who join later. "
+    + "The game can't undo quests while someone is playing, so each player keeps their quests until they rejoin."))
+    act({ action: "reset-all" });
+});
+$("q").addEventListener("input", () => state && render());
+$("filter").addEventListener("change", () => state && render());
+
+refresh();
+setInterval(refresh, 2000);
+</script>
+</body>
+</html>
