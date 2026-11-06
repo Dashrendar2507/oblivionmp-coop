@@ -6,14 +6,14 @@ Thanks for testing Co-op Quest Sync! This is a public test, so every report help
 
 1. Check [docs/KNOWN-ISSUES.md](docs/KNOWN-ISSUES.md). If your problem is there, only report it if you have
    something new (a quest where it happens, a log, a workaround).
-2. Search the [open issues](https://github.com/Dashrendar2507/OB-MP-coop-mod/issues). If someone already reported
+2. Search the [open issues](https://github.com/Dashrendar2507/oblivionmp-coop/issues). If someone already reported
    it, add a comment with your details, or a 👍 reaction if you have nothing to add.
 3. Make sure you're on the newest version (see "Mod version" below). The
-   [Releases page](https://github.com/Dashrendar2507/OB-MP-coop-mod/releases) lists the latest.
+   [Releases page](https://github.com/Dashrendar2507/oblivionmp-coop/releases) lists the latest.
 
 ## Opening an issue
 
-Go to [New issue](https://github.com/Dashrendar2507/OB-MP-coop-mod/issues/new/choose) and pick a form:
+Go to [New issue](https://github.com/Dashrendar2507/oblivionmp-coop/issues/new/choose) and pick a form:
 
 * **Bug report**: something broke, or didn't do what the docs say.
 * **Test report**: you played a session and want to say how it went, good or bad.

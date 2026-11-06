@@ -7,7 +7,7 @@ body:
     attributes:
       value: |
         Test reports are just as useful as bug reports: knowing what *works* tells us what's safe to build on.
-        For a specific bug, a separate [bug report](https://github.com/Dashrendar2507/OB-MP-coop-mod/issues/new?template=bug_report.yml)
+        For a specific bug, a separate [bug report](https://github.com/Dashrendar2507/oblivionmp-coop/issues/new?template=bug_report.yml)
         is easier to track.
 
   - type: input

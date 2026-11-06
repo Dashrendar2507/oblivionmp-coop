@@ -10,7 +10,7 @@ it). OblivionMP itself also has [known issues](https://docs.ready.mp) that aren'
 
 Our plugins are built on top of every official plugin of the game, including `AltarDeluxe.esp`. A player whose
 game is missing one of them can't load our plugins, and nothing gets synced for them. If that's you, please
-[open an issue](https://github.com/Dashrendar2507/OB-MP-coop-mod/issues/new/choose) with your `Plugins.txt`: a
+[open an issue](https://github.com/Dashrendar2507/oblivionmp-coop/issues/new/choose) with your `Plugins.txt`: a
 version without the Deluxe dependency can be built.
 
 ### Chat commands aren't limited to admins

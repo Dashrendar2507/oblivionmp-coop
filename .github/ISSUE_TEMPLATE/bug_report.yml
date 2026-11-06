@@ -7,8 +7,8 @@ body:
     attributes:
       value: |
         Thanks for taking the time to report this! Please check the
-        [known issues](https://github.com/Dashrendar2507/OB-MP-coop-mod/blob/main/docs/KNOWN-ISSUES.md) first.
-        [CONTRIBUTING.md](https://github.com/Dashrendar2507/OB-MP-coop-mod/blob/main/CONTRIBUTING.md#where-to-find-the-logs)
+        [known issues](https://github.com/Dashrendar2507/oblivionmp-coop/blob/main/docs/KNOWN-ISSUES.md) first.
+        [CONTRIBUTING.md](https://github.com/Dashrendar2507/oblivionmp-coop/blob/main/CONTRIBUTING.md#where-to-find-the-logs)
         explains where every log below lives.
 
   - type: textarea
