@@ -1,0 +1,12 @@
+{
+  "uniqueId": "CoopQuestSync.Probe",
+  "version": "0.1.0",
+  "name": "Co-op Quest Sync - test probe",
+  "author": "Nicolas",
+  "description": "Phase 0 test: logs plugin items in player inventories and lets admins add or remove them from chat, to prove the token bridge for quest sync.",
+  "link": "",
+  "dependencies": [
+    { "uniqueId": "OblivionMP.SDK", "minimumVersion": "1.0.0" },
+    { "uniqueId": "OblivionMP.Chat", "minimumVersion": "1.0.0" }
+  ]
+}
