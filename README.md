@@ -57,7 +57,7 @@ for what changed in each version.
 The short version (the full, step-by-step guide is in **[docs/INSTALL.md](docs/INSTALL.md)**):
 
 1. **Server host:** download the latest `CoopQuestSync-x.y.z.zip` from
-   [Releases](https://github.com/Dashrendar2507/OB-MP-coop-mod/releases), put its `CoopQuestSync` folder in your
+   [Releases](https://github.com/Dashrendar2507/oblivionmp-coop/releases), put its `CoopQuestSync` folder in your
    OblivionMP server's `mods\` folder, and restart the server.
 2. **Every player:** add two lines to the end of the game's `Plugins.txt`:
    ```
@@ -87,7 +87,7 @@ The important ones (full list in [docs/KNOWN-ISSUES.md](docs/KNOWN-ISSUES.md)):
 ## Reporting bugs and giving feedback
 
 Please do! Read **[CONTRIBUTING.md](CONTRIBUTING.md)** for where to find the logs, then
-[open an issue](https://github.com/Dashrendar2507/OB-MP-coop-mod/issues/new/choose). There are forms for bug
+[open an issue](https://github.com/Dashrendar2507/oblivionmp-coop/issues/new/choose). There are forms for bug
 reports, test reports ("I played for an hour, here's how it went") and feature ideas.
 
 ## For developers

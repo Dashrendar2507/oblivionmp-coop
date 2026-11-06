@@ -27,5 +27,5 @@ body:
     attributes:
       value: |
         Some things aren't possible with OblivionMP's current SDK (for example friendly fire and followers, see the
-        [known issues](https://github.com/Dashrendar2507/OB-MP-coop-mod/blob/main/docs/KNOWN-ISSUES.md)). We'll say
+        [known issues](https://github.com/Dashrendar2507/oblivionmp-coop/blob/main/docs/KNOWN-ISSUES.md)). We'll say
         so if an idea runs into one of those walls.
