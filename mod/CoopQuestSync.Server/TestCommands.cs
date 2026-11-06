@@ -17,6 +17,8 @@ namespace CoopQuestSync.Server;
 ///   /coop test revive         - Ghost revives you while you are down (die first: console "kill")
 ///   /coop test pin / back     - remember where you stand, then go back there as a join would (into a building too)
 ///   /coop test status         - what the server knows about you: phase, area, talking, menu, frozen, switches
+///   /coop test asghost on|off - the server treats you like Ghost, a player who isn't an admin, so you can see the
+///                               admin commands refused without a second player (open to everyone)
 /// /coop test is for admins only (see <see cref="CommandAccess"/>); /coop follow, revive and giveup are for everyone.
 /// </summary>
 [Service]
@@ -24,7 +26,7 @@ public sealed partial class TestCommands(IChat chat, IEntities entities, QuestTo
     ConversationRelay talks, PartyService party, ReturnOnJoin returns, CommandAccess access)
 {
     private const string Ghost = "Ghost";
-    private const string Usage = "/coop follow | revive | giveup, or /coop test talk [ask] | stop | stage <quest> <stage> | effects <quest> | revive | pin | back | status";
+    private const string Usage = "/coop follow | revive | giveup, or /coop test talk [ask] | stop | stage <quest> <stage> | effects <quest> | revive | pin | back | status | asghost on|off";
 
     private void Start() => chat.AddCommand("coop", Usage, Run);
 
@@ -42,6 +44,15 @@ public sealed partial class TestCommands(IChat chat, IEntities entities, QuestTo
         if (parts.Length < 2 || !parts[0].Equals("test", StringComparison.OrdinalIgnoreCase))
         {
             Reply(sender, Usage);
+            return;
+        }
+        // Open to everyone: it can only take rights away from yourself, and "off" must work while you have none.
+        if (parts[1].Equals("asghost", StringComparison.OrdinalIgnoreCase))
+        {
+            if (parts.Length == 3 && parts[2] is "on" or "off")
+                Reply(sender, access.SetActAsGhost(sender, parts[2] == "on"));
+            else
+                Reply(sender, "/coop test asghost on|off");
             return;
         }
         // follow, revive and giveup above are for everyone; the test tools are for admins.

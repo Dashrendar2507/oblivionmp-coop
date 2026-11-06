@@ -25,7 +25,10 @@ public sealed partial class CommandAccess(IPlayers players, IChat chat, QuestTok
     private DateTime _panelReadAt = DateTime.MinValue;
     private string? _loggedStatus;
 
-    public enum Reason { Everyone, Panel, Page, NotAdmin, UnknownAccount }
+    public enum Reason { Everyone, Panel, Page, NotAdmin, UnknownAccount, Ghost }
+
+    /// <summary>Accounts testing as Ghost (/coop test asghost): treated as non-admins until they turn it off.</summary>
+    private readonly HashSet<Guid> _asGhost = [];
 
     private void Start()
     {
@@ -45,6 +48,9 @@ public sealed partial class CommandAccess(IPlayers players, IChat chat, QuestTok
             return Reason.Everyone;
         if (players.GetReadyMId(player) is not { } account)
             return Reason.UnknownAccount;
+        lock (_asGhost)
+            if (_asGhost.Contains(account))
+                return Reason.Ghost;
         if (Panel().Ids.Contains(account))
             return Reason.Panel;
         if (sync.Settings.Admins.ToArray().Any(a => Guid.TryParse(a.Id, out var g) && g == account))
@@ -60,8 +66,15 @@ public sealed partial class CommandAccess(IPlayers players, IChat chat, QuestTok
     /// </summary>
     public bool Allow(PlayerId player, string command)
     {
-        if (IsAdmin(player))
+        var why = Check(player);
+        if (why is Reason.Everyone or Reason.Panel or Reason.Page)
             return true;
+        if (why == Reason.Ghost)
+        {
+            logger.LogInformation("[QuestSync] {Player} (testing as Ghost) was refused {Command}.", sync.Nickname(player), command);
+            chat.SendTo(player, $"Only server admins can use {command}. (You are testing as Ghost; /coop test asghost off gives your rights back.)", ChatLineKind.Rejection);
+            return false;
+        }
         logger.LogInformation("[QuestSync] {Player} tried {Command} but is not an admin.", sync.Nickname(player), command);
         chat.SendTo(player, $"Only server admins can use {command}. The host can make you one in the ReadyM admin panel "
             + "(Admins), or on the co-op page. /qs whoami shows your ReadyM id.", ChatLineKind.Rejection);
@@ -78,9 +91,30 @@ public sealed partial class CommandAccess(IPlayers players, IChat chat, QuestTok
             Reason.Panel => "You are an admin (listed in the ReadyM admin panel).",
             Reason.Page => "You are an admin (added on the co-op page).",
             Reason.UnknownAccount => "The server doesn't know your ReadyM account yet, so you are not an admin.",
+            Reason.Ghost => "You are testing as Ghost, so you are not an admin. /coop test asghost off gives your rights back.",
             _ => "You are not an admin.",
         };
         return $"ReadyM id: {account?.ToString() ?? "unknown"}. {verdict}";
+    }
+
+    /// <summary>/coop test asghost on|off. Keyed by account, so it survives a rejoin and can't pass to someone else.</summary>
+    public string SetActAsGhost(PlayerId player, bool on)
+    {
+        if (players.GetReadyMId(player) is not { } account)
+            return "The server doesn't know your ReadyM account yet; try again in a moment.";
+        lock (_asGhost)
+        {
+            if (on)
+                _asGhost.Add(account);
+            else
+                _asGhost.Remove(account);
+        }
+        logger.LogInformation("[QuestSync] {Player} is {State} testing as Ghost (not an admin).", sync.Nickname(player), on ? "now" : "no longer");
+        if (!on)
+            return "You have your own rights back. " + Describe(player);
+        return sync.Settings.CommandAccess == "everyone"
+            ? "You are now treated like Ghost, but admin commands are open to everyone on the co-op page, so nothing is refused. Set \"Who can use admin commands\" to \"Admins only\" to see the refusals."
+            : "You are now treated like Ghost, a player who isn't an admin. Try /qs auto off or /qs reset: they should be refused. /coop test asghost off gives your rights back.";
     }
 
     /// <summary>Adds an online player as an admin on our page, by their ReadyM id. Runs on the game loop.</summary>

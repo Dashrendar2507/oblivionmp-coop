@@ -30,7 +30,13 @@ Test:
 3. Try `/qs auto off` then `/qs auto on`. As an admin, both work.
 4. On the co-op page, your player shows **admin (ReadyM panel)** in green. Under **Co-op settings > Commands**,
    **ReadyM panel admins** says **Working**.
-5. With a second player who isn't an admin: their `/qs reset` is refused, and **Make admin** next to them on the
+5. Alone, as Ghost: type `/coop test asghost on`. The server now treats you like Ghost, a player who isn't an
+   admin (only you, and only until you turn it off or the server restarts). Then:
+   * `/qs auto off`, `/qs reset` and `/coop test status` are refused with "Only server admins can use ...".
+   * `/qs status`, `/qs whoami` and `/coop follow` still work. `/qs whoami` says you are testing as Ghost.
+   * On the co-op page, your player shows **testing as Ghost (not admin)**.
+   * `/coop test asghost off` gives your rights back, and `/qs auto on` works again.
+6. With a second player who isn't an admin: their `/qs reset` is refused, and **Make admin** next to them on the
    page lets them in.
 
 What's new since 0.4:

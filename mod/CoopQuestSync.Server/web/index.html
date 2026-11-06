@@ -137,12 +137,12 @@ async function refresh() {
   } catch (e) { $("err").textContent = "Server not reachable: " + e.message; }
 }
 
-const ACCESS_TEXT = { panel: "admin (ReadyM panel)", page: "admin (this page)", unknownaccount: "account not known yet" };
+const ACCESS_TEXT = { panel: "admin (ReadyM panel)", page: "admin (this page)", unknownaccount: "account not known yet", ghost: "testing as Ghost (not admin)" };
 function accessTag(p) {
   const a = p.access;
   if (!a || a.why === "everyone") return "";
   if (a.admin) return `<span class="tag ok">${esc(ACCESS_TEXT[a.why] || "admin")}</span>`;
-  if (a.why === "unknownaccount") return `<span class="tag">${esc(ACCESS_TEXT[a.why])}</span>`;
+  if (a.why === "unknownaccount" || a.why === "ghost") return `<span class="tag">${esc(ACCESS_TEXT[a.why])}</span>`;
   return ` <button class="mini" data-admin-add="${esc(p.name)}" title="Let ${esc(p.name)} use the admin commands (/qs push, reset...)">Make admin</button>`;
 }
 $("players").addEventListener("click", e => {
