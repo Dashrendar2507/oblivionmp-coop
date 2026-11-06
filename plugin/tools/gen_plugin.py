@@ -660,6 +660,32 @@ def npc_table(lo):
     return out
 
 
+def snake(name):
+    """DarkElf -> dark_elf: the remaster's voice events name races this way."""
+    voice = re.sub(r"(?<=[a-z])(?=[A-Z])", "_", name).replace(" ", "_").lower()
+    return {"golden_saint": "holy_saint"}.get(voice, voice)   # the game's voice folder for Golden Saints
+
+
+def voice_table(lo):
+    """Who speaks with which voice: NPC base id -> "<race>_<m|f>", and the same by name key (for lines whose
+    speaker is only known by name). The remaster's voice events are Play_<race>_<sex>_<quest>_<topic>_<info>_<n>."""
+    races = {key: r.edid for key, (src, r) in lo.winning({"RACE"}).items() if r.edid}
+    by_id, by_name = {}, {}
+    for key, (src, r) in lo.winning({"NPC_"}).items():
+        rnam, acbs = r.get("RNAM"), r.get("ACBS")
+        if not rnam or len(rnam) < 4 or not acbs:
+            continue
+        race = races.get(lo.remap(src, struct.unpack_from("<I", rnam)[0]))
+        if not race:
+            continue
+        voice = f"{snake(race)}_{'f' if struct.unpack_from('<I', acbs)[0] & 1 else 'm'}"
+        by_id[f"{key:08X}"] = voice
+        name = text_of(r.get("FULL"))
+        if name and name not in by_name:
+            by_name[name] = voice
+    return dict(npcs=by_id, names=by_name)
+
+
 def cell_table(lo):
     """Interior cells: form id -> editor id, for `player.PositionCell` (bringing a player back inside a building)."""
     out = {}
@@ -688,6 +714,10 @@ def main():
     with open(os.path.join(outdir, "cells.json"), "w") as f:
         json.dump(cells, f, separators=(",", ":"), sort_keys=True)
     print(f"cells.json: {len(cells)} interior cells")
+    voices = voice_table(lo)
+    with open(os.path.join(outdir, "voices.json"), "w") as f:
+        json.dump(voices, f, separators=(",", ":"), sort_keys=True)
+    print(f"voices.json: {len(voices['npcs'])} voiced NPCs")
     npcs = npc_table(lo)
     with open(os.path.join(outdir, "npcs.json"), "w") as f:
         json.dump({f"{k:08X}": v for k, v in sorted(npcs.items())}, f, separators=(",", ":"))

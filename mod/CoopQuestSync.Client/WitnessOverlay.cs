@@ -12,7 +12,7 @@ namespace CoopQuestSync.Client;
 /// it takes no mouse or keyboard, so the witness cannot pick topics (the topic list is the talker's alone).
 /// </summary>
 [Service]
-public sealed partial class WitnessOverlay(CefHost cef, OverlayPage page, IInput input, ILogger logger)
+public sealed partial class WitnessOverlay(CefHost cef, OverlayPage page, IInput input, ConsoleBridge console, ILogger logger)
 {
     private const string Host = "coopwitness";
 
@@ -49,6 +49,14 @@ public sealed partial class WitnessOverlay(CefHost cef, OverlayPage page, IInput
         // Content must be registered while mods start, never later.
         var directory = Path.GetDirectoryName(typeof(WitnessOverlay).Assembly.Location)!;
         cef.RegisterFolder(Host, Path.Combine(directory, "web"));
+        // The page says when it shows a spoken line, so the voice starts with its text.
+        page.Speak += voice =>
+        {
+            if (voice == "stop")
+                console.StopVoice();
+            else
+                console.Voice(voice);
+        };
     }
 
     public void Started(string json)
@@ -140,6 +148,12 @@ public sealed partial class OverlayPage
     }
 
     /// <summary>The page's first message once it has loaded.</summary>
+    /// <summary>The page shows a spoken line ("imperial_m ms26_..._1"), or "stop" when the voice should end.</summary>
+    public event Action<string>? Speak;
+
+    [ReceiveFromCef]
+    private void OnSpeak(BrowserHandle page, string voice) => Speak?.Invoke(voice);
+
     [ReceiveFromCef]
     private void OnReady(BrowserHandle page)
     {

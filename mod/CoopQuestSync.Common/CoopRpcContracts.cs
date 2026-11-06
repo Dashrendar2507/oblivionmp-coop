@@ -41,6 +41,9 @@ public static partial class CoopRpcContracts
     /// </summary>
     [ServerToClient] public static partial void GoToCell(string cell);
 
+    /// <summary>Test: play one voice line now ("imperial_m ms26_ms26filecharges_000363be_1").</summary>
+    [ServerToClient] public static partial void PlayVoice(string voice);
+
     /// <summary>A short message for the middle of the screen.</summary>
     [ServerToClient] public static partial void Notice(string text);
 

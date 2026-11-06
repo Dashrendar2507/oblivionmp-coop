@@ -25,6 +25,8 @@ public sealed partial class ClientRpc(WitnessOverlay overlay, PartyTags tags, Co
 
     partial void OnGoToCell(string cell) => console.GoToCell(cell);
 
+    partial void OnPlayVoice(string voice) => console.Voice(voice);
+
     partial void OnNotice(string text) => ui.ShowMessage(text, MessagePosition.Center, 5f);
 
     partial void OnResurrect()

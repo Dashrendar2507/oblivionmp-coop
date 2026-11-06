@@ -8,6 +8,8 @@
 --   * Runs console commands that the co-op client mod writes into command.txt (only `coc <cell>`).
 --   * Tells the co-op client mod when a menu (map, inventory...) is open, through the file menu-open, so the
 --     conversation overlay can step aside.
+--   * Plays the voice of a line in someone else's conversation, from nowhere, when the co-op client mod writes it
+--     into voice.txt ("imperial_m ms26_ms26filecharges_000363be_1"; "stop" ends it).
 --   * Writes the class of every new UI widget to UE4SS.log once, to find widgets that need handling.
 
 local S = CQS or {}
@@ -22,6 +24,7 @@ local HIDDEN = 0.0001
 local FOLDER = (os.getenv("APPDATA") or "") .. "\\ReadyM.Launcher\\Oblivion\\Mods\\CoopQuestSyncUI\\"
 local COMMAND_FILE = FOLDER .. "command.txt"
 local MENU_FILE = FOLDER .. "menu-open"
+local VOICE_FILE = FOLDER .. "voice.txt"
 local ALLOWED = { "^coc [%w_]+$" }
 
 S.muted = S.muted or false
@@ -29,6 +32,8 @@ S.mutedAt = S.mutedAt or 0
 S.hiddenCount = S.hiddenCount or 0
 S.seenClasses = S.seenClasses or {}
 S.menuOpen = nil -- unknown after a (re)load, so the first check writes the file's state
+S.voiceEventsLogged = S.voiceEventsLogged or 0
+S.described = S.described or {}
 
 local function log(text)
     print("[CoopQuestSyncUI] " .. text .. "\n")
@@ -171,6 +176,225 @@ function S.pollCommand()
     end)
 end
 
+-- Voices ---------------------------------------------------------------------------------------------------------
+--
+-- The remaster plays each spoken line with a Wwise event named after the original voice file:
+-- Play_<race>_<sex>_<quest>_<topic>_<line form id>_<n>, some with an extra "altvoice" or "beggar" after the sex, or
+-- "_sid" at the end. Where the game keeps those events isn't known yet, so this tries the likely places, learns the
+-- right one from any voice event the game loads itself, and writes what it tried to UE4SS.log.
+
+local GUESSED_FOLDERS = {
+    "/Game/WwiseAudio/Events/",
+    "/Game/WwiseAudio/Events/English(US)/",
+    "/Game/WwiseAudio/Event/",
+    "/Game/WwiseAudio/Event/English(US)/",
+    "/Game/WwiseAudio/Events/Dialogue/",
+    "/Game/WwiseAudio/Events/VO/",
+    "/Game/Audio/Events/",
+    "/Game/Audio/Wwise/Events/",
+}
+
+local function looksLikeVoice(name)
+    return name:lower():find("play_[%a_]+_[mf]_[%w_]+_%x%x%x%x%x%x%x%x_%d") ~= nil
+end
+
+-- "AkAudioEvent /Game/X/Y/Play_a.Play_a" -> "/Game/X/Y/"
+local function folderOf(fullName)
+    local path = fullName:match("^%S+%s+(%S+)$") or fullName
+    return path:match("^(.*/)[^/]*$")
+end
+
+function S.onNewAkEvent(event)
+    if S.voiceEventsLogged >= 25 then
+        return
+    end
+    local ok, name = pcall(function() return event:GetFullName() end)
+    if not ok or not name or not looksLikeVoice(name) then
+        return
+    end
+    S.voiceEventsLogged = S.voiceEventsLogged + 1
+    local folder = folderOf(name)
+    if folder and folder ~= S.voiceFolder then
+        S.voiceFolder = folder
+        S.voiceFolderFound = true
+        log("learned where voice events live: " .. folder)
+    end
+    log("voice event loaded by the game: " .. name)
+end
+
+-- A function's parameters, written to the log once, for when a call fails.
+local function describe(path)
+    if S.described[path] then
+        return
+    end
+    S.described[path] = true
+    local fn = StaticFindObject(path)
+    if not fn or not fn:IsValid() then
+        log("  " .. path .. ": not found")
+        return
+    end
+    local params = {}
+    pcall(function()
+        fn:ForEachProperty(function(prop)
+            params[#params + 1] = prop:GetFName():ToString() .. ":" .. prop:GetClass():GetFName():ToString()
+        end)
+    end)
+    log("  " .. path .. "(" .. table.concat(params, ", ") .. ")")
+end
+
+local function voiceNames(voice, line)
+    local race, sex = voice:match("^(.+)_([mf])$")
+    if not race then
+        return {}
+    end
+    local names = {}
+    for _, variant in ipairs({ "", "altvoice_", "beggar_" }) do
+        local base = "Play_" .. race .. "_" .. sex .. "_" .. variant .. line
+        names[#names + 1] = base
+        names[#names + 1] = base .. "_sid"
+    end
+    return names
+end
+
+local function findEvent(voice, line)
+    local names = voiceNames(voice, line)
+    local folders = {}
+    if S.voiceFolder then
+        folders[#folders + 1] = S.voiceFolder
+    end
+    for _, f in ipairs(GUESSED_FOLDERS) do
+        if f ~= S.voiceFolder then
+            folders[#folders + 1] = f
+        end
+    end
+    -- Already loaded?
+    for _, folder in ipairs(folders) do
+        for _, name in ipairs(names) do
+            local path = folder .. name .. "." .. name
+            local ok, obj = pcall(StaticFindObject, path)
+            if ok and obj and obj:IsValid() then
+                S.voiceFolderFound = true
+                return obj, path
+            end
+        end
+    end
+    -- Load it. Loading what isn't there costs a little each time, so after a few misses stop guessing until the
+    -- game shows where its voice events are.
+    if (S.voiceMisses or 0) >= 3 and not S.voiceFolderFound then
+        return nil, "nothing found in the first lines; waiting to learn where voice events live (talk to an NPC yourself)"
+    end
+    if type(LoadAsset) == "function" then
+        for _, folder in ipairs(folders) do
+            for _, name in ipairs(names) do
+                local path = folder .. name .. "." .. name
+                local ok, obj = pcall(LoadAsset, path)
+                if ok and obj and obj:IsValid() then
+                    if folder ~= S.voiceFolder then
+                        S.voiceFolder = folder
+                        log("voice events live in " .. folder)
+                    end
+                    S.voiceFolderFound = true
+                    return obj, path
+                end
+            end
+        end
+    else
+        log("this UE4SS has no LoadAsset")
+    end
+    S.voiceMisses = (S.voiceMisses or 0) + 1
+    return nil, table.concat(names, " / ") .. " in " .. #folders .. " folders"
+end
+
+local function statics()
+    return StaticFindObject("/Script/AkAudio.Default__AkGameplayStatics")
+end
+
+-- Plays an event on the local player: heard from where the player stands, so from nowhere in particular.
+local function postEvent(event, pawn)
+    local tries = {
+        { "AkAudioEvent:PostOnActor", "/Script/AkAudio.AkAudioEvent:PostOnActor",
+            function() return event:PostOnActor(pawn, {}, 0, false) end },
+        { "AkGameplayStatics:PostEvent", "/Script/AkAudio.AkGameplayStatics:PostEvent",
+            function() return statics():PostEvent(event, pawn, 0, {}, false) end },
+        { "AkGameplayStatics:PostEvent (4)", "/Script/AkAudio.AkGameplayStatics:PostEvent",
+            function() return statics():PostEvent(event, pawn, 0, {}) end },
+    }
+    local errors = {}
+    for _, t in ipairs(tries) do
+        local ok, id = pcall(t[3])
+        if ok then
+            return true, t[1], id
+        end
+        errors[#errors + 1] = t[1] .. ": " .. tostring(id):gsub("\n.*", "")
+        describe(t[2])
+    end
+    return false, table.concat(errors, " | ")
+end
+
+local function stopVoice()
+    if not S.playingId or S.playingId == 0 then
+        return
+    end
+    local id = S.playingId
+    S.playingId = nil
+    local ok, err = pcall(function() statics():ExecuteActionOnPlayingID(0, id, 0, 0) end)
+    if not ok and not S.stopWarned then
+        S.stopWarned = true
+        log("could not stop a voice: " .. tostring(err):gsub("\n.*", ""))
+        describe("/Script/AkAudio.AkGameplayStatics:ExecuteActionOnPlayingID")
+    end
+end
+
+function S.playVoice(spec)
+    if spec == "stop" then
+        stopVoice()
+        return
+    end
+    local voice, line = spec:match("^([a-z0-9_]+) ([a-z0-9_]+)$")
+    if not voice then
+        log("refused voice: " .. spec)
+        return
+    end
+    stopVoice()
+    local pc = playerController()
+    local pawn = nil
+    if pc then
+        pcall(function() pawn = pc.Pawn end)
+    end
+    if not pawn or not pawn:IsValid() then
+        log("no player to play " .. spec .. " on")
+        return
+    end
+    local event, where = findEvent(voice, line)
+    if not event then
+        log("no voice event for " .. spec .. " (tried " .. where .. ")")
+        return
+    end
+    local ok, how, id = postEvent(event, pawn)
+    if ok then
+        S.playingId = type(id) == "number" and id or nil
+        log("voice " .. where .. " (" .. how .. ", playing id " .. tostring(id) .. ")")
+    else
+        log("could not play " .. where .. ": " .. how)
+    end
+end
+
+function S.pollVoice()
+    local f = io.open(VOICE_FILE, "r")
+    if not f then
+        return
+    end
+    local spec = (f:read("*l") or ""):gsub("%s+$", "")
+    f:close()
+    os.remove(VOICE_FILE)
+    ExecuteInGameThread(function()
+        local ok, err = pcall(S.playVoice, spec)
+        if not ok then
+            log("voice failed: " .. tostring(err))
+        end
+    end)
+end
+
 -- Menus ----------------------------------------------------------------------------------------------------------
 
 -- A menu (map, inventory, journal...) shows the mouse cursor; walking around doesn't.
@@ -202,6 +426,12 @@ if not S.registered then
     S.registered = true
 
     pcall(NotifyOnNewObject, "/Script/UMG.UserWidget", function(widget) S.onNewWidget(widget) end)
+    pcall(NotifyOnNewObject, "/Script/AkAudio.AkAudioEvent", function(event) S.onNewAkEvent(event) end)
+
+    LoopAsync(100, function()
+        pcall(S.pollVoice)
+        return false
+    end)
 
     LoopAsync(1000, function()
         pcall(S.pollCommand)

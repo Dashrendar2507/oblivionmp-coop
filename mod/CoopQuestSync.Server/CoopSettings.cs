@@ -49,6 +49,9 @@ public sealed class CoopSettings
     /// </summary>
     public string ConversationFollow { get; set; } = "auto";
 
+    /// <summary>Watchers hear the NPC's voice with each line (played by the CoopQuestSyncUI add-on).</summary>
+    public bool WitnessVoices { get; set; } = true;
+
     /// <summary>Who stands still while someone talks: "area", "everyone" or "off". Players in combat are never frozen.</summary>
     public string ConversationFreeze { get; set; } = "area";
 

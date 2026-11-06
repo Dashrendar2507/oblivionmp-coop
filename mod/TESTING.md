@@ -112,6 +112,16 @@ The server can play a made-up teammate called "Ghost". Type these in chat:
    a few seconds before you died (Ghost has no body to stand next to). To check the fall case, jump off something
    high: you should come back at the top, not at the bottom.
 
+6. Voices (new, experimental). Watchers now hear the NPC's voice with each line, from nowhere, while listening in
+   (setting "Watchers hear the voices" on the page). Where the game keeps its voice sounds isn't known yet, so the
+   add-on looks in the likely places and learns the right one from any voice the game plays itself. So:
+   1. First talk to any NPC yourself for a line or two (that teaches the add-on where voices live).
+   2. `/coop test voice`: plays a random voice line right away. The chat says which line and what it says.
+   3. `/coop test talk`: Ghost's lines should now come with their voices, each starting as its text shows. Alt+L
+      should stop the voice; the offer banner (`/coop test talk ask`) never plays one.
+   If you hear nothing, send UE4SS.log: the lines with `voice` say what the add-on found and what it tried. I can
+   fix most of it without you restarting the game, because the add-on now picks up its own updates.
+
 ## Test 2: two players (when your friend can join)
 
 Do these standing next to each other, in the same place:

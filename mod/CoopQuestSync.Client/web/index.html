@@ -69,6 +69,7 @@ function start(info) {
   setLine("…", true);
   activity({ activity: null });
   queue = []; clearTimeout(timer); timer = null;
+  stopVoice();
   $("root").classList.add("on");
 }
 
@@ -79,20 +80,34 @@ function setLine(text, quiet) {
 }
 
 // A topic can have several lines, spoken one after the other: show each long enough to read.
+// With a voice, the line starts its voice as it shows (only while listening in, not on the offer banner), and
+// stays a little longer: a spoken line takes about 75 ms a character.
+let speaking = false;
 function next() {
   timer = null;
   const item = queue.shift();
-  if (!item) return;
+  if (!item) { stopVoice(); return; }
   setLine(item.text, item.quiet);
-  timer = setTimeout(next, Math.max(2500, item.text.length * 65));
+  const listening = !$("root").classList.contains("offer");
+  if (item.voice && listening) { readym.sendSpeak(item.voice); speaking = true; }
+  else stopVoice();
+  const ms = item.voice ? Math.max(2500, item.text.length * 75 + 600) : Math.max(2500, item.text.length * 65);
+  timer = setTimeout(next, ms);
+}
+
+function stopVoice() {
+  if (!speaking) return;
+  speaking = false;
+  readym.sendSpeak("stop");
 }
 
 function line(info) {
   if (info.speaker) { npc = info.speaker; $("npc").textContent = npc; }
   $("topic").textContent = info.topic || "";
   $("quest").textContent = info.quest ? "Quest: " + info.quest : "";
-  const lines = (info.lines || []).filter(Boolean);
-  if (lines.length) lines.forEach(t => queue.push({ text: t }));
+  const voices = info.voices || [];
+  const lines = (info.lines || []).map((t, i) => ({ text: t, voice: voices[i] || null })).filter(l => l.text);
+  if (lines.length) lines.forEach(l => queue.push(l));
   else queue.push({ text: "(" + (info.topic || "…") + ")", quiet: true });
   if (!timer) next();
 }
@@ -107,6 +122,7 @@ function activity(info) {
 
 function end() {
   queue = []; clearTimeout(timer); timer = null;
+  stopVoice();
   $("root").classList.remove("on");
 }
 

@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+* **Voices for watchers (experimental)**: while listening in, you hear the NPC's voice with each line, from nowhere,
+  using the game's own sounds. Setting "Watchers hear the voices". `/coop test voice` plays one.
+* The add-on reloads its logic while the game runs, so add-on updates no longer need a restart.
+* The conversation overlay steps aside while the map or another menu is open.
+* Fixes: silent catch-up on join (the HUD's text has a hidden prefix), the add-on's console commands, and a join
+  that skipped the restore after a long loading screen.
+
 ## 0.5.0 (public test)
 
 * **Stage effects for everyone, with switches.** Quest stage scripts that act on the player are tagged Teleport,

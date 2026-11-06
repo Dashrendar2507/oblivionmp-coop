@@ -38,6 +38,8 @@ public sealed partial class ConversationRelay(IEntities entities, IServerEvents 
     private sealed class Talk
     {
         public string Npc = "";
+        /// <summary>The NPC's voice ("imperial_m"), when known.</summary>
+        public string? Voice;
         public readonly HashSet<PlayerId> Witnesses = new();
         public readonly HashSet<PlayerId> Frozen = new();
         /// <summary>Players who may listen in with the follow key (asked, or who left and may come back).</summary>
@@ -139,7 +141,8 @@ public sealed partial class ConversationRelay(IEntities entities, IServerEvents 
     private void Begin(MainCharacter talker, List<MainCharacter> mains)
     {
         var id = talker.PlayerId;
-        var talk = new Talk { Npc = NearestNpc(talker) ?? "" };
+        var nearest = NearestNpc(talker);
+        var talk = new Talk { Npc = nearest?.Name ?? "", Voice = nearest?.Voice };
         _talks[id] = talk;
 
         // Someone who starts talking stops watching anyone else (and is no longer offered their conversation).
@@ -300,6 +303,27 @@ public sealed partial class ConversationRelay(IEntities entities, IServerEvents 
                 rpc.SendConversationActivity(w, ActivityJson(doing));
     }
 
+    /// <summary>
+    /// One relayed line for the overlay: its text, and with the voices setting on, the voice of each spoken part
+    /// ("imperial_m ms26_ms26filecharges_000363be_1"), which the add-on plays as the overlay shows that part.
+    /// </summary>
+    private string LineJson(GameData.Line line, string speaker, string? voice)
+    {
+        var withVoice = sync.Settings.WitnessVoices && voice is not null;
+        var parts = line.Lines
+            .Select(key => (Text: data.Text(key), Voice: withVoice && GameData.VoiceLine(line, key) is { } v ? $"{voice} {v}" : null))
+            .Where(p => p.Text is not null)
+            .ToArray();
+        return JsonSerializer.Serialize(new
+        {
+            topic = data.Name(line.Topic),
+            lines = parts.Select(p => p.Text).ToArray(),
+            voices = withVoice ? parts.Select(p => p.Voice).ToArray() : null,
+            speaker,
+            quest = line.Quest is { } q ? data.QuestName(q) : null,
+        });
+    }
+
     private static string ActivityJson(string? doing) => JsonSerializer.Serialize(new { activity = doing });
 
     /// <summary>What the player is doing in a menu ("bartering", "picking a lock"), or null.</summary>
@@ -312,13 +336,7 @@ public sealed partial class ConversationRelay(IEntities entities, IServerEvents 
         {
             if (speaker is not null && talk.Npc.Length == 0)
                 talk.Npc = speaker;
-            var json = JsonSerializer.Serialize(new
-            {
-                topic = data.Name(line.Topic),
-                lines = line.Lines.Select(l => data.Text(l)).Where(l => l is not null).ToArray(),
-                speaker = speaker ?? talk.Npc,
-                quest = line.Quest is { } q ? data.QuestName(q) : null,
-            });
+            var json = LineJson(line, speaker ?? talk.Npc, data.VoiceOfName(line.Speaker) ?? talk.Voice);
             talk.Recent.Add(json);
             if (talk.Recent.Count > RecentLines)
                 talk.Recent.RemoveAt(0);
@@ -342,12 +360,12 @@ public sealed partial class ConversationRelay(IEntities entities, IServerEvents 
     }
 
     /// <summary>The closest NPC to the talker in the same area: the one they are most likely talking to.</summary>
-    private string? NearestNpc(MainCharacter talker)
+    private (string Name, string? Voice)? NearestNpc(MainCharacter talker)
     {
         if (!sync.Players.TryGetValue(talker.PlayerId, out var view) || view.Area is not { } area)
             return null;
         var pos = talker.Position;
-        string? best = null;
+        (string, string?)? best = null;
         var bestDistance = NpcSearchRange;
         foreach (var npc in entities.Query<Npc>())
         {
@@ -359,7 +377,7 @@ public sealed partial class ConversationRelay(IEntities entities, IServerEvents 
             uint baseId = npc.BaseId.FormId;
             if (data.NpcName(baseId) is not { } name)
                 continue;
-            best = name;
+            best = (name, data.VoiceOf(baseId));
             bestDistance = d;
         }
         return best;
@@ -391,7 +409,8 @@ public sealed partial class ConversationRelay(IEntities entities, IServerEvents 
         var settings = sync.Settings;
         var freeze = settings.ConversationFreeze != "off" && !witness.InCombat;
         var samples = data.SampleLines(4);
-        var npc = samples.Select(l => l.Speaker).FirstOrDefault(n => n is not null) is { } key ? data.Name(key) : "Ysabel Andronicus";
+        var npcKey = samples.Select(l => l.Speaker).FirstOrDefault(n => n is not null);
+        var npc = npcKey is not null ? data.Name(npcKey) : "Ysabel Andronicus";
         var ghost = new Ghost { Name = ghostName, Npc = npc, Frozen = freeze, Watching = !ask };
         var at = _clock + 2f;
         var index = 0;
@@ -407,14 +426,8 @@ public sealed partial class ConversationRelay(IEntities entities, IServerEvents 
                 at += 1f;
             }
             index++;
-            ghost.Lines.Enqueue((at, false, JsonSerializer.Serialize(new
-            {
-                topic = data.Name(line.Topic),
-                lines = line.Lines.Select(l => data.Text(l)).Where(l => l is not null).ToArray(),
-                speaker = npc,
-                quest = line.Quest is { } q ? data.QuestName(q) : null,
-            })));
-            at += 5f;
+            ghost.Lines.Enqueue((at, false, LineJson(line, npc, data.VoiceOfName(line.Speaker ?? npcKey))));
+            at += 3f + line.Lines.Sum(l => Math.Max(2.5f, (data.Text(l)?.Length ?? 0) * 0.075f));
         }
         ghost.EndsAt = at + 2f;
         _ghosts[id] = ghost;
