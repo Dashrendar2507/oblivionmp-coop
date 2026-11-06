@@ -1,0 +1,31 @@
+name: Feature request
+description: An idea, or a co-op feature you're missing.
+title: "[Idea] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What would you like to do in co-op?
+      description: Describe the situation in the game, rather than how it should be built.
+      placeholder: "When we split up, I'd like a way to get back to my friend without walking across Cyrodiil."
+    validations:
+      required: true
+
+  - type: textarea
+    id: idea
+    attributes:
+      label: Your idea
+      description: How you imagine it working, if you have something in mind.
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else
+      description: Other mods that do something similar, screenshots, links.
+  - type: markdown
+    attributes:
+      value: |
+        Some things aren't possible with OblivionMP's current SDK (for example friendly fire and followers, see the
+        [known issues](https://github.com/Dashrendar2507/OB-MP-coop-mod/blob/main/docs/KNOWN-ISSUES.md)). We'll say
+        so if an idea runs into one of those walls.
