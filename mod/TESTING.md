@@ -149,8 +149,10 @@ Do these standing next to each other, in the same place:
 
 ## Getting the game's text (for the overlay and the page)
 
-Done: the zip's `server` folder now has `strings.json`, made from the `Game.locres` you sent (English). The overlay
-and the page show real names, lines, quest names and journal entries. For another language, export that language's
+`strings.json` (made from the `Game.locres` you sent, English) is NOT in the zip: it holds the game's own text, so it
+never ships in the repo or a release. Keep the copy already in your server's `mods\CoopQuestSync\server` folder when
+you update. If it's gone, copy `strings.json` from the project files (coop-quest-sync/0.5) into that folder. Without
+it the overlay and the page show ids instead of names and lines. For another language, export that language's
 `Game.locres` the same way (FModel, `Localization/Game/<language>/Game.locres`, Export Raw Data) and send it.
 
 ## Known limits
