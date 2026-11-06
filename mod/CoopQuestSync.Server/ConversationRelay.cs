@@ -23,7 +23,7 @@ namespace CoopQuestSync.Server;
 /// A witness who is in combat is never frozen.
 ///
 /// With "Follow conversations" set to "ask", nobody is pulled in: players who could watch get a prompt and press
-/// the follow key (Alt+L by default) to listen in. Either way, that key while watching leaves the conversation.
+/// the follow key (Alt+U by default) to listen in. Either way, that key while watching leaves the conversation.
 ///
 /// The join key (Alt+Y by default) takes a player who is offered or watching a conversation to the talker, wherever
 /// they are, so the party can gather for a quest (setting "Travel to a conversation").
@@ -145,7 +145,7 @@ public sealed partial class ConversationRelay(IEntities entities, IServerEvents 
 
     private bool Overlay => sync.Settings.ConversationOverlay != "off";
 
-    /// <summary>"Alt+L": shown on the overlay ("Alt+L to leave").</summary>
+    /// <summary>"Alt+U": shown on the overlay ("Alt+U to leave").</summary>
     private string FollowKey => sync.Settings.Key("follow");
 
     /// <summary>"Alt+Y" when players may travel to a conversation (shown on the overlay), else null.</summary>
@@ -187,7 +187,7 @@ public sealed partial class ConversationRelay(IEntities entities, IServerEvents 
     }
 
     /// <summary>
-    /// Offers the conversation to <paramref name="w"/>: a small banner ("Alice talks with Ysabel · Alt+L to listen
+    /// Offers the conversation to <paramref name="w"/>: a small banner ("Alice talks with Ysabel · Alt+U to listen
     /// in") that stays up until the conversation ends or they listen in.
     /// </summary>
     private void Offer(PlayerId talker, Talk talk, PlayerId w)

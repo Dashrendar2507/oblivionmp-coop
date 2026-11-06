@@ -80,7 +80,7 @@ public sealed class CoopSettings
     public bool ReturnOnJoin { get; set; } = true;
 
     /// <summary>The co-op keys: Alt + these. Letters (or key names such as F6) the game doesn't use; K is the chat.</summary>
-    public string KeyFollow { get; set; } = "L";
+    public string KeyFollow { get; set; } = "U";
 
     public string KeyJoin { get; set; } = "Y";
 
@@ -88,7 +88,7 @@ public sealed class CoopSettings
 
     public string KeyRespawn { get; set; } = "G";
 
-    /// <summary>"Alt+L", for messages.</summary>
+    /// <summary>"Alt+U", for messages.</summary>
     public string Key(string action) => "Alt+" + action switch { "follow" => KeyFollow, "join" => KeyJoin, "revive" => KeyRevive, _ => KeyRespawn };
 
     /// <summary>Tags over players' heads: "Talking", "Down".</summary>
@@ -126,7 +126,10 @@ public sealed class CoopSettings
         ReviveRange = Math.Clamp(ReviveRange, 50, 5000);
         Scaling = Scaling is "lowest" or "mid" or "highest" ? Scaling : "default";
         Leader ??= "";
-        KeyFollow = CleanKey(KeyFollow, "L");
+        // L was the first default, but L also hides the game's interface (compass included): move it off L.
+        KeyFollow = CleanKey(KeyFollow, "U");
+        if (KeyFollow == "L")
+            KeyFollow = "U";
         KeyJoin = CleanKey(KeyJoin, "Y");
         KeyRevive = CleanKey(KeyRevive, "H");
         KeyRespawn = CleanKey(KeyRespawn, "G");

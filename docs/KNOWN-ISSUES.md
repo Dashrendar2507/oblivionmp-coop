@@ -66,7 +66,7 @@ still works. Only English has been tried.
 * **Followers and companions** aren't shared or synced (not possible with OblivionMP's SDK 1.0).
 * **Respawning next to someone only works in the same area** (both outside, or the same interior). Otherwise you
   come back where you last stood on solid ground.
-* **The co-op keys also reach the game.** Alt+L also presses L in the game, and so on. If that's a problem, pick
+* **The co-op keys also reach the game.** Alt+U also presses U in the game, and so on. If that's a problem, pick
   other letters on the web page.
 
 ## Back where you left

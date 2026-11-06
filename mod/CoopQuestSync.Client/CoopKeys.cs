@@ -14,12 +14,12 @@ namespace CoopQuestSync.Client;
 /// </summary>
 public sealed class CoopKeys(IInput input, Func<ClientRpc> rpc, ILogger logger)
 {
-    public static readonly Dictionary<string, string> Defaults = new() { ["follow"] = "L", ["join"] = "Y", ["revive"] = "H", ["respawn"] = "G" };
+    public static readonly Dictionary<string, string> Defaults = new() { ["follow"] = "U", ["join"] = "Y", ["revive"] = "H", ["respawn"] = "G" };
 
     private readonly Dictionary<string, (string Key, IDisposable? Bind)> _binds = new();
     private readonly Dictionary<string, DateTime> _lastPress = new();
 
-    /// <summary>"Alt+L", for the overlay and the tags.</summary>
+    /// <summary>"Alt+U", for the overlay and the tags.</summary>
     public string Name(string action) => "Alt+" + (_binds.TryGetValue(action, out var b) ? b.Key : Defaults[action]);
 
     public void Start() => Apply(Defaults);

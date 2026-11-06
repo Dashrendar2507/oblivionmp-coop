@@ -7,6 +7,9 @@
   conversation"; `/coop join` does the same.
 * **Calm fights**: `/coop calm` (your area), `/coop calm <name>` (their area, and their bounty), `/coop calm all`
   and `/coop calm near`, and **Calm** buttons on the web page, for fights that went wrong. Through the add-on.
+* **The follow key is now Alt+U** (it was Alt+L; L also hides the game's interface, compass included). A server
+  that had L moves to U.
+* A revive or respawn waits until the chat or menu is closed (getting up with the chat open left it stuck).
 * The server log says who fights where and in whose game (`Combat:` lines), to see what is shared already.
 
 * **Voices for watchers (experimental)**: while listening in, you hear the NPC's voice with each line, from nowhere,

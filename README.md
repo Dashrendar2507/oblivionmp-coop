@@ -31,7 +31,7 @@ rejoin. The defaults keep it sane: nobody gets teleported or thrown into a fight
   the topic and the line. Watchers can't click anything.
 * Players in the same area stand still until the conversation ends (unless they're in combat).
 * The overlay says when the talker is bartering, persuading, training, picking a lock and so on.
-* **Alt+L** leaves or rejoins a conversation you're watching. Optionally, players only listen in when they press it.
+* **Alt+U** leaves or rejoins a conversation you're watching. Optionally, players only listen in when they press it.
 * Quest updates wait until you're out of a conversation.
 
 **Party**

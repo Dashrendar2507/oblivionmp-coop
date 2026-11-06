@@ -21,8 +21,8 @@ What's new since 0.4:
 * **Menus during a conversation.** When the talker opens the barter, persuasion, training, repair or spell screen,
   the watchers' overlay says "Alice is bartering..." and waits for them to come back. The tag over their head says
   so too, and "Picking a lock" while they pick one.
-* **Alt+L: follow or leave a conversation.** Pressing Alt+L while you watch someone's conversation closes the overlay
-  and unfreezes you, and pressing it again brings you back. "Watchers follow a conversation: When they press Alt+L"
+* **Alt+U: follow or leave a conversation.** Pressing Alt+U while you watch someone's conversation closes the overlay
+  and unfreezes you, and pressing it again brings you back. "Watchers follow a conversation: When they press Alt+U"
   on the page stops pulling anyone in: a banner at the top says who is talking, for as long as they talk, and you
   choose. `/coop follow` in chat does the same as the key.
 * **Back where you left.** When you join, you come back where you left instead of where your local save put you,
@@ -97,10 +97,10 @@ The server can play a made-up teammate called "Ghost". Type these in chat:
    (the NPC and topic; the sentences need the game's text, see below), and you should be unable to move until it
    ends. After the second line, the overlay should say "Ghost is bartering..." for a few seconds, and later
    "Ghost is persuading...".
-   Press Alt+L while it runs: the overlay should close and you can move. Press it again: it comes back with the last
-   lines. Then try `/coop test talk ask`: you get a banner at the top ("Ghost talks with ... · Alt+L to listen in")
-   that stays until the conversation ends, and Alt+L opens the overlay. `/coop follow` in chat does the same as
-   Alt+L. `/coop test stop` ends it early. Set "Freeze watchers" to "Nobody" on the page and try again: overlay,
+   Press Alt+U while it runs: the overlay should close and you can move. Press it again: it comes back with the last
+   lines. Then try `/coop test talk ask`: you get a banner at the top ("Ghost talks with ... · Alt+U to listen in")
+   that stays until the conversation ends, and Alt+U opens the overlay. `/coop follow` in chat does the same as
+   Alt+U. `/coop test stop` ends it early. Set "Freeze watchers" to "Nobody" on the page and try again: overlay,
    no freeze.
 3. `/coop test effects MS93` lists the stages of a quest that have effects on the player, for example
    `20: teleport/items`. Pick a quest you haven't started and a stage with a teleport.
@@ -117,7 +117,7 @@ The server can play a made-up teammate called "Ghost". Type these in chat:
    add-on looks in the likely places and learns the right one from any voice the game plays itself. So:
    1. First talk to any NPC yourself for a line or two (that teaches the add-on where voices live).
    2. `/coop test voice`: plays a random voice line right away. The chat says which line and what it says.
-   3. `/coop test talk`: Ghost's lines should now come with their voices, each starting as its text shows. Alt+L
+   3. `/coop test talk`: Ghost's lines should now come with their voices, each starting as its text shows. Alt+U
       should stop the voice; the offer banner (`/coop test talk ask`) never plays one.
    If you hear nothing, send UE4SS.log: the lines with `voice` say what the add-on found and what it tried. I can
    fix most of it without you restarting the game, because the add-on now picks up its own updates.
@@ -202,11 +202,11 @@ the zip.
   the same world space as your last outdoor spot.
 * **The overlay runs behind the talker.** The game reports a line when its result script runs, which is at the end of
   the line, so the watcher reads it after the talker has heard it. There is no voice.
-* **The keys** are Alt+L (listen in or leave a conversation), Alt+Y (travel to the talker), Alt+H (revive the teammate next to you) and Alt+G
+* **The keys** are Alt+U (listen in or leave a conversation), Alt+Y (travel to the talker), Alt+H (revive the teammate next to you) and Alt+G
   (respawn when you are down). The game also sees the letter, so if one of them does something in the game too,
   pick another letter under **Keys** on the page; every player's game switches within a few seconds. K is the
   chat. `/coop follow`, `/coop join`, `/coop revive` and `/coop giveup` in chat do the same as the keys. The client log shows
-  `Alt+L (follow) pressed.` when a key gets through.
+  `Alt+U (follow) pressed.` when a key gets through.
 * **You can still look around while listening in.** The game's freeze stops walking and fighting, but not the
   camera, and I haven't found a way for a mod to lock it. Looking around doesn't affect anyone else.
 * **Menus are recognised by the original game's menu numbers.** If the remaster numbers them differently, the

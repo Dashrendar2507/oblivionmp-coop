@@ -62,7 +62,7 @@ function start(info) {
   if (!info.offer) $("who").append(document.createTextNode(info.frozen ? "Listening in · " : "Watching · "));
   const b = document.createElement("b"); b.textContent = talker; $("who").append(b);
   $("who").append(document.createTextNode(npc ? " talks with " + npc : " is in a conversation"));
-  const hint = document.createElement("span"); hint.className = "hint"; const key = info.key || "Alt+L"; hint.textContent = info.offer ? key + " to listen in" : key + " to leave"; $("who").append(hint);
+  const hint = document.createElement("span"); hint.className = "hint"; const key = info.key || "Alt+U"; hint.textContent = info.offer ? key + " to listen in" : key + " to leave"; $("who").append(hint);
   // The join key (when the server allows travel): go to the talker, whether listening in or not.
   if (info.join) { const go = document.createElement("span"); go.className = "hint"; go.textContent = info.join + " to join " + talker; $("who").append(go); }
   $("npc").textContent = npc;

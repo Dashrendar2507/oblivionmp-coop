@@ -4,7 +4,7 @@
 
 | Key | What it does | Chat command |
 | --- | --- | --- |
-| **Alt+L** | While someone talks to an NPC: leave the overlay (and stop being frozen), or listen in again. | `/coop follow` |
+| **Alt+U** | While someone talks to an NPC: leave the overlay (and stop being frozen), or listen in again. | `/coop follow` |
 | **Alt+Y** | While someone talks to an NPC: travel to them, listening in or not (into their building or city too). | `/coop join` |
 | **Alt+H** | Revive the downed teammate standing next to you. | `/coop revive` |
 | **Alt+G** | While you're down: give up and respawn next to the party. | `/coop giveup` |
@@ -20,7 +20,7 @@ under **Keys** on the web page; every player's game switches within a few second
   back: OblivionMP doesn't keep the game's quests between sessions, so the mod sets them again every time you join.
 * **Conversations.** When a teammate talks to an NPC, you see what's said on an overlay, and you stand still until
   they're done if you're in the same area. The overlay tells you when they open the barter, persuasion, training,
-  repair or spell screen, or pick a lock. Press **Alt+L** to leave or come back, and **Alt+Y** to travel to the
+  repair or spell screen, or pick a lock. Press **Alt+U** to leave or come back, and **Alt+Y** to travel to the
   talker, so the party can gather for a quest without missing what's said.
 * **Death.** You go down instead of dying ("You are down..."). A teammate next to you presses **Alt+H** to bring you
   back where you fell. After 60 seconds, or when you press **Alt+G**, you respawn next to the party leader (or the
@@ -86,7 +86,7 @@ reaches the stage always gets everything. These switches decide what everyone el
 | Seconds before respawning | 60 | How long a downed player waits for a revive. |
 | Revive distance | 400 cm | About four metres. |
 | Put players back where they left | On | On join. |
-| Keys | L, Y, H, G | The letters for Alt+L, Alt+Y, Alt+H, Alt+G. |
+| Keys | U, Y, H, G | The letters for Alt+U, Alt+Y, Alt+H, Alt+G. |
 | Tags over heads | On | Talking, bartering, picking a lock, down. |
 | Level of spawns and loot | Server default (halfway) | Lowest player level, halfway, or highest player level. |
 | Difficulty, damage dealt / taken | Game default | Novice to Master. |
