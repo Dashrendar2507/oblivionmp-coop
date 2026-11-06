@@ -19,11 +19,13 @@ Any player can type `/qs reset`, `/qs push` or `/qs source` in chat. Only play w
 keep a copy of `coop-quest-sync-state.json` if your playthrough matters to you. The web page is only open on the
 server computer by default.
 
-### Text needs a strings.json
+### The game's text comes from the host's copy of the game
 
-Without the game's text file (see [INSTALL.md](INSTALL.md#optional-real-names-and-lines-on-the-page-and-the-overlay)),
-the conversation overlay and the web page show keys such as `LOC_FN_YsabelAndronicus` instead of names and lines.
-The mod can't ship the game's text, so each server host makes their own. Only English has been tried.
+The server reads the names and lines from the game installed on the server computer (see
+[INSTALL.md](INSTALL.md#real-names-and-lines-on-the-page-and-the-overlay)). On a server without the game, the
+overlay and the web page show keys such as `LOC_FN_YsabelAndronicus` until the host makes `strings.json` by hand.
+If the game's text is Oodle-compressed, the server also needs `oo2core_9_win64.dll`; the log says so. Only English
+has been tried.
 
 ## Quests
 

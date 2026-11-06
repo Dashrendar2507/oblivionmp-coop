@@ -47,12 +47,24 @@ If anything goes differently from what's written here, that's worth a [bug repor
 
 That's it for the host. The server hands the mod to every player when they join.
 
-### Optional: real names and lines on the page and the overlay
+### Real names and lines on the page and the overlay
 
-The remaster keeps its text (NPC names, dialogue, journal entries) outside the plugins, so without help the
-overlay and the web page show keys such as `LOC_FN_YsabelAndronicus` instead of words. The text belongs to
-Bethesda, so the mod never ships it: each server host makes a `strings.json` from their own copy of the game.
-Please don't share your `strings.json` either.
+The remaster keeps its text (NPC names, dialogue, journal entries) outside the plugins. That text belongs to
+Bethesda, so the mod never ships it. Instead, the server reads it from **your own copy of the game** the first time
+it starts, and keeps only what the mod uses in `strings.json` next to the server DLL. Please don't share that file.
+
+This works when the game is installed on the server computer through Steam. The start-up log says what happened:
+
+* `Wrote ...strings.json: 24730 of the ... texts the mod uses`: done, nothing else to do.
+* `Couldn't find Oblivion Remastered on this computer`: put the game's folder (the one with
+  `OblivionRemastered.exe`) in `config.json` as `"GameFolder"` and restart the server. See
+  [the settings](USING.md#configjson-server-host-optional).
+* Anything else: make `strings.json` by hand, below.
+
+For another language, set `"Language"` in `config.json` (`de`, `fr`, `es`, `it`...), delete `strings.json` and
+restart the server.
+
+**By hand**, if the server can't read the game (for example, a server on another computer than the game):
 
 1. Install [FModel](https://fmodel.app) and point it at the game (`OblivionRemastered\Content\Paks`).
 2. Find `Localization/Game/en/Game.locres` (or your language instead of `en`), right-click it and choose
@@ -64,7 +76,7 @@ Please don't share your `strings.json` either.
 4. Put `strings.json` in the server's `mods\CoopQuestSync\server\` folder and restart the server. The log line
    `Game data: ... text entries` should show a number other than 0.
 
-If this is too much, skip it: everything works, only the words are missing.
+Without any of this everything still works; only the words are missing.
 
 ### Letting other people open the web page
 
@@ -80,9 +92,8 @@ The page refuses to start on the network without a password. Don't open port 906
 ### Updating to a new version
 
 1. Stop the server.
-2. If you made a `strings.json`, move it out of `mods\CoopQuestSync\server\` for a moment.
-3. Delete the old `mods\CoopQuestSync` folder, copy in the new one, and put `strings.json` back in its `server\`
-   folder.
+2. Delete the old `mods\CoopQuestSync` folder and copy in the new one. The server makes `strings.json` again on
+   its next start. If you made yours by hand, move it out first and put it back in the new `server\` folder.
 4. Keep `coop-quest-sync-state.json`: it holds the shared progress and every setting from the web page. It's in
    the folder the server runs from, usually next to `server.exe`. The server prints its full path in the `[QuestSync]`
    line it logs at start-up.

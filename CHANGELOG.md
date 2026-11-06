@@ -4,6 +4,9 @@
 
 * **Voices for watchers (experimental)**: while listening in, you hear the NPC's voice with each line, from nowhere,
   using the game's own sounds. Setting "Watchers hear the voices". `/coop test voice` plays one.
+* **No game text to set up**: the server makes `strings.json` itself from the game installed on the server
+  computer, on its first start (`GameFolder` and `Language` in `config.json`). The FModel route still works.
+* The dialogue plugin no longer carries the voice actors' direction notes.
 * The add-on reloads its logic while the game runs, so add-on updates no longer need a restart.
 * The conversation overlay steps aside while the map or another menu is open.
 * Fixes: silent catch-up on join (the HUD's text has a hidden prefix), the add-on's console commands, and a join

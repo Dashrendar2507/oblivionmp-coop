@@ -582,6 +582,9 @@ def build_dialogue(lo, outdir, npc_names, quest_edids):
         recs = []
         for info_id, (src, r) in infos.items():
             subs = remap_record(lo, src, r, {"QSTI", "TPIC", "NAME", "TCLT", "TCLF", "SCRO", "PNAM"})
+            # NAM2 is the voice actors' direction ("Shock, then fear"): Bethesda's text, and the game never shows it.
+            # Keep the field (each response is TRDT, NAM1, NAM2) but empty it.
+            subs = [(k, b"\0") if k == "NAM2" else (k, v) for k, v in subs]
             if not any(k == "SCHR" for k, _ in subs):
                 continue                      # old record layout (SCHD): leave alone
             key = f"info:{info_id:08X}"

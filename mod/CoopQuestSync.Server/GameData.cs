@@ -114,6 +114,9 @@ public sealed partial class GameData(QuestSyncConfig config, ILogger logger)
         var path = string.IsNullOrWhiteSpace(config.StringsFile) ? Path.Combine(dir, "strings.json") : Path.GetFullPath(config.StringsFile);
         try
         {
+            // First start: make it from the host's own copy of the game.
+            if (!File.Exists(path) && string.IsNullOrWhiteSpace(config.StringsFile))
+                GameText.Build(path, config.GameFolder, config.Language, logger);
             if (File.Exists(path))
                 _text = JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(path)) ?? new();
         }

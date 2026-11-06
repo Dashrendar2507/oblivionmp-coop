@@ -133,4 +133,6 @@ Create `config.json` in `mods\CoopQuestSync\server\` to change these. Every entr
 | `IntervalSeconds` | `1` | How often the server checks the players' games. |
 | `StateFile` | `"coop-quest-sync-state.json"` | Where the shared progress and settings are kept. |
 | `GamePlugins` | the game's plugins | The order of the game's own plugins in `Plugins.txt`. Only matters for DLC items and NPC names. |
-| `StringsFile` | `""` | The game's text. Empty: `strings.json` next to the server DLL. |
+| `StringsFile` | `""` | The game's text. Empty: `strings.json` next to the server DLL, made from the game on first start. |
+| `GameFolder` | `""` | Where Oblivion Remastered is installed, to read its text from. Empty: found through Steam. |
+| `Language` | `"en"` | Language of the game's text (`de`, `fr`, `es`, `it`...). Delete `strings.json` after changing it. |
