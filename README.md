@@ -8,6 +8,9 @@ handled with a party in mind.
 > **Status: public test (0.5).** It works, but it is young and has only been tested by a handful of people.
 > Expect rough edges, back up your saves, and please [report what you find](CONTRIBUTING.md). Every report helps.
 
+## Disclaimer - use of AI
+AI has been used extensively for the creation of this mod (Claude Opus 5.5), but there's always a human in the loop for decisions, testing, troubleshooting and support. The goal here was to make a personal project, but I've decided to open it up to the community until there is a high quality, human-made alternative available. This repo is purposely human-opinionated when it comes to gameplay decisions and defaults, but I have made sure to allow for as many customization options via the WebUI.
+
 ## What it does
 
 **Shared quest progress**
@@ -74,7 +77,7 @@ The short version (the full, step-by-step guide is in **[docs/INSTALL.md](docs/I
 The important ones (full list in [docs/KNOWN-ISSUES.md](docs/KNOWN-ISSUES.md)):
 
 * Every player currently needs **all** the game's official plugins, including the **Deluxe** ones
-  (`AltarDeluxe.esp`).
+  (`AltarDeluxe.esp`). This shouldn't be an issue because the Remaster comes with all those.
 * Friendly fire can't be turned off (OblivionMP doesn't tell mods who hit whom).
 * The conversation overlay is a few seconds behind the talker, and has no voice.
 * Followers and companions aren't shared.
@@ -146,5 +149,5 @@ The packaged mod lands in `mod/Output/mods/CoopQuestSync/`.
 
 ## Credits
 
-Made by Nicolas, built on the [OblivionMP / ReadyM SDK](https://docs.ready.mp). Oblivion is © Bethesda Softworks;
+Made by Nicolas and Claude Opus 5.5, built on the [OblivionMP / ReadyM SDK](https://docs.ready.mp). Oblivion is © Bethesda Softworks;
 this repository does not include any of the game's own files.
