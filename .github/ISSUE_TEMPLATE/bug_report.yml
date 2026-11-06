@@ -1,0 +1,123 @@
+name: Bug report
+description: Something broke, or didn't do what the docs say.
+title: "[Bug] "
+labels: ["bug", "needs triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this! Please check the
+        [known issues](https://github.com/Dashrendar2507/oblivionmp-coop/blob/main/docs/KNOWN-ISSUES.md) first.
+        [CONTRIBUTING.md](https://github.com/Dashrendar2507/oblivionmp-coop/blob/main/CONTRIBUTING.md#where-to-find-the-logs)
+        explains where every log below lives.
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you saw, and what you expected to happen instead.
+      placeholder: "When my friend finished stage 10 of MS93, I didn't get it. I expected it within a few seconds."
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Step by step, starting from joining the server. If it only happened once, say so.
+      placeholder: |
+        1. Two players join the server.
+        2. Player A talks to ...
+        3. ...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part of the mod?
+      multiple: true
+      options:
+        - Quest progress (sharing, catching up on join, rejoin)
+        - Stage effects (teleports, fights, rewards...)
+        - Conversation overlay / freeze
+        - Death, revive and respawn
+        - Back where you left
+        - Web admin page (port 9060)
+        - Keys or chat commands
+        - Installing / the UE4SS add-on
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: quest
+    attributes:
+      label: Quest and stage (if any)
+      description: The quest id and stage, as shown on the web page or by `/qs mine`.
+      placeholder: "MS93, stage 20"
+
+  - type: input
+    id: version
+    attributes:
+      label: Mod version
+      description: The `version` line in the server's `mods\CoopQuestSync\manifest.json`, or the zip name.
+      placeholder: "0.5.0"
+    validations:
+      required: true
+
+  - type: input
+    id: players
+    attributes:
+      label: Players online
+      description: How many players were on the server, and were you the host?
+      placeholder: "2 players, I was the host and played on the same PC"
+    validations:
+      required: true
+
+  - type: textarea
+    id: server-log
+    attributes:
+      label: Server log
+      description: |
+        From the session where it happened, with the `[QuestSync]` lines. Drag the file into this box, or paste a
+        short excerpt. Server host only; write "not the host" if you aren't.
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: ue4ss-log
+    attributes:
+      label: UE4SS.log
+      description: |
+        From `OblivionRemastered\Binaries\Win64\UE4SS.log`, copied before restarting the game (it's overwritten on
+        every start). Drag the file into this box.
+    validations:
+      required: true
+
+  - type: textarea
+    id: load-order
+    attributes:
+      label: Load order and other mods
+      description: |
+        Attach your `Plugins.txt` (in `OblivionRemastered\Content\Dev\ObvData\Data\`), and list any other game or
+        server mods you use.
+    validations:
+      required: true
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Screenshots, video, anything else
+      description: A screenshot helps a lot for the overlay, the web page and anything visual.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I checked the known issues and searched the open issues.
+          required: true
+        - label: I looked over the logs and removed anything I don't want to share publicly.
+          required: true

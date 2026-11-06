@@ -1,0 +1,16 @@
+name: No game files
+
+# Blocks the game's own files (strings.json, Game.locres, Oblivion.esm, the DLC .esp files...) from the repository.
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 -I tools/check_no_game_files.py

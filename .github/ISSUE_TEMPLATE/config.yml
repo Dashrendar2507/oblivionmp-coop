@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Install guide
+    url: https://github.com/Dashrendar2507/oblivionmp-coop/blob/main/docs/INSTALL.md
+    about: Stuck installing? Check the step-by-step guide first.
+  - name: Known issues
+    url: https://github.com/Dashrendar2507/oblivionmp-coop/blob/main/docs/KNOWN-ISSUES.md
+    about: Things we already know about. No need to report them again.
+  - name: How to report (and where the logs are)
+    url: https://github.com/Dashrendar2507/oblivionmp-coop/blob/main/CONTRIBUTING.md
+    about: Where to find the server log, UE4SS.log and Plugins.txt.
