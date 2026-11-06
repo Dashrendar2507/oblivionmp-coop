@@ -151,3 +151,8 @@ The packaged mod lands in `mod/Output/mods/CoopQuestSync/`.
 
 Made by Nicolas and Claude Opus 5.5, built on the [OblivionMP / ReadyM SDK](https://docs.ready.mp). Oblivion is © Bethesda Softworks;
 this repository does not include any of the game's own files.
+
+## License
+
+The mod's code and tools are under the [MIT License](LICENSE): you can use, change and share them, as long as you
+keep the copyright notice. The license doesn't cover the game or its files, which belong to Bethesda.
