@@ -1,5 +1,38 @@
 # Co-op Quest Sync 0.5: how to test
 
+## New in 0.5.1: admin-only commands
+
+Only server admins can now use the commands that change things for everybody: `/qs push`, `/qs auto`,
+`/qs source`, `/qs reset`, `/qsprobe` and `/coop test`. Everyone can still use `/qs status`, `/qs mine`,
+`/qs shared`, `/qs whoami`, `/coop follow`, `/coop revive` and `/coop giveup`. Anyone else gets "Only server admins
+can use ...".
+
+Who counts as an admin:
+
+* **The admins of the ReadyM admin panel** (http://localhost:9050, the **Admins** view). The SDK doesn't tell mods
+  about them, so the mod reads the panel's own database, `data\web.db` in the server folder (read only, every
+  10 seconds, so a change there applies within seconds).
+* **Players you add on the co-op page** (http://localhost:9060): **Make admin** next to an online player, or
+  **Remove** under **Co-op settings > Commands**. Use this if the panel's list can't be read.
+* **Everyone**, if you set **Who can use admin commands** to **Everyone** on the page (how 0.5.0 behaved).
+
+Players are recognised by their ReadyM account id, not their nickname, so nobody can get in by renaming themselves.
+
+Test:
+
+1. Start the server. Its log shows one of these `[QuestSync]` lines:
+   `ReadyM panel admins: read Admins(...)` (it found the list), or
+   `ReadyM panel admins can't be used: ...` (it didn't, and says why).
+   **Please send me that line either way.** I couldn't see the panel's database layout, so the mod looks for it
+   on its own, and that line tells me what it found.
+2. Join, and type `/qs whoami`. It shows your ReadyM id and "You are an admin (listed in the ReadyM admin panel)"
+   if the panel admin you created at setup is your account.
+3. Try `/qs auto off` then `/qs auto on`. As an admin, both work.
+4. On the co-op page, your player shows **admin (ReadyM panel)** in green. Under **Co-op settings > Commands**,
+   **ReadyM panel admins** says **Working**.
+5. With a second player who isn't an admin: their `/qs reset` is refused, and **Make admin** next to them on the
+   page lets them in.
+
 What's new since 0.4:
 
 * **Stage effects reach everyone, with switches.** Every vanilla stage script that does something to the player
@@ -192,9 +225,13 @@ it the overlay and the page show ids instead of names and lines. For another lan
   "WebBind": "127.0.0.1", "WebPassword": "", "WebPort": 9060,
   "AutoSync": true, "UndoReplayRewards": true,
   "GamePlugins": "Oblivion.esm,DLCBattlehornCastle.esp,DLCFrostcrag.esp,DLCHorseArmor.esp,DLCMehrunesRazor.esp,DLCOrrery.esp,DLCShiveringIsles.esp,DLCSpellTomes.esp,DLCThievesDen.esp,DLCVileLair.esp,Knights.esp,AltarESPMain.esp,AltarDeluxe.esp,AltarESPLocal.esp",
-  "StringsFile": ""
+  "StringsFile": "",
+  "PanelDatabase": "data/web.db"
 }
 ```
+
+`PanelDatabase` is where the ReadyM admin panel keeps its admin list, from the server's folder. Empty stops the mod
+reading it (then only the admins added on the co-op page count).
 
 `GamePlugins` is the order of the game's own plugins in `Plugins.txt`. It only matters for sharing items and naming
 NPCs from the DLCs and the remaster's plugins.

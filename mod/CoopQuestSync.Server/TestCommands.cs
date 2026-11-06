@@ -17,10 +17,11 @@ namespace CoopQuestSync.Server;
 ///   /coop test revive         - Ghost revives you while you are down (die first: console "kill")
 ///   /coop test pin / back     - remember where you stand, then go back there as a join would (into a building too)
 ///   /coop test status         - what the server knows about you: phase, area, talking, menu, frozen, switches
+/// /coop test is for admins only (see <see cref="CommandAccess"/>); /coop follow, revive and giveup are for everyone.
 /// </summary>
 [Service]
 public sealed partial class TestCommands(IChat chat, IEntities entities, QuestTokenSync sync, GameData data,
-    ConversationRelay talks, PartyService party, ReturnOnJoin returns)
+    ConversationRelay talks, PartyService party, ReturnOnJoin returns, CommandAccess access)
 {
     private const string Ghost = "Ghost";
     private const string Usage = "/coop follow | revive | giveup, or /coop test talk [ask] | stop | stage <quest> <stage> | effects <quest> | revive | pin | back | status";
@@ -43,6 +44,9 @@ public sealed partial class TestCommands(IChat chat, IEntities entities, QuestTo
             Reply(sender, Usage);
             return;
         }
+        // follow, revive and giveup above are for everyone; the test tools are for admins.
+        if (!access.Allow(sender, "/coop test"))
+            return;
         if (!entities.TryLookup(sender, out MainCharacter me))
             return;
         switch (parts[1].ToLowerInvariant())

@@ -17,19 +17,28 @@ namespace CoopQuestSync.Server;
 ///   /qs auto on|off           - turn automatic sync between players on or off
 ///   /qs source &lt;name&gt;|all     - share only one player's progress, or everyone's
 ///   /qs reset                 - reset every shared quest (players lose them when they rejoin)
+///   /qs whoami                - your ReadyM id, and whether you are an admin
+/// push, auto, source and reset are for admins only (see <see cref="CommandAccess"/>).
 /// </summary>
 [Service]
-public sealed partial class QuestCommands(IChat chat, IEntities entities, QuestTokenSync sync)
+public sealed partial class QuestCommands(IChat chat, IEntities entities, QuestTokenSync sync, CommandAccess access)
 {
-    private const string Usage = "/qs status | mine [quest] | shared [quest] | push <quest> <stage> | auto on|off | source <name>|all | reset";
+    private const string Usage = "/qs status | mine [quest] | shared [quest] | push <quest> <stage> | auto on|off | source <name>|all | reset | whoami";
 
     private void Start() => chat.AddCommand("qs", Usage, Run);
 
     private void Run(IChat c, PlayerId sender, string arguments)
     {
         var parts = arguments.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        switch (parts.FirstOrDefault()?.ToLowerInvariant())
+        var sub = parts.FirstOrDefault()?.ToLowerInvariant();
+        if (sub is "push" or "auto" or "source" or "reset" && !access.Allow(sender, "/qs " + sub))
+            return;
+        switch (sub)
         {
+            case "whoami":
+                Reply(sender, access.Describe(sender));
+                break;
+
             case "status":
                 Reply(sender, $"Auto sync is {(sync.AutoSync ? "ON" : "OFF")}. Source: {sync.SourcePlayer ?? "everyone"}. Shared progress: {sync.Shared.Count} quest(s), {sync.Shared.Sum(kv => kv.Value.Count)} stage(s).");
                 foreach (var (id, view) in sync.Players)

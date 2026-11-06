@@ -67,6 +67,9 @@
   .hint { font-size: 12px; color: var(--muted); margin: 6px 0 0; }
   .mark.fx { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); }
   .tag { font-size: 12px; margin-left: 6px; color: var(--warn); }
+  .tag.ok { color: var(--good); }
+  button.mini { font-size: 12px; padding: 1px 8px; margin-left: 6px; }
+  .admin { white-space: nowrap; }
   @media (max-width: 640px) { .stage { grid-template-columns: 40px 1fr; } .marks, .stage > button { grid-column: 2; justify-content: flex-start; } .hide-sm { display: none; } }
 </style>
 </head>
@@ -134,6 +137,19 @@ async function refresh() {
   } catch (e) { $("err").textContent = "Server not reachable: " + e.message; }
 }
 
+const ACCESS_TEXT = { panel: "admin (ReadyM panel)", page: "admin (this page)", unknownaccount: "account not known yet" };
+function accessTag(p) {
+  const a = p.access;
+  if (!a || a.why === "everyone") return "";
+  if (a.admin) return `<span class="tag ok">${esc(ACCESS_TEXT[a.why] || "admin")}</span>`;
+  if (a.why === "unknownaccount") return `<span class="tag">${esc(ACCESS_TEXT[a.why])}</span>`;
+  return ` <button class="mini" data-admin-add="${esc(p.name)}" title="Let ${esc(p.name)} use the admin commands (/qs push, reset...)">Make admin</button>`;
+}
+$("players").addEventListener("click", e => {
+  const b = e.target.closest("[data-admin-add]");
+  if (b) act({ action: "admin-add", player: b.dataset.adminAdd });
+});
+
 function stagesOf(set, quest) { return new Set((set && set[quest]) || []); }
 
 function render() {
@@ -141,7 +157,7 @@ function render() {
   renderSettings();
   $("players").innerHTML = state.players.length
     ? state.players.map(p => `<div class="player"><b>${esc(p.name)}${p.name === state.settings.leader ? " ★" : ""}</b><span class="phase ${esc(p.phase)}">${esc(phaseText(p.phase))}</span>
-        · ${Object.values(p.stages).reduce((a, s) => a + s.length, 0)} stages${p.talking && !(p.extra && p.extra.activity) ? `<span class="tag">talking</span>` : ""}${p.frozen ? `<span class="tag">watching (frozen)</span>` : ""}${p.extra && p.extra.downed ? `<span class="tag">down, ${p.extra.secondsLeft} s</span>` : ""}${p.extra && p.extra.activity ? `<span class="tag">${esc(p.extra.activity)}</span>` : ""}</div>`).join("")
+        · ${Object.values(p.stages).reduce((a, s) => a + s.length, 0)} stages${p.talking && !(p.extra && p.extra.activity) ? `<span class="tag">talking</span>` : ""}${p.frozen ? `<span class="tag">watching (frozen)</span>` : ""}${p.extra && p.extra.downed ? `<span class="tag">down, ${p.extra.secondsLeft} s</span>` : ""}${p.extra && p.extra.activity ? `<span class="tag">${esc(p.extra.activity)}</span>` : ""}${accessTag(p)}</div>`).join("")
     : `<div class="player"><span class="phase">Nobody is connected.</span></div>`;
 
   $("head").innerHTML = `<th>Quest</th><th>Shared</th>` + state.players.map(p => `<th class="hide-sm">${esc(p.name)}</th>`).join("");
@@ -224,6 +240,7 @@ const choices = {
   conversationFollow: [["auto", "Automatically"], ["ask", "When they press the follow key"]],
   death: [["revive", "Down, wait for a revive"], ["respawn", "Respawn next to the party"], ["off", "Game default"]],
   scaling: [["default", "Server default (halfway)"], ["lowest", "Lowest player level"], ["mid", "Halfway"], ["highest", "Highest player level"]],
+  commandAccess: [["admins", "Admins only"], ["everyone", "Everyone"]],
   difficultyDealt: ["Unset", "Novice", "Apprentice", "Adept", "Journeyman", "Expert", "Master"].map(t => [t, t === "Unset" ? "Game default" : t]),
 };
 choices.difficultyTaken = choices.difficultyDealt;
@@ -240,6 +257,7 @@ function renderSettings() {
   const box = $("settings");
   if (box.contains(document.activeElement)) return;   // don't redraw under the cursor
   const st = state.settings;
+  const acc = state.access;
   const leaders = [["", "Nobody"], ...state.players.map(p => [p.name, p.name])];
   if (st.leader && !leaders.some(([v]) => v === st.leader)) leaders.push([st.leader, st.leader + " (offline)"]);
   const fxRows = state.categories.map(c => `<tr><td>${esc(FX[c] || c)}<br><span class="edid">${esc(FX_HINT[c] || "")}</span></td>`
@@ -275,9 +293,22 @@ function renderSettings() {
     ${srow("Difficulty, damage dealt", "", sel("difficultyDealt", choices.difficultyDealt, st.difficultyDealt))}
     ${srow("Difficulty, damage taken", "", sel("difficultyTaken", choices.difficultyTaken, st.difficultyTaken))}
     ${srow("Friendly fire", "Always on: OblivionMP can't tell mods who hit whom.", `<span class="edid">On</span>`)}
+  </div>
+  <div class="sgroup"><h3>Commands</h3>
+    ${srow("Who can use admin commands", "/qs push, auto, source, reset, /qsprobe and /coop test. The others (/qs status, /coop follow...) are for everyone.", sel("commandAccess", choices.commandAccess, st.commandAccess))}
+    ${srow("ReadyM panel admins", "Everyone in the Admins view of the ReadyM admin panel (port 9050) is an admin here too.", `<span class="edid">${acc ? esc(acc.panelOk ? "Working" : "Not available") : ""}</span>`)}
+    ${acc && !acc.panelOk ? `<p class="hint">${esc(acc.panel)}</p>` : ""}
+    ${srow("Admins added here", "Use \"Make admin\" next to a player above. Stored by ReadyM account, so it works whatever their nickname.",
+      st.admins.length ? st.admins.map(a => `<span class="admin">${esc(a.name || a.id)} <button class="mini" data-admin-remove="${esc(a.id)}" title="${esc(a.id)}">Remove</button></span>`).join(" ") : `<span class="edid">None</span>`)}
   </div>`;
 }
 
+$("settings").addEventListener("click", e => {
+  const b = e.target.closest("[data-admin-remove]");
+  if (!b) return;
+  if (confirm("Remove this admin?")) act({ action: "admin-remove", id: b.dataset.adminRemove });
+  b.blur();
+});
 $("settings").addEventListener("change", e => {
   const el = e.target.closest("[data-set]");
   if (!el) return;

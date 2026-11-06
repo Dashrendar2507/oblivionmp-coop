@@ -21,7 +21,7 @@ namespace CoopQuestSync.Server;
 ///   /qsprobe take &lt;formid&gt; &lt;n&gt;   - the server removes n of that item
 /// </summary>
 [Service]
-public sealed partial class ProbeCommands(IChat chat, IEntities entities, Inventories inventories, ILogger logger)
+public sealed partial class ProbeCommands(IChat chat, IEntities entities, Inventories inventories, ILogger logger, CommandAccess access)
 {
     private const string Usage = "/qsprobe inv | count <formid> | give <formid> <count> | take <formid> <count>";
 
@@ -29,6 +29,8 @@ public sealed partial class ProbeCommands(IChat chat, IEntities entities, Invent
 
     private void Run(IChat c, PlayerId sender, string arguments)
     {
+        if (!access.Allow(sender, "/qsprobe"))
+            return;
         var parts = arguments.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length == 0)
         {

@@ -48,4 +48,10 @@ public sealed partial class QuestSyncConfig
 
     /// <summary>The game's text (key -> text), made with plugin/tools/locres.py. Empty: strings.json next to the DLL.</summary>
     public string StringsFile { get; set; } = "";
+
+    /// <summary>
+    /// The ReadyM admin panel's database, where its admin list lives. Its admins may use every co-op command.
+    /// A relative path is from the server's working folder. Empty: don't read it (only the admins added on our page).
+    /// </summary>
+    public string PanelDatabase { get; set; } = "data/web.db";
 }
