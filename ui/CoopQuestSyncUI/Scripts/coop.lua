@@ -1,6 +1,4 @@
--- CoopQuestSyncUI logic. main.lua runs this file again whenever it changes, so everything here must be safe to run
--- twice: state lives in the global CQS table, and hooks and loops are registered once and call through CQS, so a
--- reload swaps the functions they call.
+-- CoopQuestSyncUI logic. main.lua runs this file once, when the game starts: an update takes a restart of the game.
 --
 -- What it does:
 --   * Hides HUD pop-ups while CoopQuestSync.esp replays quest stages (the plugin frames every batch with two
@@ -17,12 +15,8 @@
 --     the game runs in: keys in text-request.txt, answers in text-reply.txt. The game's files are compressed in a
 --     way the mod can't read, but the running game has the text at hand.
 --
--- Crash safety (2026-11-07). UE4SS runs LoopAsync on its own thread, next to the game thread, and the game crashed
--- in that thread while loading. So this file keeps the add-on's footprint small: no watchers on new objects (they
--- fire thousands of times during a load), one LoopAsync that only looks at files, and all game work in a single
--- ExecuteInGameThread job that is never queued again before the last one has finished. The HUD hook is registered
--- outside that job, from its own LoopAsync. A file named "off" in the add-on folder stops everything (main.lua reads
--- it), to tell whether a crash comes from here; one named "lite" stops the regular menu checks.
+-- Crash safety (2026-11-07): see "The game-thread job" at the end. A file named "off" in the add-on folder stops
+-- everything (main.lua reads it); one named "lite" stops the regular menu checks.
 
 local S = CQS or {}
 CQS = S
@@ -531,15 +525,19 @@ function S.menuCheck()
 end
 
 -- The game-thread job ---------------------------------------------------------------------------------------------
+--
+-- UE4SS runs Lua in two places: the game thread (hooks, ExecuteInGameThread) and its LoopAsync thread, at the same
+-- time, on the same Lua state, with no lock. Whatever runs on both at once can corrupt it, and the game crashes in
+-- UE4SS a while later (2026-11-07: in the HUD hook, and in the loop). So:
+--   * the only Lua that runs on the LoopAsync thread is the few lines below that queue the job; they make nothing
+--     new, so they never set off Lua's garbage collector there;
+--   * the collector is stopped and run in small steps inside the job, on the game thread;
+--   * the HUD hook is registered from this file's first run, when the add-on starts, not from a loop or a job;
+--   * everything else (files, menus, commands, voices, text) happens inside the job.
 
+local LOOP_MS = 250    -- how often the job runs
 local MENU_EVERY = 0.5 -- seconds between menu checks
-local GAP = 0.15       -- seconds between the end of one job and the next, so jobs never pile up
-
--- Kept across a reload of this file, so a job still waiting on the game thread isn't queued twice.
-S.jobBusy = S.jobBusy or false
-S.jobQueuedAt = S.jobQueuedAt or 0
-S.jobDoneAt = S.jobDoneAt or -GAP
-S.lastMenu = S.lastMenu or -MENU_EVERY
+local GC_LIMIT = 65536 -- KB; a full collection if memory ever grows past this
 
 local function exists(path)
     local f = io.open(path, "r")
@@ -557,32 +555,43 @@ if S.lite then
     log("lite: no menu checks (delete the file \"lite\" in the add-on folder to turn them back on)")
 end
 
--- The HUD class may not be loaded when the add-on starts, so try again every couple of seconds until the hook takes.
--- This runs in its own LoopAsync, as in 0.3 to 0.5, never inside the ExecuteInGameThread job: hooking from there made
--- the game crash at launch (2026-11-07), most likely because UE4SS keeps the Lua thread a hook was registered from,
--- and the job's thread is gone once the job ends.
-function S.hookHud()
-    if S.hudHooked then
-        return
-    end
-    S.hudTries = (S.hudTries or 0) + 1
+S.jobBusy = false
+S.jobQueuedAt = 0
+S.lastMenu = -MENU_EVERY
+
+local function hookHud()
     local ok, err = pcall(RegisterHook, "Function /Script/Altar.VHUDSubtitleViewModel:ConsumeNotification",
         function(param) S.onNotification(param) end)
     if ok then
         S.hudHooked = true
         log("hooked HUD notifications")
-    elseif S.hudTries == 1 or S.hudTries % 30 == 0 then
-        log("waiting for the HUD (" .. tostring(err) .. ")")
     end
+    return ok, err
 end
 
 -- Everything that touches the game, in one go, on the game thread.
 function S.gameJob()
+    collectgarbage("step", 0)
+    if collectgarbage("count") > GC_LIMIT then
+        collectgarbage("collect")
+    end
     if not S.languageWritten then
         S.languageWritten = true
         local ok, err = pcall(S.writeLanguage)
         if not ok then
             log("language: " .. tostring(err))
+        end
+    end
+    if not S.hudHooked and not S.hudGaveUp then
+        -- Only when the first try at start failed (the HUD wasn't loaded yet). From the job, as a last resort.
+        S.hudTries = (S.hudTries or 1) + 1
+        local ok, err = hookHud()
+        if not ok and S.hudTries % 40 == 0 then
+            log("waiting for the HUD (" .. tostring(err) .. ")")
+        end
+        if not ok and S.hudTries >= 400 then
+            S.hudGaveUp = true
+            log("gave up hooking the HUD: quest pop-ups won't be hidden")
         end
     end
     if not S.lite and os.clock() - S.lastMenu >= MENU_EVERY then
@@ -597,47 +606,31 @@ function S.gameJob()
     end
 end
 
--- The LoopAsync thread: never touches the game, only decides when the next job is due.
-function S.tick()
-    local now = os.clock()
-    if S.jobBusy then
-        if now - S.jobQueuedAt < 30 then
-            return -- still waiting for the game thread (a load can take a while)
-        end
-        S.jobBusy = false -- never wait forever if a job got lost
-    end
-    if now - S.jobDoneAt < GAP then
-        return
-    end
-    local due = (not S.lite and now - S.lastMenu >= MENU_EVERY) or not S.languageWritten
-        or #S.textQueue > 0 or exists(COMMAND_FILE) or exists(VOICE_FILE) or exists(TEXT_REQUEST)
-    if not due then
-        return
-    end
-    S.jobBusy = true
-    S.jobQueuedAt = now
-    ExecuteInGameThread(function()
-        pcall(S.gameJob)
-        S.jobDoneAt = os.clock()
-        S.jobBusy = false
-    end)
+-- Made once, so queueing it makes nothing new.
+local function runJob()
+    pcall(S.gameJob)
+    S.jobBusy = false
 end
 
--- Names an older coop.lua registered loops and watchers with, for a game that started with it and reloaded this
--- file: they do nothing now, and the job above does their work.
-local function nothing() end
-S.pollVoice, S.pollCommand, S.pollText, S.checkMenu = nothing, nothing, nothing, nothing
-S.onNewWidget, S.onNewAkEvent, S.forgetController = nothing, nothing, nothing
+-- The LoopAsync thread: queue the job unless the last one hasn't run yet (a load can hold the game thread a while).
+local function tick()
+    if S.jobBusy then
+        if os.clock() - S.jobQueuedAt < 30 then
+            return false
+        end
+    end
+    S.jobBusy = true
+    S.jobQueuedAt = os.clock()
+    ExecuteInGameThread(runJob)
+    return false
+end
 
-if not S.registeredJob then
-    S.registeredJob = true
-    S.hudHooked = S.hudHooked or (S.registered == true) -- an older coop.lua already hooks the HUD
-    LoopAsync(100, function()
-        pcall(S.tick)
-        return false
-    end)
-    LoopAsync(2000, function()
-        pcall(S.hookHud)
-        return S.hudHooked == true
-    end)
+if not S.started then
+    S.started = true
+    collectgarbage("stop")
+    local ok, err = hookHud()
+    if not ok then
+        log("the HUD isn't loaded yet (" .. tostring(err):gsub("\n.*", "") .. "); trying again from the game thread")
+    end
+    LoopAsync(LOOP_MS, tick)
 end

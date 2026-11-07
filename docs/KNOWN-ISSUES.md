@@ -82,7 +82,8 @@ still works. Only English has been tried.
 
 ## The UE4SS add-on
 
-* After the mod installs or updates the add-on, you have to **restart the game once** for it to start.
+* After the mod installs or updates the add-on, you have to **restart the game once** for it to start. A note in the
+  top left corner says so until you do.
 * If `UE4SS.log` has no `[CoopQuestSyncUI]` lines after that restart, the add-on isn't running: quest pop-ups may
   show while you catch up, and "back inside" won't work. Please report it with the log.
 * **If the game crashes on load**, put an empty file named `off` (`off.txt` works too) in

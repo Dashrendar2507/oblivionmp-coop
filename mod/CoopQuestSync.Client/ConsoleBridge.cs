@@ -18,7 +18,7 @@ namespace CoopQuestSync.Client;
 /// this mod runs, so a missing or old add-on is copied into place now and works from the next start of the game.
 /// </summary>
 [Service]
-public sealed partial class ConsoleBridge(IUserInterface ui, ILogger logger)
+public sealed partial class ConsoleBridge(IUserInterface ui, RestartNotice restart, ILogger logger)
 {
     private static readonly Regex CellId = new("^[A-Za-z0-9_]{1,64}$");
     private static readonly Regex WorldPlace = new("^[A-Za-z0-9_]{1,64} -?[0-9]{1,4} -?[0-9]{1,4}$");
@@ -28,24 +28,7 @@ public sealed partial class ConsoleBridge(IUserInterface ui, ILogger logger)
     private static readonly Regex VoiceId = new("^[a-z0-9_]{1,40} [a-z0-9_]{1,120}$");
     private static readonly string[] AddonFiles = ["enabled.txt", Path.Combine("Scripts", "main.lua"), Path.Combine("Scripts", "coop.lua")];
 
-    /// <summary>coop.lua is reloaded by the running add-on within seconds; the other files only load when the game starts.</summary>
-    private static readonly string LiveFile = Path.Combine("Scripts", "coop.lua");
-
-    private string? _pendingNotice;
-    private float _noticeIn = 12f;
-
     private void Start() => InstallAddon();
-
-    private void Update()
-    {
-        if (_pendingNotice is null)
-            return;
-        _noticeIn -= Time.DeltaTime;
-        if (_noticeIn > 0)
-            return;
-        ui.ShowMessage(_pendingNotice, MessagePosition.Center, 10f);
-        _pendingNotice = null;
-    }
 
     /// <summary>Copies the add-on into the game's Mods folder when it is missing or older than this mod's copy.</summary>
     private void InstallAddon()
@@ -72,20 +55,55 @@ public sealed partial class ConsoleBridge(IUserInterface ui, ILogger logger)
                 changed.Add(file);
             }
             if (changed.Count == 0)
-            {
                 logger.LogInformation("[QuestSync] The CoopQuestSyncUI add-on is up to date in {Folder}.", Folder);
-                return;
-            }
-            var needsRestart = changed.Any(f => f != LiveFile);
-            logger.LogInformation("[QuestSync] Installed the CoopQuestSyncUI add-on in {Folder} ({Files}). {When}",
-                Folder, string.Join(", ", changed), needsRestart ? "It starts with the next start of the game." : "The running add-on picks it up in a few seconds.");
-            if (needsRestart)
-                _pendingNotice = "Co-op: the CoopQuestSyncUI add-on was installed or updated. Restart the game once to turn it on.";
+            else
+                logger.LogInformation("[QuestSync] Installed the CoopQuestSyncUI add-on in {Folder} ({Files}). It starts with the next start of the game.",
+                    Folder, string.Join(", ", changed));
+            CheckRunning();
         }
         catch (Exception e)
         {
             logger.LogWarning("[QuestSync] Could not install the CoopQuestSyncUI add-on in {Folder}: {Error}", Folder, e.Message);
         }
+    }
+
+    /// <summary>
+    /// The add-on writes running.txt when the game starts: a fingerprint of the main.lua and coop.lua it started with,
+    /// or "off". When that isn't the add-on in the folder now, the game runs an older one until it restarts.
+    /// </summary>
+    private void CheckRunning()
+    {
+        try
+        {
+            var running = Path.Combine(Folder, "running.txt");
+            var started = File.Exists(running) ? File.ReadAllText(running).Trim() : "";
+            if (started == "off")
+            {
+                logger.LogInformation("[QuestSync] The CoopQuestSyncUI add-on is switched off (the file off in {Folder}).", Folder);
+                return;
+            }
+            var expected = Fingerprint(File.ReadAllBytes(Path.Combine(Folder, "Scripts", "main.lua")),
+                File.ReadAllBytes(Path.Combine(Folder, "Scripts", "coop.lua")));
+            if (started.Equals(expected, StringComparison.OrdinalIgnoreCase))
+                return;
+            logger.LogInformation("[QuestSync] The game started with add-on {Started}, the folder has {Expected}: a restart turns the new one on.",
+                started == "" ? "none" : started, expected);
+            restart.Require();
+        }
+        catch (Exception e)
+        {
+            logger.LogWarning("[QuestSync] Could not tell which add-on the game runs: {Error}", e.Message);
+        }
+    }
+
+    /// <summary>FNV-1a, 32 bits, as hex: the same as main.lua computes.</summary>
+    internal static string Fingerprint(params byte[][] files)
+    {
+        uint h = 2166136261;
+        foreach (var data in files)
+            foreach (var b in data)
+                h = unchecked((h ^ b) * 16777619);
+        return h.ToString("x8");
     }
 
     /// <summary>Exists while the add-on sees a menu open (map, inventory...).</summary>

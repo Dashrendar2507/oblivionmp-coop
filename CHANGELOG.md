@@ -13,7 +13,8 @@
 * **Fewer crashes on load**: the add-on no longer watches every new object the game makes (thousands during a load),
   no longer keeps the player controller, and does all its game work in one job at a time on the game thread. The
   crashes on loading a save and after the join pop-up came from UE4SS's background thread. The HUD hook is
-  registered from its own loop again, never from inside a game-thread job (that crashed the game at launch).
+  registered when the add-on starts, Lua's garbage collector only runs on the game thread, and the add-on no longer
+  reloads itself while the game runs.
 * An empty file named `off` (or `off.txt`) in the add-on folder switches the add-on off (restart the game), to tell
   whether a crash comes from it; one named `lite` stops only its regular menu checks.
 * Voices are looked up in the game's own folders (one per race and sex).
@@ -26,7 +27,8 @@
   to. The server reads it too when the game is installed on the server computer (`GameFolder` and `Language` in
   `config.json`), for the web page. The FModel route still works as a backup. Nothing is ever downloaded.
 * The dialogue plugin no longer carries the voice actors' direction notes.
-* The add-on reloads its logic while the game runs, so add-on updates no longer need a restart.
+* **Restart note**: when the co-op mod updates the add-on, a note stays in the top left corner until you restart the
+  game (the add-on loads once, when the game starts).
 * The conversation overlay steps aside while the map or another menu is open.
 * Fixes: silent catch-up on join (the HUD's text has a hidden prefix), the add-on's console commands, and a join
   that skipped the restore after a long loading screen.

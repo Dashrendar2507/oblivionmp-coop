@@ -144,7 +144,8 @@ plugins there when you join and removes them when you leave, so they never affec
 
 1. Join the server through the ReadyM Launcher, as usual. The launcher downloads the mod.
 2. On your first join, the mod installs a small add-on (`CoopQuestSyncUI`, used to hide pop-ups while you catch up
-   and to put you back inside buildings). A message tells you: **"Restart the game once"**.
+   and to put you back inside buildings). A note in the top left corner tells you to restart the game; it stays
+   until you do.
 3. Quit the game and join again from the launcher.
 
 From then on, joining is all there is to it. Within a few seconds of joining you should catch up on the party's
