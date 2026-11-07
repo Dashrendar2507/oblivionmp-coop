@@ -71,15 +71,15 @@ shared progress, so a restart keeps them.
 
 ## Test 1: you alone
 
-0. **Crashes on load** (2026-11-07). The add-on folder is
-   `%APPDATA%\ReadyM.Launcher\Oblivion\Mods\CoopQuestSyncUI\`. Two empty files there narrow a crash down (a new
-   text document is fine: `off.txt` and `lite.txt` count too). Start the game from scratch after each change.
-   * `off`: the add-on does nothing. UE4SS.log must say `switched off`, or the file isn't being seen. Load and join
-     5 times.
-   * Then replace `off` with `lite`: the add-on runs, but without its regular menu checks. UE4SS.log says `lite`.
-     5 more.
-   Tell me how many of each crashed, and send UE4SS.log copied right after a crash (the game starts a new one each
-   time). Delete the file afterwards.
+0. **Crashes on load** (2026-11-07). With the add-on switched off, nothing crashed, so the add-on was the cause.
+   The add-on that runs is the copy **on your PC**, in `%APPDATA%\ReadyM.Launcher\Oblivion\Mods\CoopQuestSyncUI\`
+   (paste that into the Explorer address bar). The server's copy only feeds it.
+   * Put the new zip on the server as usual, then on your PC delete the `off` file in that folder.
+   * Join once and quit: the co-op mod updates the add-on on your PC when you join.
+   * Then load and join 5 times. UE4SS.log should say `hooked HUD notifications` and no `switched off`.
+   * If it still crashes, put an empty file named `lite` in that same folder on your PC and try 5 more (UE4SS.log
+     says `lite`). That drops the add-on's regular menu checks.
+   Tell me how many crashed, and send UE4SS.log copied right after a crash (the game starts a new one each time).
 1. Join. The server log should show `plugin found`, then `restore finished` or `nothing to restore`, then
    `caught up with the party`.
 2. Open http://localhost:9060/. Under **Co-op settings** you should see the switches. Click a quest you have

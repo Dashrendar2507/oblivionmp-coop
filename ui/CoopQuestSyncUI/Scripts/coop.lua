@@ -20,9 +20,9 @@
 -- Crash safety (2026-11-07). UE4SS runs LoopAsync on its own thread, next to the game thread, and the game crashed
 -- in that thread while loading. So this file keeps the add-on's footprint small: no watchers on new objects (they
 -- fire thousands of times during a load), one LoopAsync that only looks at files, and all game work in a single
--- ExecuteInGameThread job that is never queued again before the last one has finished. A file named "off" in the
--- add-on folder stops everything (main.lua reads it), to tell whether a crash comes from here; one named "lite" stops
--- the regular menu checks.
+-- ExecuteInGameThread job that is never queued again before the last one has finished. The HUD hook is registered
+-- outside that job, from its own LoopAsync. A file named "off" in the add-on folder stops everything (main.lua reads
+-- it), to tell whether a crash comes from here; one named "lite" stops the regular menu checks.
 
 local S = CQS or {}
 CQS = S
@@ -534,14 +534,12 @@ end
 
 local MENU_EVERY = 0.5 -- seconds between menu checks
 local GAP = 0.15       -- seconds between the end of one job and the next, so jobs never pile up
-local HUD_EVERY = 2    -- seconds between tries to hook the HUD, until it takes
 
 -- Kept across a reload of this file, so a job still waiting on the game thread isn't queued twice.
 S.jobBusy = S.jobBusy or false
 S.jobQueuedAt = S.jobQueuedAt or 0
 S.jobDoneAt = S.jobDoneAt or -GAP
 S.lastMenu = S.lastMenu or -MENU_EVERY
-S.lastHudTry = S.lastHudTry or -HUD_EVERY
 
 local function exists(path)
     local f = io.open(path, "r")
@@ -560,11 +558,13 @@ if S.lite then
 end
 
 -- The HUD class may not be loaded when the add-on starts, so try again every couple of seconds until the hook takes.
+-- This runs in its own LoopAsync, as in 0.3 to 0.5, never inside the ExecuteInGameThread job: hooking from there made
+-- the game crash at launch (2026-11-07), most likely because UE4SS keeps the Lua thread a hook was registered from,
+-- and the job's thread is gone once the job ends.
 function S.hookHud()
-    if S.hudHooked or os.clock() - S.lastHudTry < HUD_EVERY then
+    if S.hudHooked then
         return
     end
-    S.lastHudTry = os.clock()
     S.hudTries = (S.hudTries or 0) + 1
     local ok, err = pcall(RegisterHook, "Function /Script/Altar.VHUDSubtitleViewModel:ConsumeNotification",
         function(param) S.onNotification(param) end)
@@ -585,7 +585,6 @@ function S.gameJob()
             log("language: " .. tostring(err))
         end
     end
-    pcall(S.hookHud)
     if not S.lite and os.clock() - S.lastMenu >= MENU_EVERY then
         S.lastMenu = os.clock()
         pcall(S.menuCheck)
@@ -610,7 +609,7 @@ function S.tick()
     if now - S.jobDoneAt < GAP then
         return
     end
-    local due = (not S.lite and now - S.lastMenu >= MENU_EVERY) or not S.languageWritten or (not S.hudHooked and now - S.lastHudTry >= HUD_EVERY)
+    local due = (not S.lite and now - S.lastMenu >= MENU_EVERY) or not S.languageWritten
         or #S.textQueue > 0 or exists(COMMAND_FILE) or exists(VOICE_FILE) or exists(TEXT_REQUEST)
     if not due then
         return
@@ -636,5 +635,9 @@ if not S.registeredJob then
     LoopAsync(100, function()
         pcall(S.tick)
         return false
+    end)
+    LoopAsync(2000, function()
+        pcall(S.hookHud)
+        return S.hudHooked == true
     end)
 end
