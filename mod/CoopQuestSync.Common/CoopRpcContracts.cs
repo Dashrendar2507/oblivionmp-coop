@@ -32,7 +32,7 @@ public static partial class CoopRpcContracts
     /// </summary>
     [ServerToClient] public static partial void PartyStatus(string json);
 
-    /// <summary>The co-op keys, Alt + these letters. json: { follow, revive, respawn }.</summary>
+    /// <summary>The co-op keys, Alt + these letters. json: { follow, join, revive, respawn }.</summary>
     [ServerToClient] public static partial void Keys(string json);
 
     /// <summary>
@@ -40,6 +40,33 @@ public static partial class CoopRpcContracts
     /// add-on. Used to bring a player back inside the building they left from.
     /// </summary>
     [ServerToClient] public static partial void GoToCell(string cell);
+
+    /// <summary>
+    /// Go to this exterior world space, near this cell ("Tamriel 3 24"): the add-on runs <c>cow Tamriel 3 24</c>.
+    /// Used to bring a player to a teammate in another world space (a city, the Shivering Isles...).
+    /// </summary>
+    [ServerToClient] public static partial void GoToWorld(string place);
+
+    /// <summary>
+    /// The game is about to move this player (back where they left, or to a teammate): a black screen with this line
+    /// covers the jumps. Sent again on arrival (a load can drop the page). Empty: they are there, the screen lifts.
+    /// </summary>
+    [ServerToClient] public static partial void Travel(string text);
+
+    /// <summary>
+    /// Stop these NPCs' fights (ref ids in hexadecimal, separated by spaces): the add-on runs
+    /// <c>&lt;ref&gt;.StopCombat</c> for each. From /coop calm.
+    /// </summary>
+    [ServerToClient] public static partial void StopCombat(string refs);
+
+    /// <summary>Guards stop chasing this player: the add-on runs <c>player.scaonactor</c>. From /coop calm.</summary>
+    [ServerToClient] public static partial void StopChase();
+
+    /// <summary>The player's bounty goes to 0: the add-on runs <c>player.SetCrimeGold 0</c>. From /coop calm.</summary>
+    [ServerToClient] public static partial void ClearBounty();
+
+    /// <summary>Test: play one voice line now ("imperial_m ms26_ms26filecharges_000363be_1").</summary>
+    [ServerToClient] public static partial void PlayVoice(string voice);
 
     /// <summary>A short message for the middle of the screen.</summary>
     [ServerToClient] public static partial void Notice(string text);
@@ -52,6 +79,9 @@ public static partial class CoopRpcContracts
 
     /// <summary>The follow key: leave the conversation the player is watching, or listen in on one they were offered.</summary>
     [ClientToServer] public static partial void ToggleFollow();
+
+    /// <summary>The join key: travel to the player whose conversation this player is offered or watching.</summary>
+    [ClientToServer] public static partial void JoinTalker();
 
     /// <summary>A downed player gives up waiting and respawns next to the party.</summary>
     [ClientToServer] public static partial void GiveUp();

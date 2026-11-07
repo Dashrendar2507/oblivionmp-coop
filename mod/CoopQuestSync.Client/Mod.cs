@@ -16,7 +16,7 @@ public sealed partial class Mod(IDependencyContainer services, IInput input, ILo
         services.RegisterSingleton<OverlayPage>();
         services.RegisterSingleton<ICefRpcHandler, OverlayPage>(services.Resolve<OverlayPage>());
 
-        // The co-op keys (Alt+L listen in or leave, Alt+H revive, Alt+G respawn; changeable on the web page).
+        // The co-op keys (Alt+U listen in or leave, Alt+H revive, Alt+G respawn; changeable on the web page).
         // /coop follow, /coop revive and /coop giveup in chat do the same.
         var keys = new CoopKeys(input, () => services.Resolve<ClientRpc>(), logger);
         services.RegisterSingleton<CoopKeys, CoopKeys>(keys);

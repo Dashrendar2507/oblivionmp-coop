@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Travel</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; pointer-events: none; background: transparent; }
+  body { font-family: "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif; }
+  /* Black over the whole game while it moves the player; one line low in the middle, like the game's loading text */
+  .screen { position: absolute; inset: 0; background: #000; opacity: 0; transition: opacity .7s ease; }
+  .screen.up { opacity: 1; }
+  .screen.now { transition: none; }
+  .line { position: absolute; left: 0; right: 0; bottom: 14vh; text-align: center; color: #d8c08a;
+          font-size: 2.2vh; letter-spacing: .06em; text-shadow: 0 1px 3px #000; }
+  .line::after { content: ""; display: block; width: 18vw; height: 1px; margin: 1.2vh auto 0;
+                 background: linear-gradient(90deg, transparent, rgba(216, 192, 138, .6), transparent); }
+</style>
+</head>
+<body>
+<div class="screen" id="screen"><div class="line" id="line"></div></div>
+<script>
+  // #<text>: fade to black with this line. #now:<text>: black at once (a page made again over the old one).
+  // #lift: fade out.
+  const screen = document.getElementById("screen");
+  const line = document.getElementById("line");
+  function apply() {
+    let hash = decodeURIComponent(location.hash.slice(1));
+    if (hash === "lift") { screen.classList.remove("now"); screen.classList.remove("up"); return; }
+    const now = hash.startsWith("now:");
+    if (now) hash = hash.slice(4);
+    line.textContent = hash;
+    screen.classList.toggle("now", now);
+    requestAnimationFrame(() => screen.classList.add("up"));
+  }
+  window.addEventListener("hashchange", apply);
+  apply();
+</script>
+</body>
+</html>

@@ -34,8 +34,12 @@ public sealed class ReturnSpot
 /// <item>the spot is inside a building: the server cannot change a player's area, but the game's console can. The
 /// player's game is asked to run <c>coc &lt;cell&gt;</c> (the UE4SS add-on does it), and once they are in, the server
 /// moves them to the exact spot.</item>
+/// <item>the spot is outdoors in another world space (a city, the Shivering Isles...): the add-on runs
+/// <c>cow &lt;world space&gt; &lt;x&gt; &lt;y&gt;</c>, and once they are in, the server moves them to the exact spot.</item>
 /// <item>if that fails: their last spot outdoors, when it is in the area they are in.</item>
 /// </list>
+///
+/// The same travel brings a player to a teammate (the join key on a conversation, see <see cref="Bring"/>).
 /// </summary>
 [Service]
 public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents events, QuestTokenSync sync, GameData data,
@@ -51,6 +55,18 @@ public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents event
     private const float GroundedSpeed = 80f;
     /// <summary>Closer than this (cm) to the spot already: no need to move.</summary>
     private const float CloseEnough = 300f;
+    private static readonly float[] RecheckAfter = [2f, 5f, 10f];
+    /// <summary>The travel screen lifts after this long whatever happens.</summary>
+    private const float ScreenMaxSeconds = 45f;
+    /// <summary>
+    /// One game unit in centimetres, and the side of an exterior cell in game units: for the cell <c>cow</c> asks
+    /// for. Only roughly right is needed: once the player is in the world space, the server puts them on the spot.
+    /// </summary>
+    private const float UnitCm = 1.4287f;
+    private const float CellUnits = 4096f;
+    /// <summary>A teammate is joined on a spot they walked through, this far from them (cm): ground, not a wall.</summary>
+    private const float NearMin = 100f, NearMax = 800f;
+    private const int TrailLength = 15;
 
     private sealed class Session
     {
@@ -62,10 +78,24 @@ public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents event
         public ReturnSpot? Going;
         public float GoingSince;
         public Vector3? Target;
+        /// <summary>Where the game had put them before the move (the door, for a coc).</summary>
+        public Vector3 MovedFrom;
         public float MovedAt;
-        public bool Checked;
+        public int Checks;
+        /// <summary>The travel screen is up on their game (<see cref="CoopRpc.SendTravel"/>).</summary>
+        public bool Screen;
+        public bool ScreenAsked;
+        public string ScreenText = "";
+        public float ScreenSince;
         public float LastRecord;
+        /// <summary>Travelling to this teammate: on arrival, the spot is next to where they stand then.</summary>
+        public PlayerId? Joining;
+        /// <summary>Where they stood lately on the ground in this area, newest last.</summary>
+        public readonly List<Vector3> Trail = new();
     }
+
+    /// <summary>A player who travelled to a teammate has arrived next to them.</summary>
+    public event Action<PlayerId>? Arrived;
 
     private readonly Dictionary<PlayerId, Session> _sessions = new();
     private readonly Dictionary<PlayerId, ReturnSpot> _pinned = new();
@@ -112,12 +142,20 @@ public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents event
             {
                 s.Area = area;
                 s.Since = _clock;
+                s.Trail.Clear();
             }
             var name = sync.Nickname(id);
             var settled = _clock - s.Since >= SettleSeconds;
 
             if (!s.Started)
             {
+                if (!s.ScreenAsked)
+                {
+                    s.ScreenAsked = true;
+                    if (sync.Settings.ReturnOnJoin && sync.Returns.TryGetValue(name, out var back)
+                        && (Fix(back).Area != area || Vector3.Distance(main.Position, back.Position) > CloseEnough))
+                        RaiseScreen(id, s, "Taking you back to where you left...");
+                }
                 if (!settled)
                     continue;
                 s.Started = true;
@@ -133,14 +171,30 @@ public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents event
                 if (area == going.Area && settled)
                 {
                     s.Going = null;
-                    Place(main, name, s, going, "back inside");
+                    if (s.Screen)
+                        rpc.SendTravel(id, s.ScreenText); // the load may have dropped the page
+                    if (s.Joining is { } joining)
+                    {
+                        s.Joining = null;
+                        var near = NearSpot(joining, main) is { } n && n.Area == area ? n : going;
+                        Place(main, name, s, near, $"next to {sync.Nickname(joining)}");
+                        Arrived?.Invoke(id);
+                    }
+                    else
+                        Place(main, name, s, going, going.Cell is null ? "back where you left" : "back inside");
                 }
                 else if (_clock - s.GoingSince > CellTimeoutSeconds)
                 {
                     s.Going = null;
-                    logger.LogWarning("[QuestSync] {Player}: the game didn't take them into {Cell} (is the CoopQuestSyncUI add-on installed? see UE4SS.log).",
-                        name, going.Cell);
-                    if (sync.Outdoors.TryGetValue(name, out var outside) && Fix(outside).Area == area)
+                    logger.LogWarning("[QuestSync] {Player}: the game didn't take them to {Place} (is the CoopQuestSyncUI add-on installed? see UE4SS.log).",
+                        name, going.Cell ?? going.Area);
+                    if (s.Joining is not null)
+                    {
+                        s.Joining = null;
+                        s.Resolved = true;
+                        rpc.SendNotice(id, "Couldn't travel there: is the CoopQuestSyncUI add-on installed?");
+                    }
+                    else if (sync.Outdoors.TryGetValue(name, out var outside) && Fix(outside).Area == area)
                         Place(main, name, s, outside, "outside instead: couldn't take you back inside");
                     else
                         s.Resolved = true;
@@ -148,16 +202,22 @@ public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents event
                 continue;
             }
 
-            // The game may put them back where it loaded them: check once, a couple of seconds after the move.
-            if (s.Target is { } t && !s.Checked && _clock - s.MovedAt > 2f)
+            // The game may put them back where it loaded them (at the door, 2026-11-07): check 2, 5 and 10 seconds
+            // after the move.
+            if (s.Target is { } t && s.Checks < RecheckAfter.Length && _clock - s.MovedAt > RecheckAfter[s.Checks])
             {
-                s.Checked = true;
-                if (Vector3.Distance(main.Position, t) > CloseEnough)
+                s.Checks++;
+                // Only when they stand where the game had put them, so someone who walked off isn't pulled back.
+                if (Vector3.Distance(main.Position, t) > CloseEnough && Vector3.Distance(main.Position, s.MovedFrom) <= CloseEnough)
                 {
                     main.Position = t;
                     logger.LogInformation("[QuestSync] {Player} moved back again (the game had put them elsewhere).", name);
                 }
             }
+
+            // The screen lifts once they stand where they should, after the first check that the game left them there.
+            if (s.Screen && ((s.Resolved && (s.Target is null || s.Checks > 0 || main.IsDead)) || _clock - s.ScreenSince > ScreenMaxSeconds))
+                LowerScreen(id, s);
 
             if (s.Resolved && settled)
                 Record(main, name, area, s);
@@ -187,8 +247,22 @@ public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents event
         {
             s.Going = spot;
             s.GoingSince = _clock;
+            if (s.Joining is { } to)
+                RaiseScreen(main.PlayerId, s, $"Travelling to {sync.Nickname(to)}...");
             rpc.SendGoToCell(main.PlayerId, cell);
-            logger.LogInformation("[QuestSync] {Player} left inside {Cell}: asking their game to go there.", name, cell);
+            logger.LogInformation("[QuestSync] {Player} {Why} {Cell}: asking their game to go there.",
+                name, s.Joining is null ? "left inside" : "travels into", cell);
+            return;
+        }
+        if (WorldPlace(spot) is { } place)
+        {
+            s.Going = spot;
+            s.GoingSince = _clock;
+            if (s.Joining is { } to)
+                RaiseScreen(main.PlayerId, s, $"Travelling to {sync.Nickname(to)}...");
+            rpc.SendGoToWorld(main.PlayerId, place);
+            logger.LogInformation("[QuestSync] {Player} {Why} {Area}: asking their game to go there (cow {Place}).",
+                name, s.Joining is null ? "left outdoors in" : "travels to", spot.Area, place);
             return;
         }
         if (sync.Outdoors.TryGetValue(name, out var outside) && Fix(outside).Area == area && !GameData.IsInterior(area))
@@ -200,16 +274,34 @@ public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents event
         s.Resolved = true;
     }
 
+    /// <summary>A black screen with this line on the player's game while it moves them (setting "Black screen while travelling").</summary>
+    private void RaiseScreen(PlayerId id, Session s, string text)
+    {
+        if (!sync.Settings.TravelScreen)
+            return;
+        s.Screen = true;
+        s.ScreenText = text;
+        s.ScreenSince = _clock;
+        rpc.SendTravel(id, text);
+    }
+
+    private void LowerScreen(PlayerId id, Session s)
+    {
+        s.Screen = false;
+        rpc.SendTravel(id, "");
+    }
+
     private void Place(MainCharacter main, string name, Session s, ReturnSpot spot, string what)
     {
         s.Resolved = true;
         if (main.IsDead || Vector3.Distance(main.Position, spot.Position) <= CloseEnough)
             return;
+        s.MovedFrom = main.Position;
         main.Position = spot.Position;
         main.Rotation = spot.Yaw;
         s.Target = spot.Position;
         s.MovedAt = _clock;
-        s.Checked = false;
+        s.Checks = 0;
         rpc.SendNotice(main.PlayerId, char.ToUpperInvariant(what[0]) + what[1..] + ".");
         logger.LogInformation("[QuestSync] {Player}: {What} ({X:0}, {Y:0}, {Z:0} in {Area}).", name, what, spot.X, spot.Y, spot.Z, spot.Area);
     }
@@ -225,10 +317,95 @@ public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents event
         if (interior && cell is null && _unknownAreas.Add(area))
             logger.LogWarning("[QuestSync] Interior {Area}: no cell found for it, so a player who leaves here comes back outside.", area);
         var p = main.Position;
+        s.Trail.Add(p);
+        if (s.Trail.Count > TrailLength)
+            s.Trail.RemoveAt(0);
         var spot = new ReturnSpot { Area = area, Cell = cell, X = p.X, Y = p.Y, Z = p.Z, Yaw = main.Rotation };
         sync.Returns[name] = spot;
         if (!interior)
             sync.Outdoors[name] = spot;
+    }
+
+    /// <summary>
+    /// "cow" arguments for an outdoor spot in another world space ("Tamriel 3 24"), or null for an interior.
+    /// OblivionMP names an exterior area "L_" + the world space's editor id; the cell is worked out from the position.
+    /// </summary>
+    private static string? WorldPlace(ReturnSpot spot)
+    {
+        if (GameData.IsInterior(spot.Area) || !spot.Area.StartsWith("L_", StringComparison.Ordinal))
+            return null;
+        var world = spot.Area[2..];
+        if (world.Length is 0 or > 64 || !world.All(c => char.IsAsciiLetterOrDigit(c) || c == '_'))
+            return null;
+        // The game's Y axis runs the other way from the remaster's.
+        var x = (int)MathF.Floor(spot.X / UnitCm / CellUnits);
+        var y = (int)MathF.Floor(-spot.Y / UnitCm / CellUnits);
+        return $"{world} {Math.Clamp(x, -999, 999)} {Math.Clamp(y, -999, 999)}";
+    }
+
+    /// <summary>
+    /// A spot next to <paramref name="to"/>: one they walked through a moment ago, a step or a few away, so it is
+    /// ground and not inside a wall; else a step beside them.
+    /// </summary>
+    private ReturnSpot? NearSpot(PlayerId to, MainCharacter mover)
+    {
+        if (!entities.TryLookup(to, out MainCharacter them) || !sync.Players.TryGetValue(to, out var view) || view.Area is not { } areaId)
+            return null;
+        var area = GameData.AreaKey(areaId);
+        var at = them.Position;
+        var pick = at + new Vector3(NearMin, 0, 0);
+        if (_sessions.TryGetValue(to, out var ts) && ts.Area == area)
+            for (var i = ts.Trail.Count - 1; i >= 0; i--)
+            {
+                var d = Vector3.Distance(ts.Trail[i], at);
+                if (d is >= NearMin and <= NearMax)
+                {
+                    pick = ts.Trail[i];
+                    break;
+                }
+            }
+        return new ReturnSpot
+        {
+            Area = area, Cell = GameData.IsInterior(area) ? data.InteriorCell(area) : null,
+            X = pick.X, Y = pick.Y, Z = pick.Z, Yaw = mover.Rotation,
+        };
+    }
+
+    /// <summary>
+    /// Brings <paramref name="who"/> next to <paramref name="to"/>, wherever they are: a position write in the same
+    /// area, else into their building or world space through the add-on first. Returns what to tell the player, or
+    /// null when they were moved at once (the move says so itself).
+    /// </summary>
+    public string? Bring(PlayerId who, PlayerId to)
+    {
+        if (!entities.TryLookup(who, out MainCharacter main) || !sync.Players.TryGetValue(who, out var view) || view.Area is not { } areaId)
+            return "The server doesn't know where you are yet.";
+        if (main.IsDead)
+            return "You can't travel while you are down.";
+        var them = sync.Nickname(to);
+        if (NearSpot(to, main) is not { } spot)
+            return $"The server doesn't know where {them} is yet.";
+        var here = GameData.AreaKey(areaId);
+        if (spot.Area == here && Vector3.Distance(main.Position, spot.Position) <= NearMax)
+            return $"You are already next to {them}.";
+        if (GameData.IsInterior(spot.Area) && spot.Cell is null)
+            return $"{them} is in a place that isn't in the mod's table of interiors, so you can't travel there.";
+        if (spot.Area != here && spot.Cell is null && WorldPlace(spot) is null)
+            return $"{them} is somewhere the mod can't send you.";
+        var name = sync.Nickname(who);
+        if (!_sessions.TryGetValue(who, out var s))
+            _sessions[who] = s = new Session { Area = here, Since = _clock };
+        s.Started = true;
+        s.Joining = to;
+        if (spot.Area == here)
+        {
+            s.Joining = null;
+            Place(main, name, s, spot, $"next to {them}");
+            Arrived?.Invoke(who);
+            return null;
+        }
+        GoTo(main, name, here, s, spot);
+        return $"Travelling to {them}...";
     }
 
     /// <summary>Test: remembers where the player stands now, for <see cref="TestBack"/>.</summary>

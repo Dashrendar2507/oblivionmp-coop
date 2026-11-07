@@ -15,26 +15,37 @@ namespace CoopQuestSync.Server;
 ///   /coop test stage Q N      - Ghost reached stage N of quest Q: you get it live, with the live effect switches
 ///   /coop test effects Q      - list the stages of quest Q that have effects, and which
 ///   /coop test revive         - Ghost revives you while you are down (die first: console "kill")
-///   /coop test pin / back     - remember where you stand, then go back there as a join would (into a building too)
+///   /coop test voice [voice line] - play a voice line now (a random one, or e.g. "imperial_m ms26_ms26filecharges_000363be_1")
+///   /coop test pin / back     - remember where you stand, then go back there as a join would (into a building too).
+///                               During /coop test talk, the join key travels to the pinned spot, as if Ghost stood there
+/// /coop calm [player | all | near]: stop fights that went wrong (your area; a player's area and bounty; every area;
+/// the NPC closest to you). See CombatService.
 ///   /coop test status         - what the server knows about you: phase, area, talking, menu, frozen, switches
 /// </summary>
 [Service]
 public sealed partial class TestCommands(IChat chat, IEntities entities, QuestTokenSync sync, GameData data,
-    ConversationRelay talks, PartyService party, ReturnOnJoin returns)
+    ConversationRelay talks, PartyService party, ReturnOnJoin returns, CombatService combat, CoopRpc rpc)
 {
     private const string Ghost = "Ghost";
-    private const string Usage = "/coop follow | revive | giveup, or /coop test talk [ask] | stop | stage <quest> <stage> | effects <quest> | revive | pin | back | status";
+    private const string Usage = "/coop follow | join | revive | giveup, /coop calm [player | all | near], or /coop test talk [ask] | stop | stage <quest> <stage> | effects <quest> | revive | voice | pin | back | status";
 
     private void Start() => chat.AddCommand("coop", Usage, Run);
 
     private void Run(IChat c, PlayerId sender, string arguments)
     {
         var parts = arguments.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length >= 1 && parts[0].Equals("calm", StringComparison.OrdinalIgnoreCase))
+        {
+            var result = combat.Calm(sender, string.Join(' ', parts.Skip(1)));
+            Reply(sender, result);
+            return;
+        }
         // Same as the keys, for when a key doesn't get through.
         if (parts.Length == 1)
             switch (parts[0].ToLowerInvariant())
             {
                 case "follow": talks.ToggleFollow(sender); return;
+                case "join": talks.Join(sender); return;
                 case "revive": party.ReviveNearest(sender); return;
                 case "giveup": party.GiveUp(sender); return;
             }
@@ -108,6 +119,32 @@ public sealed partial class TestCommands(IChat chat, IEntities entities, QuestTo
                 Reply(sender, party.TestRevive(sender, Ghost) ? "Ghost revived you." : "You are not down. Die first (console: kill), with \"When a player dies\" set to revive.");
                 break;
 
+            case "voice":
+            {
+                string? voice = null;
+                string? text = null;
+                if (parts.Length >= 4)
+                    voice = $"{parts[2]} {parts[3]}".ToLowerInvariant();
+                else if (data.SampleLines(1) is [var line])
+                {
+                    var speaker = data.VoiceOfName(line.Speaker);
+                    var spoken = GameData.VoiceLine(line, line.Lines[0]);
+                    if (speaker is not null && spoken is not null)
+                    {
+                        voice = $"{speaker} {spoken}";
+                        text = $"{data.Name(line.Speaker)}: \"{data.Text(line.Lines[0])}\"";
+                    }
+                }
+                if (voice is null || !System.Text.RegularExpressions.Regex.IsMatch(voice, "^[a-z0-9_]{1,40} [a-z0-9_]{1,120}$"))
+                {
+                    Reply(sender, "Usage: /coop test voice, or /coop test voice imperial_m ms26_ms26filecharges_000363be_1");
+                    break;
+                }
+                rpc.SendPlayVoice(sender, voice);
+                Reply(sender, $"Playing {voice}{(text is null ? "" : " - " + text)}. If you hear nothing, send UE4SS.log.");
+                break;
+            }
+
             case "pin":
                 Reply(sender, returns.TestPin(sender));
                 break;
@@ -125,7 +162,7 @@ public sealed partial class TestCommands(IChat chat, IEntities entities, QuestTo
                 Reply(sender, $"Phase {view.Phase}{(view.CatchingUp ? " (catching up)" : "")}, area {(view.Area is { } area ? GameData.AreaKey(area) : "unknown")}, "
                     + $"talking {view.InDialogue}, menu {talks.Activity(sender) ?? "none"}, in combat {view.InCombat}, frozen {view.WantFrozen}. "
                     + $"Effect switches now ({phase}): {string.Join(", ", allowed)}. Dialogue text loaded: {(data.HasText ? "yes" : "no")}. "
-                    + returns.Describe(sender));
+                    + returns.Describe(sender) + " " + combat.Describe());
                 break;
             }
 

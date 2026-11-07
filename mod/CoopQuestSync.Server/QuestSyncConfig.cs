@@ -46,6 +46,14 @@ public sealed partial class QuestSyncConfig
         "Oblivion.esm,DLCBattlehornCastle.esp,DLCFrostcrag.esp,DLCHorseArmor.esp,DLCMehrunesRazor.esp,DLCOrrery.esp," +
         "DLCShiveringIsles.esp,DLCSpellTomes.esp,DLCThievesDen.esp,DLCVileLair.esp,Knights.esp,AltarESPMain.esp,AltarDeluxe.esp,AltarESPLocal.esp";
 
-    /// <summary>The game's text (key -> text), made with plugin/tools/locres.py. Empty: strings.json next to the DLL.</summary>
+    /// <summary>The game's text (key -> text). Empty: strings.json next to the DLL, which the server makes itself from
+    /// the game's files the first time (or make it with plugin/tools/locres.py).</summary>
     public string StringsFile { get; set; } = "";
+
+    /// <summary>Where Oblivion Remastered is installed, to read its text from. Empty: found through Steam.</summary>
+    public string GameFolder { get; set; } = "";
+
+    /// <summary>The language of the game's text: en, de, fr, es, it, pl, ru, ja, zh-Hans... (the folder name under
+    /// Localization/Game in the game's files).</summary>
+    public string Language { get; set; } = "en";
 }

@@ -74,6 +74,7 @@
 <header>
   <h1>Co-op Quest Sync</h1>
   <label class="switch"><input type="checkbox" id="auto"> Auto sync</label>
+  <button id="calmAll" title="Every NPC fighting where a player is stops, and guards stop chasing players (needs the CoopQuestSyncUI add-on)">Calm all fights</button>
   <button class="danger" id="resetAll">Reset all shared progress</button>
   <span id="err"></span>
 </header>
@@ -141,7 +142,8 @@ function render() {
   renderSettings();
   $("players").innerHTML = state.players.length
     ? state.players.map(p => `<div class="player"><b>${esc(p.name)}${p.name === state.settings.leader ? " ★" : ""}</b><span class="phase ${esc(p.phase)}">${esc(phaseText(p.phase))}</span>
-        · ${Object.values(p.stages).reduce((a, s) => a + s.length, 0)} stages${p.talking && !(p.extra && p.extra.activity) ? `<span class="tag">talking</span>` : ""}${p.frozen ? `<span class="tag">watching (frozen)</span>` : ""}${p.extra && p.extra.downed ? `<span class="tag">down, ${p.extra.secondsLeft} s</span>` : ""}${p.extra && p.extra.activity ? `<span class="tag">${esc(p.extra.activity)}</span>` : ""}</div>`).join("")
+        · ${Object.values(p.stages).reduce((a, s) => a + s.length, 0)} stages${p.talking && !(p.extra && p.extra.activity) ? `<span class="tag">talking</span>` : ""}${p.frozen ? `<span class="tag">watching (frozen)</span>` : ""}${p.extra && p.extra.downed ? `<span class="tag">down, ${p.extra.secondsLeft} s</span>` : ""}${p.extra && p.extra.activity ? `<span class="tag">${esc(p.extra.activity)}</span>` : ""}${p.combat ? `<span class="tag">in combat</span>` : ""}
+        <div><button data-calm="${esc(p.name)}" title="Stop the fights in ${esc(p.name)}'s area and clear their bounty (needs the CoopQuestSyncUI add-on)">Calm</button></div></div>`).join("")
     : `<div class="player"><span class="phase">Nobody is connected.</span></div>`;
 
   $("head").innerHTML = `<th>Quest</th><th>Shared</th>` + state.players.map(p => `<th class="hide-sm">${esc(p.name)}</th>`).join("");
@@ -207,6 +209,13 @@ $("rows").addEventListener("click", e => {
   if (tr) { const q = tr.dataset.q; open.has(q) ? open.delete(q) : open.add(q); render(); }
 });
 $("auto").addEventListener("change", e => act({ action: "auto", on: e.target.checked }));
+$("players").addEventListener("click", e => {
+  const calm = e.target.closest("[data-calm]");
+  if (calm && confirm(`Stop the fights around ${calm.dataset.calm} and clear their bounty?`)) act({ action: "calm", player: calm.dataset.calm });
+});
+$("calmAll").addEventListener("click", () => {
+  if (confirm("Stop every fight where a player is, and the guards' chase?")) act({ action: "calm" });
+});
 $("resetAll").addEventListener("click", () => {
   if (confirm("Reset every shared quest?\n\nThe shared progress is cleared and the hidden tokens are taken from everyone, including players who join later. "
     + "The game can't undo quests while someone is playing, so each player keeps their quests until they rejoin."))
@@ -260,6 +269,8 @@ function renderSettings() {
   <div class="sgroup"><h3>Conversations</h3>
     ${srow("Show others' conversations to", "An overlay like the dialogue screen; watchers can't pick topics.", sel("conversationOverlay", choices.conversationOverlay, st.conversationOverlay))}
     ${srow("Watchers follow a conversation", "Either way, the follow key while watching leaves it.", sel("conversationFollow", choices.conversationFollow, st.conversationFollow))}
+    ${srow("Travel to a conversation", "The join key takes a player to whoever is talking, listening in or not: into their building or city too (needs the add-on).", chk("conversationTeleport", st.conversationTeleport))}
+    ${srow("Watchers hear the voices", "The NPC's voice with each line, from nowhere, while listening in. Needs the CoopQuestSyncUI add-on.", chk("witnessVoices", st.witnessVoices))}
     ${srow("Freeze watchers", "Players in combat are never frozen.", sel("conversationFreeze", choices.conversationFreeze, st.conversationFreeze))}
     ${srow("Share rewards handed out in conversation", "Not trades (lines that also take something).", chk("shareDialogueRewards", st.shareDialogueRewards))}
     ${srow("Share quest items", "Keys, letters... picked up by one player go to everyone.", chk("shareQuestItems", st.shareQuestItems))}
@@ -267,8 +278,9 @@ function renderSettings() {
   <div class="sgroup"><h3>Party</h3>
     ${srow("When a player dies", "The revive key brings back a downed teammate next to you; the respawn key respawns.", sel("death", choices.death, st.death))}
     ${srow("Seconds before respawning", "", num("reviveSeconds", st.reviveSeconds))}
-    ${srow("Put players back where they left", "When they join. Outdoors: the same spot. Inside a building: outside its door.", chk("returnOnJoin", st.returnOnJoin))}
-    ${srow("Keys", "Alt + a letter the game doesn't use (K is the chat). Follow: listen in or leave a conversation.", `Follow ${txt("keyFollow", st.keyFollow)} Revive ${txt("keyRevive", st.keyRevive)} Respawn ${txt("keyRespawn", st.keyRespawn)}`)}
+    ${srow("Put players back where they left", "When they join. Outdoors: the same spot. Inside a building: back inside (needs the add-on).", chk("returnOnJoin", st.returnOnJoin))}
+    ${srow("Black screen while travelling", "Hides the jumps while a player is put back where they left, or travels to a teammate.", chk("travelScreen", st.travelScreen))}
+    ${srow("Keys", "Alt + a letter the game doesn't use (K is the chat). Follow: listen in or leave a conversation. Join: travel to the talker.", `Follow ${txt("keyFollow", st.keyFollow)} Join ${txt("keyJoin", st.keyJoin)} Revive ${txt("keyRevive", st.keyRevive)} Respawn ${txt("keyRespawn", st.keyRespawn)}`)}
     ${srow("Revive distance (cm)", "400 is about four metres.", num("reviveRange", st.reviveRange))}
     ${srow("Tags over heads", "Talking, bartering, picking a lock, down.", chk("statusTags", st.statusTags))}
     ${srow("Level of spawns and loot", "", sel("scaling", choices.scaling, st.scaling))}
