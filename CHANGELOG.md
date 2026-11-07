@@ -9,13 +9,17 @@
   fallback, CommonUI's DeactivateWidget, hid the pop-up but left the game thinking a menu was open.
 * The world fades to black around a move only with a client that brings it back (it writes `fade-ok` in the add-on
   folder); an older client left it black for 40 s. At most 20 s now.
+* **Admin-only commands**: `/qs push`, `/qs auto`, `/qs source`, `/qs reset`, `/coop calm`, `/qsprobe` and
+  `/coop test` are for admins: the ReadyM admin panel's admins (read from its `data/web.db`), plus players added
+  with **Make admin** on the co-op page. **Co-op settings > Commands** can open them to everyone. `/qs whoami` shows
+  your ReadyM id and status; `/coop test asghost on|off` tests the refusals alone. config.json: `PanelDatabase`.
 * **Black screen while travelling**: when the server puts a player back where they left on join, or takes them to a
   teammate (Alt+Y) through another load, their screen fades to black with one line ("Taking you back to where you
   left...") and lifts once they stand in the right spot, so the save's spot, the door and the jumps stay hidden. It
   steps aside while a menu stays open for more than 2.5 s (a quest pop-up the add-on couldn't close), until the
   add-on has run the move; the add-on's own quick close of the catch-up's pop-ups no longer flashes the game. A coc or cow tears
   down OblivionMP's pages as its load starts, so the add-on first fades the world to black with the game's camera
-  fade and brings it back once the client sees the player in the new place (40 s at most): no second of the game
+  fade and brings it back once the client sees the player in the new place (20 s at most): no second of the game
   before the load. Setting "Black screen while travelling" (on).
 * **Console commands wait for a quiet moment**: the add-on runs them one at a time, not during the join's quest
   catch-up, and not while a menu is open or within 2 seconds of one opening or closing. A `coc` run just as the game

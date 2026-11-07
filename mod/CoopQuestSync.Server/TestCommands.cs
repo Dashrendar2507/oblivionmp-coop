@@ -21,13 +21,16 @@ namespace CoopQuestSync.Server;
 /// /coop calm [player | all | near]: stop fights that went wrong (your area; a player's area and bounty; every area;
 /// the NPC closest to you). See CombatService.
 ///   /coop test status         - what the server knows about you: phase, area, talking, menu, frozen, switches
+///   /coop test asghost on|off - the server treats you like Ghost, a player who isn't an admin, so you can see the
+///                               admin commands refused without a second player (open to everyone)
+/// /coop calm and /coop test are for admins only (see <see cref="CommandAccess"/>); /coop follow, join, revive and giveup are for everyone.
 /// </summary>
 [Service]
 public sealed partial class TestCommands(IChat chat, IEntities entities, QuestTokenSync sync, GameData data,
-    ConversationRelay talks, PartyService party, ReturnOnJoin returns, CombatService combat, CoopRpc rpc)
+    ConversationRelay talks, PartyService party, ReturnOnJoin returns, CombatService combat, CoopRpc rpc, CommandAccess access)
 {
     private const string Ghost = "Ghost";
-    private const string Usage = "/coop follow | join | revive | giveup, /coop calm [player | all | near], or /coop test talk [ask] | stop | stage <quest> <stage> | effects <quest> | revive | voice | pin | back | status";
+    private const string Usage = "/coop follow | join | revive | giveup, /coop calm [player | all | near], or /coop test talk [ask] | stop | stage <quest> <stage> | effects <quest> | revive | voice | pin | back | status | asghost on|off";
 
     private void Start() => chat.AddCommand("coop", Usage, Run);
 
@@ -36,6 +39,9 @@ public sealed partial class TestCommands(IChat chat, IEntities entities, QuestTo
         var parts = arguments.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length >= 1 && parts[0].Equals("calm", StringComparison.OrdinalIgnoreCase))
         {
+            // Stops fights and can clear a bounty, so it is for admins.
+            if (!access.Allow(sender, "/coop calm"))
+                return;
             var result = combat.Calm(sender, string.Join(' ', parts.Skip(1)));
             Reply(sender, result);
             return;
@@ -54,6 +60,18 @@ public sealed partial class TestCommands(IChat chat, IEntities entities, QuestTo
             Reply(sender, Usage);
             return;
         }
+        // Open to everyone: it can only take rights away from yourself, and "off" must work while you have none.
+        if (parts[1].Equals("asghost", StringComparison.OrdinalIgnoreCase))
+        {
+            if (parts.Length == 3 && parts[2] is "on" or "off")
+                Reply(sender, access.SetActAsGhost(sender, parts[2] == "on"));
+            else
+                Reply(sender, "/coop test asghost on|off");
+            return;
+        }
+        // follow, revive and giveup above are for everyone; the test tools are for admins.
+        if (!access.Allow(sender, "/coop test"))
+            return;
         if (!entities.TryLookup(sender, out MainCharacter me))
             return;
         switch (parts[1].ToLowerInvariant())

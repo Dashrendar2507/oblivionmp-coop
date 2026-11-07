@@ -107,6 +107,7 @@ reaches the stage always gets everything. These switches decide what everyone el
 | `/qs auto on\|off` | Turn automatic sharing on or off. |
 | `/qs source <name>\|all` | Share only one player's progress, or everyone's. |
 | `/qs reset` | Reset every shared quest. |
+| `/qs whoami` | Your ReadyM id, and whether the server counts you as an admin. |
 | `/coop follow`, `/coop join`, `/coop revive`, `/coop giveup` | Same as the keys. |
 | `/coop calm` | Stop the fights in your area: each NPC fighting there stops, and guards stop chasing the players there. For a fight that went wrong, such as a quest giver turned hostile. |
 | `/coop calm <name>` | The same in that player's area, and their bounty goes to 0. |
@@ -115,6 +116,12 @@ reaches the stage always gets everything. These switches decide what everyone el
 
 `/coop calm` needs the CoopQuestSyncUI add-on in the players' games: it runs the console's `StopCombat`,
 `scaonactor` and `SetCrimeGold 0`. The web page has the same, as **Calm** on each player and **Calm all fights**.
+
+`/qs push`, `/qs auto`, `/qs source`, `/qs reset`, `/coop calm`, `/qsprobe` and `/coop test` are for admins: the
+admins of the ReadyM admin panel (port 9050, **Admins**) who have the **players.manage** permission (superusers
+always do), plus anyone added with **Make admin** on the co-op page.
+**Co-op settings > Commands** on the page can open them to everyone. Everyone else gets "Only server admins can
+use ...". Players are recognised by their ReadyM account, so a nickname change doesn't matter.
 
 Quests are named by their editor id (`MS93`, `MQ01`...). The web page shows each quest's id next to its name.
 
@@ -132,6 +139,7 @@ The server can play a pretend teammate called "Ghost", so you can try the co-op 
 | `/coop test revive` | Ghost revives you while you're down. |
 | `/coop test pin`, `/coop test back` | Remember where you stand, then go back there the way a join would. |
 | `/coop test status` | What the server knows about you. |
+| `/coop test asghost on\|off` | The server treats you like Ghost, a player who isn't an admin, so you can see the admin commands refused. Open to everyone. |
 
 ## config.json (server host, optional)
 
@@ -147,6 +155,8 @@ Create `config.json` in `mods\CoopQuestSync\server\` to change these. Every entr
 | `IntervalSeconds` | `1` | How often the server checks the players' games. |
 | `StateFile` | `"coop-quest-sync-state.json"` | Where the shared progress and settings are kept. |
 | `GamePlugins` | the game's plugins | The order of the game's own plugins in `Plugins.txt`. Only matters for DLC items and NPC names. |
-| `StringsFile` | `""` | The game's text. Empty: `strings.json` next to the server DLL, made from the game on first start. |
+| `StringsFile` | `""` | The game's text. Empty: `coop-quest-sync-strings.json` in the server's folder (next to the state file), made from the game on first start or copied once from a `strings.json` next to the server DLL. |
 | `GameFolder` | `""` | Where Oblivion Remastered is installed, to read its text from. Empty: found through Steam. |
-| `Language` | `"en"` | Language of the game's text (`de`, `fr`, `es`, `it`...). Delete `strings.json` after changing it. |
+| `Language` | `"en"` | Language of the game's text (`de`, `fr`, `es`, `it`...). Delete `coop-quest-sync-strings.json` after changing it. |
+| `PanelDatabase` | `"data/web.db"` | The ReadyM admin panel's database, where the mod finds the server's admins. Empty: only admins added on the co-op page. |
+| `PanelPermission` | `"players.manage"` | The panel permission (set per admin under **Admins**) a panel admin needs for the co-op admin commands. Superusers always can. Empty: every active panel admin. |

@@ -83,6 +83,12 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
     /// <summary>Lets other services add their own fields to each player on the web page.</summary>
     public Func<PlayerId, object?>? PlayerExtras { get; set; }
 
+    /// <summary>Each player's command access for the web page (see <see cref="CommandAccess"/>).</summary>
+    public Func<PlayerId, object?>? PlayerAccess { get; set; }
+
+    /// <summary>Where the admin list comes from, for the web page (see <see cref="CommandAccess"/>).</summary>
+    public Func<object?>? AccessInfo { get; set; }
+
     /// <summary>Raised on the game loop after a pass read every inventory.</summary>
     public event Action? Passed;
 
@@ -706,6 +712,7 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
                 combat = view.InCombat,
                 frozen = view.WantFrozen,
                 extra = PlayerExtras?.Invoke(id),
+                access = PlayerAccess?.Invoke(id),
             });
         _stateJson = JsonSerializer.Serialize(new
         {
@@ -718,6 +725,7 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
             players,
             shared = Shared.ToDictionary(kv => kv.Key, kv => kv.Value.ToArray()),
             reset = ResetQuests.ToArray(),
+            access = AccessInfo?.Invoke(),
         }, CoopSettings.Json);
     }
 

@@ -18,7 +18,7 @@ namespace CoopQuestSync.Server;
 /// Requests run on a background thread; anything that changes the game goes through <see cref="QuestTokenSync.Enqueue"/>.
 /// </summary>
 [Service]
-public sealed partial class WebAdmin(QuestTokenSync sync, GameData data, QuestSyncConfig config, CombatService combat, ILogger logger)
+public sealed partial class WebAdmin(QuestTokenSync sync, GameData data, QuestSyncConfig config, CombatService combat, ILogger logger, CommandAccess access)
 {
     private TcpListener? _listener;
     private CancellationTokenSource? _cts;
@@ -253,6 +253,29 @@ public sealed partial class WebAdmin(QuestTokenSync sync, GameData data, QuestSy
             case "reset-all":
                 sync.Enqueue(sync.ClearShared);
                 break;
+
+            case "admin-add":
+            {
+                var player = Str("player");
+                if (string.IsNullOrEmpty(player))
+                    return Json("400 Bad Request", new { error = "player needed" });
+                sync.Enqueue(() =>
+                {
+                    var error = access.AddPageAdmin(player);
+                    if (error is not null)
+                        logger.LogWarning("[QuestSync] Web: could not make {Player} an admin: {Error}", player, error);
+                });
+                break;
+            }
+
+            case "admin-remove":
+            {
+                var id = Str("id");
+                if (string.IsNullOrEmpty(id))
+                    return Json("400 Bad Request", new { error = "id needed" });
+                sync.Enqueue(() => access.RemovePageAdmin(id));
+                break;
+            }
 
             default:
                 return Json("400 Bad Request", new { error = "unknown action" });
