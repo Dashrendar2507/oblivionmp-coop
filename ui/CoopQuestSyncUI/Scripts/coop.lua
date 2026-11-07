@@ -16,7 +16,12 @@
 --   * Looks up the game's own text (names, dialogue, quest names) by key for the co-op client mod, in the language
 --     the game runs in: keys in text-request.txt, answers in text-reply.txt. The game's files are compressed in a
 --     way the mod can't read, but the running game has the text at hand.
---   * Writes the class of every new UI widget to UE4SS.log once, to find widgets that need handling.
+--
+-- Crash safety (2026-11-07). UE4SS runs LoopAsync on its own thread, next to the game thread, and the game crashed
+-- in that thread while loading. So this file keeps the add-on's footprint small: no watchers on new objects (they
+-- fire thousands of times during a load), one LoopAsync that only looks at files, and all game work in a single
+-- ExecuteInGameThread job that is never queued again before the last one has finished. A file named "off" in the
+-- add-on folder stops everything (main.lua reads it), to tell whether a crash comes from here.
 
 local S = CQS or {}
 CQS = S
@@ -47,9 +52,7 @@ local ALLOWED = {
 S.muted = S.muted or false
 S.mutedAt = S.mutedAt or 0
 S.hiddenCount = S.hiddenCount or 0
-S.seenClasses = S.seenClasses or {}
 S.menuOpen = nil -- unknown after a (re)load, so the first check writes the file's state
-S.voiceEventsLogged = S.voiceEventsLogged or 0
 S.described = S.described or {}
 
 local function log(text)
@@ -104,53 +107,19 @@ function S.onNotification(param)
     end
 end
 
--- New widgets: each class once, with a note when it appears during a sync -----------------------------------------
-
-function S.onNewWidget(widget)
-    local ok, name = pcall(function() return widget:GetClass():GetFullName() end)
-    if ok and name and not S.seenClasses[name] then
-        S.seenClasses[name] = true
-        log("new widget" .. (S.muted and " during sync" or "") .. ": " .. name)
-    end
-end
-
 -- The local player's controller ---------------------------------------------------------------------------------
 
--- The one with a Player (the local player's). Never kept across a map load: a controller from before the load
--- points at freed memory, and touching it crashes the game. So the cached one is dropped when a map starts loading
--- or a new controller appears, and looked up again every couple of seconds anyway.
-S.pc = nil
-S.pcAt = 0
-S.loading = false
-S.loadingAt = 0
-
+-- The one with a Player (the local player's), looked up fresh every time and only on the game thread: a controller
+-- kept from before a map load points at freed memory, and touching it crashes the game.
 local function playerController()
-    if S.loading and os.time() - S.loadingAt < 30 then
-        return nil
-    end
-    S.loading = false
-    if S.pc and os.time() - S.pcAt < 2 then
-        return S.pc
-    end
-    S.pc = nil
     for _, pc in ipairs(FindAllOf("PlayerController") or {}) do
         local good = false
         pcall(function() good = pc:IsValid() and pc.Player ~= nil and pc.Player:IsValid() end)
         if good then
-            S.pc = pc
-            S.pcAt = os.time()
             return pc
         end
     end
     return nil
-end
-
-function S.forgetController(why)
-    S.pc = nil
-    if why then
-        S.loading = why == "loading"
-        S.loadingAt = os.time()
-    end
 end
 
 -- A function's parameters, written to the log once, for when a call fails.
@@ -210,8 +179,8 @@ local function runConsole(cmd)
 end
 
 -- The client adds commands to command.txt, one a line. Take the file first (a rename, so lines added meanwhile go
--- to a new file), then run its lines in order.
-function S.pollCommand()
+-- to a new file), then run its lines in order. Game thread.
+function S.runCommands()
     os.remove(COMMAND_TAKEN)
     if not os.rename(COMMAND_FILE, COMMAND_TAKEN) then
         return -- no file, or the client is writing it: next time
@@ -233,52 +202,19 @@ function S.pollCommand()
     end
     f:close()
     os.remove(COMMAND_TAKEN)
-    if #commands == 0 then
-        return
+    for _, cmd in ipairs(commands) do
+        local ok, how = runConsole(cmd)
+        log((ok and "ran " or "could not run ") .. cmd .. " (" .. how .. ")")
     end
-    ExecuteInGameThread(function()
-        for _, cmd in ipairs(commands) do
-            local ok, how = runConsole(cmd)
-            log((ok and "ran " or "could not run ") .. cmd .. " (" .. how .. ")")
-        end
-    end)
 end
 
 -- Voices ---------------------------------------------------------------------------------------------------------
 --
 -- The remaster plays each spoken line with a Wwise event named after the original voice file:
 -- Play_<race>_<sex>_[altvoice_|beggar_]<quest>_<topic>_<line form id>_<n>[_sid], kept in a folder per voice:
--- /Game/WwiseAudio/Events/Voice/oblivion/<race>/<sex>/[altvoice/] (seen in the game, 2026-11-06). The root is
--- learned again from any voice event the game loads itself, in case it differs.
+-- /Game/WwiseAudio/Events/Voice/oblivion/<race>/<sex>/[altvoice/] (seen in the game, 2026-11-06).
 
 S.voiceRoot = S.voiceRoot or "/Game/WwiseAudio/Events/Voice/oblivion/"
-
-local function looksLikeVoice(name)
-    return name:lower():find("play_[%a_]+_[mf]_[%w_]+_%x%x%x%x%x%x%x%x_%d") ~= nil
-end
-
--- "AkAudioEvent /Game/X/Voice/oblivion/dark_elf/m/altvoice/Play_a.Play_a" -> "/Game/X/Voice/oblivion/"
-local function rootOf(fullName)
-    local path = fullName:match("^%S+%s+(%S+)$") or fullName
-    return path:match("^(.*/)[%w_]+/[mf]/[^/]*$") or path:match("^(.*/)[%w_]+/[mf]/[%w_]+/[^/]*$")
-end
-
-function S.onNewAkEvent(event)
-    if S.voiceEventsLogged >= 25 then
-        return
-    end
-    local ok, name = pcall(function() return event:GetFullName() end)
-    if not ok or not name or not looksLikeVoice(name) then
-        return
-    end
-    S.voiceEventsLogged = S.voiceEventsLogged + 1
-    local root = rootOf(name)
-    if root and root ~= S.voiceRoot then
-        S.voiceRoot = root
-        log("learned where voice events live: " .. root)
-    end
-    log("voice event loaded by the game: " .. name)
-end
 
 -- Where the event for this line can be: "/Game/.../dark_elf/m/altvoice/Play_dark_elf_m_altvoice_x.Play_..."
 local function voicePaths(voice, line)
@@ -391,9 +327,8 @@ function S.playVoice(spec)
     end
 end
 
--- Also answers text requests: the 100 ms loop calls this, so a game running an older coop.lua picks it up on reload.
-function S.pollVoice()
-    pcall(S.pollText)
+-- Game thread.
+function S.runVoice()
     local f = io.open(VOICE_FILE, "r")
     if not f then
         return
@@ -401,12 +336,10 @@ function S.pollVoice()
     local spec = (f:read("*l") or ""):gsub("%s+$", "")
     f:close()
     os.remove(VOICE_FILE)
-    ExecuteInGameThread(function()
-        local ok, err = pcall(S.playVoice, spec)
-        if not ok then
-            log("voice failed: " .. tostring(err))
-        end
-    end)
+    local ok, err = pcall(S.playVoice, spec)
+    if not ok then
+        log("voice failed: " .. tostring(err))
+    end
 end
 
 -- The game's text ------------------------------------------------------------------------------------------------
@@ -496,48 +429,51 @@ function S.lookupText(key)
     return nil
 end
 
--- Answers the client's text requests: "key<TAB>text" a line, with line breaks in the text written as \n.
-function S.pollText()
+-- Answers the client's text requests: "key<TAB>text" a line, with line breaks in the text written as \n. At most
+-- TEXT_PER_JOB keys a job, so a long list doesn't stall a frame; the rest wait for the next job. Game thread.
+local TEXT_PER_JOB = 100
+S.textQueue = S.textQueue or {}
+
+function S.runText()
     os.remove(TEXT_TAKEN)
-    if not os.rename(TEXT_REQUEST, TEXT_TAKEN) then
-        return
+    if os.rename(TEXT_REQUEST, TEXT_TAKEN) then
+        local f = io.open(TEXT_TAKEN, "r")
+        if f then
+            for line in f:lines() do
+                local key = line:match("^(LOC_[%w_&%-]+)%s*$")
+                if key and #S.textQueue < 2000 then
+                    S.textQueue[#S.textQueue + 1] = key
+                end
+            end
+            f:close()
+        end
+        os.remove(TEXT_TAKEN)
     end
-    local f = io.open(TEXT_TAKEN, "r")
-    if not f then
+    if #S.textQueue == 0 then
         return
     end
     local keys = {}
-    for line in f:lines() do
-        local key = line:match("^(LOC_[%w_&%-]+)%s*$")
-        if key and #keys < 500 then
-            keys[#keys + 1] = key
-        end
+    while #keys < TEXT_PER_JOB and #S.textQueue > 0 do
+        keys[#keys + 1] = table.remove(S.textQueue, 1)
     end
-    f:close()
-    os.remove(TEXT_TAKEN)
-    if #keys == 0 then
-        return
+    local lines, found = {}, 0
+    for _, key in ipairs(keys) do
+        local ok, value = pcall(S.lookupText, key)
+        value = ok and value or ""
+        if value ~= "" then
+            found = found + 1
+        end
+        lines[#lines + 1] = key .. "\t" .. value:gsub("\\", "\\\\"):gsub("\r?\n", "\\n"):gsub("\t", " ")
     end
-    ExecuteInGameThread(function()
-        local lines, found = {}, 0
-        for _, key in ipairs(keys) do
-            local ok, text = pcall(S.lookupText, key)
-            text = ok and text or ""
-            if text ~= "" then
-                found = found + 1
-            end
-            lines[#lines + 1] = key .. "\t" .. text:gsub("\\", "\\\\"):gsub("\r?\n", "\\n"):gsub("\t", " ")
-        end
-        local out = io.open(TEXT_REPLY, "a")
-        if out then
-            out:write(table.concat(lines, "\n") .. "\n")
-            out:close()
-        end
-        if not S.textLogged or found < #keys then
-            S.textLogged = true
-            log("text: found " .. found .. " of " .. #keys .. " key(s)" .. (found < #keys and (", e.g. not " .. keys[1]) or ""))
-        end
-    end)
+    local out = io.open(TEXT_REPLY, "a")
+    if out then
+        out:write(table.concat(lines, "\n") .. "\n")
+        out:close()
+    end
+    if not S.textLogged or found < #keys then
+        S.textLogged = true
+        log("text: found " .. found .. " of " .. #keys .. " key(s)" .. (found < #keys and (", e.g. not " .. keys[1]) or ""))
+    end
 end
 
 -- The game's language ----------------------------------------------------------------------------------------------
@@ -570,8 +506,8 @@ end
 
 -- Menus ----------------------------------------------------------------------------------------------------------
 
--- A menu (map, inventory, journal...) shows the mouse cursor; walking around doesn't.
-function S.checkMenu()
+-- A menu (map, inventory, journal...) shows the mouse cursor; walking around doesn't. Game thread.
+function S.menuCheck()
     local pc = playerController()
     local open = false
     if pc then
@@ -593,62 +529,104 @@ function S.checkMenu()
     log(open and "menu open" or "menu closed")
 end
 
--- Hooks and loops, registered once per game start ------------------------------------------------------------------
+-- The game-thread job ---------------------------------------------------------------------------------------------
 
-ExecuteInGameThread(function()
-    local ok, err = pcall(S.writeLanguage)
-    if not ok then
-        log("language: " .. tostring(err))
-    end
-end)
+local MENU_EVERY = 0.5 -- seconds between menu checks
+local GAP = 0.15       -- seconds between the end of one job and the next, so jobs never pile up
+local HUD_EVERY = 2    -- seconds between tries to hook the HUD, until it takes
 
--- Added after the first registration, so a game already running with an older coop.lua gets them on reload too.
-if not S.registeredLoadHooks then
-    S.registeredLoadHooks = true
-    -- Drop the cached controller whenever it may go away (see playerController).
-    pcall(NotifyOnNewObject, "/Script/Engine.PlayerController", function() S.forgetController() end)
-    if type(RegisterLoadMapPreHook) == "function" then
-        pcall(RegisterLoadMapPreHook, function() S.forgetController("loading") end)
+-- Kept across a reload of this file, so a job still waiting on the game thread isn't queued twice.
+S.jobBusy = S.jobBusy or false
+S.jobQueuedAt = S.jobQueuedAt or 0
+S.jobDoneAt = S.jobDoneAt or -GAP
+S.lastMenu = S.lastMenu or -MENU_EVERY
+S.lastHudTry = S.lastHudTry or -HUD_EVERY
+
+local function exists(path)
+    local f = io.open(path, "r")
+    if f then
+        f:close()
+        return true
     end
-    if type(RegisterLoadMapPostHook) == "function" then
-        pcall(RegisterLoadMapPostHook, function() S.forgetController("loaded") end)
+    return false
+end
+
+-- The HUD class may not be loaded when the add-on starts, so try again every couple of seconds until the hook takes.
+function S.hookHud()
+    if S.hudHooked or os.clock() - S.lastHudTry < HUD_EVERY then
+        return
+    end
+    S.lastHudTry = os.clock()
+    S.hudTries = (S.hudTries or 0) + 1
+    local ok, err = pcall(RegisterHook, "Function /Script/Altar.VHUDSubtitleViewModel:ConsumeNotification",
+        function(param) S.onNotification(param) end)
+    if ok then
+        S.hudHooked = true
+        log("hooked HUD notifications")
+    elseif S.hudTries == 1 or S.hudTries % 30 == 0 then
+        log("waiting for the HUD (" .. tostring(err) .. ")")
     end
 end
 
-if not S.registered then
-    S.registered = true
+-- Everything that touches the game, in one go, on the game thread.
+function S.gameJob()
+    if not S.languageWritten then
+        S.languageWritten = true
+        local ok, err = pcall(S.writeLanguage)
+        if not ok then
+            log("language: " .. tostring(err))
+        end
+    end
+    pcall(S.hookHud)
+    if os.clock() - S.lastMenu >= MENU_EVERY then
+        S.lastMenu = os.clock()
+        pcall(S.menuCheck)
+    end
+    for _, step in ipairs({ S.runCommands, S.runVoice, S.runText }) do
+        local ok, err = pcall(step)
+        if not ok then
+            log("job: " .. tostring(err))
+        end
+    end
+end
 
-    pcall(NotifyOnNewObject, "/Script/UMG.UserWidget", function(widget) S.onNewWidget(widget) end)
-    pcall(NotifyOnNewObject, "/Script/AkAudio.AkAudioEvent", function(event) S.onNewAkEvent(event) end)
+-- The LoopAsync thread: never touches the game, only decides when the next job is due.
+function S.tick()
+    local now = os.clock()
+    if S.jobBusy then
+        if now - S.jobQueuedAt < 30 then
+            return -- still waiting for the game thread (a load can take a while)
+        end
+        S.jobBusy = false -- never wait forever if a job got lost
+    end
+    if now - S.jobDoneAt < GAP then
+        return
+    end
+    local due = now - S.lastMenu >= MENU_EVERY or not S.languageWritten or (not S.hudHooked and now - S.lastHudTry >= HUD_EVERY)
+        or #S.textQueue > 0 or exists(COMMAND_FILE) or exists(VOICE_FILE) or exists(TEXT_REQUEST)
+    if not due then
+        return
+    end
+    S.jobBusy = true
+    S.jobQueuedAt = now
+    ExecuteInGameThread(function()
+        pcall(S.gameJob)
+        S.jobDoneAt = os.clock()
+        S.jobBusy = false
+    end)
+end
 
+-- Names an older coop.lua registered loops and watchers with, for a game that started with it and reloaded this
+-- file: they do nothing now, and the job above does their work.
+local function nothing() end
+S.pollVoice, S.pollCommand, S.pollText, S.checkMenu = nothing, nothing, nothing, nothing
+S.onNewWidget, S.onNewAkEvent, S.forgetController = nothing, nothing, nothing
+
+if not S.registeredJob then
+    S.registeredJob = true
+    S.hudHooked = S.hudHooked or (S.registered == true) -- an older coop.lua already hooks the HUD
     LoopAsync(100, function()
-        pcall(S.pollVoice)
-        return false
-    end)
-
-    LoopAsync(1000, function()
-        pcall(S.pollCommand)
-        return false
-    end)
-
-    LoopAsync(250, function()
-        ExecuteInGameThread(function() pcall(S.checkMenu) end)
-        return false
-    end)
-
-    -- The HUD class may not be loaded when UE4SS starts mods, so keep trying until the hook takes.
-    local tries = 0
-    LoopAsync(2000, function()
-        tries = tries + 1
-        local ok, err = pcall(RegisterHook, "Function /Script/Altar.VHUDSubtitleViewModel:ConsumeNotification",
-            function(param) S.onNotification(param) end)
-        if ok then
-            log("hooked HUD notifications")
-            return true
-        end
-        if tries == 1 or tries % 30 == 0 then
-            log("waiting for the HUD (" .. tostring(err) .. ")")
-        end
+        pcall(S.tick)
         return false
     end)
 end

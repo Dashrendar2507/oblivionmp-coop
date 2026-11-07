@@ -9,8 +9,12 @@
   and `/coop calm near`, and **Calm** buttons on the web page, for fights that went wrong. Through the add-on.
 * **The follow key is now Alt+U** (it was Alt+L; L also hides the game's interface, compass included). A server
   that had L moves to U.
-* The add-on's console commands (pin/back, travel, calm) use the call other Oblivion Remastered mods use, and the
-  add-on no longer keeps the game's player controller across a load (a likely cause of crashes on loading a save).
+* The add-on's console commands (pin/back, travel, calm) use the call other Oblivion Remastered mods use.
+* **Fewer crashes on load**: the add-on no longer watches every new object the game makes (thousands during a load),
+  no longer keeps the player controller, and does all its game work in one job at a time on the game thread. The
+  crashes on loading a save and after the join pop-up came from UE4SS's background thread.
+* An empty file named `off` in the add-on folder switches the add-on off (restart the game), to tell whether a
+  crash comes from it.
 * Voices are looked up in the game's own folders (one per race and sex).
 * A revive or respawn waits until the chat or menu is closed (getting up with the chat open left it stuck).
 * The server log says who fights where and in whose game (`Combat:` lines), to see what is shared already.

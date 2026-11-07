@@ -21,7 +21,18 @@ local function scriptsFolder()
 end
 
 local LOGIC = scriptsFolder() .. "coop.lua"
+-- A file named "off" in the add-on folder keeps the add-on from doing anything, to tell whether a crash comes from it.
+local OFF = (os.getenv("APPDATA") or "") .. "\\ReadyM.Launcher\\Oblivion\\Mods\\CoopQuestSyncUI\\off"
 local current = nil
+
+local function switchedOff()
+    local f = io.open(OFF, "r")
+    if f then
+        f:close()
+        return true
+    end
+    return false
+end
 
 local function reload()
     local f = io.open(LOGIC, "rb")
@@ -45,6 +56,11 @@ local function reload()
     end
     local ok, runErr = pcall(chunk)
     log(ok and "coop.lua loaded" or ("coop.lua failed: " .. tostring(runErr)))
+end
+
+if switchedOff() then
+    log("switched off (delete the file \"off\" in the add-on folder and restart the game to turn it on)")
+    return
 end
 
 reload()

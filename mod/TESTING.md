@@ -71,6 +71,10 @@ shared progress, so a restart keeps them.
 
 ## Test 1: you alone
 
+0. **Crashes on load** (2026-11-07 build). Load a save and join 5 times or so. If it still crashes, put an empty
+   file named `off` (no extension) in `%APPDATA%\ReadyM.Launcher\Oblivion\Mods\CoopQuestSyncUI\`, restart, and
+   try 5 more: UE4SS.log then says `switched off`. Tell me how many of each crashed, and send UE4SS.log (copy it
+   right after a crash, the game starts a new one each time). Delete `off` afterwards.
 1. Join. The server log should show `plugin found`, then `restore finished` or `nothing to restore`, then
    `caught up with the party`.
 2. Open http://localhost:9060/. Under **Co-op settings** you should see the switches. Click a quest you have
