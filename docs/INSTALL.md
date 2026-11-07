@@ -55,24 +55,34 @@ Bethesda, so the mod never ships it. Instead it reads the text from each player'
 * **Players** (the conversation overlay): the CoopQuestSyncUI add-on looks each line's text up in the running game,
   in the language the game is set to. Nothing to do. With several languages in one party, everyone reads in their
   own.
-* **The server** (the web page and chat lines): when the game is installed on the server computer through Steam, the
-  server reads it once on its first start and keeps what the mod uses in `coop-quest-sync-strings.json`, in the
-  folder the server runs from (next to `coop-quest-sync-state.json`), where updates of the mod don't touch it.
-  Please don't share that file. Reading the game's files needs `oo2core_9_win64.dll` on that computer (the mod never
-  downloads it); without it, use the FModel route below. On a dedicated host without the game, the page shows names worked out from the
-  game's ids instead ("Ysabel Andronicus" from `LOC_FN_YsabelAndronicus`); everything else works.
+* **The server** (the web page and chat lines) keeps the text the mod uses in `coop-quest-sync-strings.json`, in the
+  folder the server runs from (next to `server.exe` and `coop-quest-sync-state.json`), where updates of the mod
+  don't touch it. Please don't share that file. When it's missing, the server tries to make it on start-up from the
+  game on the same computer (found through Steam, or `"GameFolder"` in `config.json`).
+  **That only works with Oodle's `oo2core_9_win64.dll` on that computer, and the Steam version of the remaster
+  doesn't include one** (its text is Oodle-compressed). The mod never downloads it. So on most computers, make the
+  file once **by hand** with FModel (below). Until then, or on a dedicated host without the game, the page shows
+  names worked out from the game's ids ("Ysabel Andronicus" from `LOC_FN_YsabelAndronicus`); everything else works.
 
-The server's start-up log says what happened:
+The server's start-up log says what happened (lines starting with `[QuestSync]`):
 
-* `Wrote ...coop-quest-sync-strings.json: 24730 of the ... texts the mod uses`, or `The game's text: ...`: done.
+* `The game's text: C:\...\coop-quest-sync-strings.json`: the server has its text. Done.
+* `Copied the game's text to ...coop-quest-sync-strings.json, where updates of the mod keep it.`: it found a
+  `strings.json` you made by hand in `mods\CoopQuestSync\server\` and moved a copy out. Done.
+* `Wrote ...coop-quest-sync-strings.json: 24730 of the ... texts the mod uses`: it made the file from the game. Done.
+* `Couldn't read the game's text from OblivionRemastered-Windows.pak: the game's text is Oodle-compressed and there's
+  no oo2core_9_win64.dll on this computer`: the usual case on a Steam install. Use the FModel route below.
 * `Oblivion Remastered isn't installed on this computer`: either nothing to do (a dedicated host), or put the
   game's folder (the one with `OblivionRemastered.exe`) in `config.json` as `"GameFolder"` and restart the server.
   See [the settings](USING.md#configjson-server-host-optional).
+* `GameFolder ... doesn't hold Oblivion Remastered`: the `"GameFolder"` in `config.json` is wrong.
+* `Game data: ... 0 text entries (no coop-quest-sync-strings.json or strings.json: names and lines show as keys)`:
+  the server has no text this time; one of the lines above says why.
 
 For the server's page in another language, set `"Language"` in `config.json` (`de`, `fr`, `es`, `it`...), delete
 `coop-quest-sync-strings.json` and restart the server.
 
-**By hand**, as a backup if reading the game doesn't work (the log says why):
+**By hand** (needed on a standard Steam install, see above), once per server:
 
 1. Install [FModel](https://fmodel.app) and point it at the game (`OblivionRemastered\Content\Paks`).
 2. Find `Localization/Game/en/Game.locres` (or your language instead of `en`), right-click it and choose
@@ -81,9 +91,11 @@ For the server's page in another language, set `"Language"` in `config.json` (`d
    ```sh
    python3 -I plugin/tools/locres.py path/to/Game.locres strings.json --keys mod/Content
    ```
-4. Put `strings.json` in the server's `mods\CoopQuestSync\server\` folder and restart the server. The server copies
-   it to `coop-quest-sync-strings.json` in its own folder, where it stays across updates. The log line
-   `Game data: ... text entries` should show a number other than 0.
+4. On the server computer, put `strings.json` in the server's `mods\CoopQuestSync\server\` folder (next to
+   `CoopQuestSync.Server.dll`) and restart the server. The server copies it to `coop-quest-sync-strings.json` in
+   its own folder (next to `server.exe`), where it stays across updates, and logs `Copied the game's text to ...`.
+   The log line `Game data: ... text entries` should show a number other than 0. You can then delete the
+   `strings.json` in `mods\CoopQuestSync\server\`.
 
 Without any of this everything still works; only the words are missing.
 

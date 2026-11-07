@@ -1,7 +1,11 @@
 # Changelog
 
-## Unreleased
+## 0.5.1 (public test)
 
+* **Docs**: the README, install guide, known issues and test plan now say plainly that the server can't make its own
+  text file on a standard Steam install (the game ships no `oo2core_9_win64.dll`, and the mod never downloads one),
+  list every start-up log line about it, and give the FModel route as the way to do it. `mod/TESTING.md` is
+  rewritten for 0.5.1, with a test for the server's text file and the PC or server location of every file.
 * **The game's text survives updates**: the server keeps it as `coop-quest-sync-strings.json` in its own folder,
   next to `coop-quest-sync-state.json`, instead of `strings.json` inside the mod's folder (an update wiped it and
   quest names showed as ids). An old `strings.json` next to the DLL is copied there once.

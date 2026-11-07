@@ -22,12 +22,13 @@ commands.
 
 ### The game's text comes from the players' own games
 
-Each player's add-on looks the overlay's text up in the running game. The server reads the text from the game's
-files only when the game is installed on the server computer; on a dedicated host the web page shows names worked
-out from the game's ids. The remaster's text is Oodle-compressed, so reading the files also needs
-`oo2core_9_win64.dll` on that computer (the mod never downloads it);
-the log says so, and the FModel route in [INSTALL.md](INSTALL.md#real-names-and-lines-on-the-page-and-the-overlay)
-still works. Only English has been tried.
+Each player's add-on looks the overlay's text up in the running game, so the overlay always has words. The server
+(the web page and chat lines) can't do that: it would have to read the game's `.pak` files, and the remaster's text
+in them is Oodle-compressed. Reading it needs `oo2core_9_win64.dll`, which the Steam version of the game doesn't
+include, and the mod never downloads anything. So on a standard install the server logs `Couldn't read the game's
+text ... no oo2core_9_win64.dll on this computer`, and the host makes the file once by hand with FModel
+([INSTALL.md](INSTALL.md#real-names-and-lines-on-the-page-and-the-overlay)). Without it the web page shows names
+worked out from the game's ids. Only English has been tried.
 
 ## Quests
 
@@ -44,8 +45,8 @@ still works. Only English has been tried.
 ## Conversations
 
 * **The overlay runs a few seconds behind.** The game reports a line when it ends, so watchers read it after the
-  talker heard it. The voice plays with the text, from nowhere (not from the NPC), and can't yet be cut short when
-  you leave the conversation: the current line finishes.
+  talker heard it. The voice plays with the text, from nowhere (not from the NPC). It
+  should stop when you leave the conversation (Alt+U); tell us if a line keeps playing.
 * **You can still turn the camera while frozen.** The freeze stops walking and fighting, not looking around.
 * **Menus might not be recognised.** Barter, persuasion, training and so on are detected by the original game's
   menu numbers. If the overlay never says "is bartering" (or another menu), tell us which one.

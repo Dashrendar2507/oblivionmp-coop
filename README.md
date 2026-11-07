@@ -5,7 +5,7 @@
 progress is shared live, players who join later catch up silently, and conversations, deaths and rewards are
 handled with a party in mind.
 
-> **Status: public test (0.5).** It works, but it is young and has only been tested by a handful of people.
+> **Status: public test (0.5.1).** It works, but it is young and has only been tested by a handful of people.
 > Expect rough edges, back up your saves, and please [report what you find](CONTRIBUTING.md). Every report helps.
 
 ## Disclaimer - use of AI
@@ -31,7 +31,10 @@ rejoin. The defaults keep it sane: nobody gets teleported or thrown into a fight
   the topic and the line. Watchers can't click anything.
 * Players in the same area stand still until the conversation ends (unless they're in combat).
 * The overlay says when the talker is bartering, persuading, training, picking a lock and so on.
+* Watchers hear the NPC's voice with each line, played from their own game in their own game's language, and read
+  the text in that language too (nothing of the game's is shipped with the mod).
 * **Alt+U** leaves or rejoins a conversation you're watching. Optionally, players only listen in when they press it.
+* **Alt+Y** takes you to whoever is talking, into their building or another world space too.
 * Quest updates wait until you're out of a conversation.
 
 **Party**
@@ -39,6 +42,8 @@ rejoin. The defaults keep it sane: nobody gets teleported or thrown into a fight
   After 60 s, or when you press **Alt+G**, you respawn next to the party leader.
 * **Back where you left.** When you join, you come back where you left, inside buildings too, behind a black
   travel screen so you don't see the jumps.
+* **Calm a fight that went wrong**: `/coop calm` (your area, a player's area, every area, or the NPC next to you),
+  or the **Calm** buttons on the web page.
 * "Talking" and "Down" tags over players' heads.
 * Rewards handed out in conversation go to everyone. Quest items (keys, letters) can be shared too (off by default).
 * Level scaling and difficulty for the whole session.
@@ -49,6 +54,8 @@ rejoin. The defaults keep it sane: nobody gets teleported or thrown into a fight
 * Pick a **source player** ("leader only"): only their progress is shared, at once for everyone online and for
   players who join later. Or let anyone's progress count, which is the default.
 * Every co-op setting above, saved across server restarts.
+* **Admins**: the commands that change things for everybody (`/qs push`, `/qs reset`, `/coop calm`...) are only for
+  the server's admins, taken from the ReadyM admin panel (port 9050), plus anyone you add with **Make admin**.
 
 See [docs/USING.md](docs/USING.md) for the keys, chat commands and every setting, and [CHANGELOG.md](CHANGELOG.md)
 for what changed in each version.
@@ -68,10 +75,15 @@ The short version (the full, step-by-step guide is in **[docs/INSTALL.md](docs/I
    Then join through the ReadyM Launcher as usual. The launcher downloads the mod and the game plugins for you.
 3. **Every player, first join only:** the mod installs a small UE4SS add-on and asks you to **restart the game
    once**. After that, nothing else to do.
+4. **Server host, optional:** for real quest and NPC names on the web page and in chat, the server needs the game's
+   text. It tries to read it from the game on the server computer on its first start, but the Steam version of
+   the remaster doesn't come with the Oodle library that takes, so today you make the file once by hand with FModel
+   ([how](docs/INSTALL.md#real-names-and-lines-on-the-page-and-the-overlay)). Without it the page shows names worked
+   out from the game's ids. The in-game overlay doesn't need it.
 
 **Requirements:** Oblivion Remastered (all official plugins, including the Deluxe ones, see
 [known issues](docs/KNOWN-ISSUES.md)), the ReadyM Launcher, and an OblivionMP 1.0.1 server with its standard mods
-(the Chat mod is required).
+(the Chat mod is required). OblivionMP 1.1 servers need a version of the mod built for SDK 1.1, which is on its way.
 
 ## Known issues
 
@@ -80,7 +92,9 @@ The important ones (full list in [docs/KNOWN-ISSUES.md](docs/KNOWN-ISSUES.md)):
 * Every player currently needs **all** the game's official plugins, including the **Deluxe** ones
   (`AltarDeluxe.esp`). This shouldn't be an issue because the Remaster comes with all those.
 * Friendly fire can't be turned off (OblivionMP doesn't tell mods who hit whom).
-* The conversation overlay is a few seconds behind the talker, and has no voice.
+* The conversation overlay is a few seconds behind the talker. The voice plays with the text, from nowhere rather
+  than from the NPC.
+* The server can't read the game's text by itself on a standard Steam install (see Install, step 4).
 * Followers and companions aren't shared.
 * Quest stage scripts still run in each player's own game, so a few quests may behave oddly when replayed. Tell
   us which ones.
@@ -109,6 +123,9 @@ The OblivionMP SDK can't read or set the game's own quests, so a small game plug
 
 - `mod/`: the mod itself (server and client halves, plus the generated plugins in `mod/Content/`). See
   `mod/TESTING.md` for the full test plan.
+- `mod/Shared/GameFiles.cs`: finds the game and reads its text from the `.pak` files (used by the server, and by
+  the client as a first try before it asks the add-on).
+- `docs/`: the install guide, the keys, commands and settings (`USING.md`), and the known issues.
 - `plugin/tools/`: Python tools that generate the plugins from `Oblivion.esm`, including a small Oblivion script
   compiler. `plugin/token-ids.json` pins every stage's token id, so regenerating never changes the id of a token
   players already carry.
@@ -137,7 +154,9 @@ python3 -I plugin/tools/simulate_protocol.py mod/Content/CoopQuestSync.esp
 ```
 
 This writes the plugins and `tokens.json`. The server DLL embeds `tokens.json`, so rebuild the mod after
-regenerating. To turn the game's text file into `strings.json`, see `plugin/tools/locres.py`.
+regenerating. To turn the game's text file (`Game.locres`, exported with FModel) into `strings.json`, see
+`plugin/tools/locres.py`. Never commit that file or put it in a zip: it's Bethesda's text, and
+`tools/check_no_game_files.py` refuses it.
 
 ### Building the mod
 
