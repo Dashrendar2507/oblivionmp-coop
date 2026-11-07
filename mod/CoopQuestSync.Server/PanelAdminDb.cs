@@ -8,7 +8,7 @@ namespace CoopQuestSync.Server;
 ///
 /// The SDK has no permission API, and the panel's web API needs an admin to sign in with ReadyM, so the file is the only
 /// way in. Its layout is not documented, so this does not assume one: it opens the file read only, takes every table
-/// with "admin" in its name (but not logs and such), and collects every account id (a Guid, as text or as 16 bytes) it finds there. When an
+/// with "admin" in its name (but not logs and such) plus the panel's "Users" table, and collects every account id (a Guid, as text or as 16 bytes) it finds there. When an
 /// admin row only points at another table (a column such as UserId), it follows that one step to the table it names
 /// and collects the ids of the rows it points at. A player is a panel admin when their ReadyM account id is in the set.
 ///
@@ -37,8 +37,10 @@ public static class PanelAdminDb
             var tables = db.Query("SELECT name FROM sqlite_master WHERE type = 'table'").Select(r => r.Values[0] as string)
                 .OfType<string>().ToList();
             // Logs and the like may name players who are not admins (who an admin kicked, for one), so leave them out.
-            string[] notAList = ["log", "audit", "action", "event", "history", "invite", "ban", "kick", "request"];
-            var adminTables = tables.Where(t => t.Contains("admin", StringComparison.OrdinalIgnoreCase)
+            // In OblivionMP server 1.0.1 the panel's admins are its "Users" (accounts that sign in to the panel, shown
+            // under Admins), next to GamePlayers, WhitelistedPlayers and BannedPlayers, which are players, not admins.
+            string[] notAList = ["log", "audit", "action", "event", "history", "invite", "ban", "kick", "request", "player", "whitelist", "permission"];
+            var adminTables = tables.Where(t => (t.Contains("admin", StringComparison.OrdinalIgnoreCase) || t.Equals("Users", StringComparison.OrdinalIgnoreCase))
                 && !notAList.Any(w => t.Contains(w, StringComparison.OrdinalIgnoreCase))).ToList();
             if (adminTables.Count == 0)
                 return new Result([], false, $"no admin table in the panel database (tables: {string.Join(", ", tables)})");
@@ -80,6 +82,13 @@ public static class PanelAdminDb
                         layout.Add($"{table}.{name} -> {target}: {hits} row(s)");
                     }
                 }
+            }
+            foreach (var table in tables.Where(t => t.Contains("permission", StringComparison.OrdinalIgnoreCase)))
+            {
+                var rows = db.Query($"SELECT * FROM {Quote(table)}");
+                var names = rows.SelectMany(r => r.Values).OfType<string>().Where(v => v.Length <= 40 && !Guid.TryParse(v, out _))
+                    .Distinct().Take(20);
+                layout.Add($"{table}({string.Join(", ", db.LastColumns)}): {rows.Count} row(s), values: {string.Join(", ", names)}");
             }
             return ids.Count == 0
                 ? new Result(ids, false, $"no account ids in the admin table(s): {string.Join("; ", layout)}")

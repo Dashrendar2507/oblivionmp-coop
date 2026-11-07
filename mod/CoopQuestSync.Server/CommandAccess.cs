@@ -94,7 +94,7 @@ public sealed partial class CommandAccess(IPlayers players, IChat chat, QuestTok
             Reason.Ghost => "You are testing as Ghost, so you are not an admin. /coop test asghost off gives your rights back.",
             _ => "You are not an admin.",
         };
-        return $"ReadyM id: {account?.ToString() ?? "unknown"}. {verdict}";
+        return $"{verdict} (Your ReadyM account id, which the server uses instead of your name: {account?.ToString() ?? "unknown"}.)";
     }
 
     /// <summary>/coop test asghost on|off. Keyed by account, so it survives a rejoin and can't pass to someone else.</summary>
