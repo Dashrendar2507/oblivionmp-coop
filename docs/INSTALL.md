@@ -56,19 +56,21 @@ Bethesda, so the mod never ships it. Instead it reads the text from each player'
   in the language the game is set to. Nothing to do. With several languages in one party, everyone reads in their
   own.
 * **The server** (the web page and chat lines): when the game is installed on the server computer through Steam, the
-  server reads it once on its first start and keeps what the mod uses in `strings.json` next to the server DLL.
-  Please don't share that file. On a dedicated host without the game, the page shows names worked out from the
+  server reads it once on its first start and keeps what the mod uses in `coop-quest-sync-strings.json`, in the
+  folder the server runs from (next to `coop-quest-sync-state.json`), where updates of the mod don't touch it.
+  Please don't share that file. Reading the game's files needs `oo2core_9_win64.dll` on that computer (the mod never
+  downloads it); without it, use the FModel route below. On a dedicated host without the game, the page shows names worked out from the
   game's ids instead ("Ysabel Andronicus" from `LOC_FN_YsabelAndronicus`); everything else works.
 
 The server's start-up log says what happened:
 
-* `Wrote ...strings.json: 24730 of the ... texts the mod uses`: done.
+* `Wrote ...coop-quest-sync-strings.json: 24730 of the ... texts the mod uses`, or `The game's text: ...`: done.
 * `Oblivion Remastered isn't installed on this computer`: either nothing to do (a dedicated host), or put the
   game's folder (the one with `OblivionRemastered.exe`) in `config.json` as `"GameFolder"` and restart the server.
   See [the settings](USING.md#configjson-server-host-optional).
 
 For the server's page in another language, set `"Language"` in `config.json` (`de`, `fr`, `es`, `it`...), delete
-`strings.json` and restart the server.
+`coop-quest-sync-strings.json` and restart the server.
 
 **By hand**, as a backup if reading the game doesn't work (the log says why):
 
@@ -79,7 +81,8 @@ For the server's page in another language, set `"Language"` in `config.json` (`d
    ```sh
    python3 -I plugin/tools/locres.py path/to/Game.locres strings.json --keys mod/Content
    ```
-4. Put `strings.json` in the server's `mods\CoopQuestSync\server\` folder and restart the server. The log line
+4. Put `strings.json` in the server's `mods\CoopQuestSync\server\` folder and restart the server. The server copies
+   it to `coop-quest-sync-strings.json` in its own folder, where it stays across updates. The log line
    `Game data: ... text entries` should show a number other than 0.
 
 Without any of this everything still works; only the words are missing.
@@ -98,9 +101,9 @@ The page refuses to start on the network without a password. Don't open port 906
 ### Updating to a new version
 
 1. Stop the server.
-2. Delete the old `mods\CoopQuestSync` folder and copy in the new one. Keep `server\strings.json` first and put it
-   back in the new `server\` folder: without it, quest and NPC names show as ids (MQ49) on the web page and in chat.
-   The server only makes it again by itself when it can read the game's text (see above).
+2. Delete the old `mods\CoopQuestSync` folder and copy in the new one. The game's text
+   (`coop-quest-sync-strings.json`) is outside it and stays. (Older versions kept it as `server\strings.json` inside the
+   mod's folder: put that one back in the new `server\` folder once, and the server moves a copy out.)
 3. Keep `coop-quest-sync-state.json`: it holds the shared progress and every setting from the web page. It's in
    the folder the server runs from, usually next to `server.exe`. The server prints its full path in the `[QuestSync]`
    line it logs at start-up.

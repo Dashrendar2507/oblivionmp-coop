@@ -46,8 +46,9 @@ public sealed partial class QuestSyncConfig
         "Oblivion.esm,DLCBattlehornCastle.esp,DLCFrostcrag.esp,DLCHorseArmor.esp,DLCMehrunesRazor.esp,DLCOrrery.esp," +
         "DLCShiveringIsles.esp,DLCSpellTomes.esp,DLCThievesDen.esp,DLCVileLair.esp,Knights.esp,AltarESPMain.esp,AltarDeluxe.esp,AltarESPLocal.esp";
 
-    /// <summary>The game's text (key -> text). Empty: strings.json next to the DLL, which the server makes itself from
-    /// the game's files the first time (or make it with plugin/tools/locres.py).</summary>
+    /// <summary>The game's text (key -> text). Empty: coop-quest-sync-strings.json in the server's working folder (next
+    /// to the state file), which the server makes itself from the game's files the first time, or copies from a
+    /// strings.json next to the DLL (make one with plugin/tools/locres.py).</summary>
     public string StringsFile { get; set; } = "";
 
     /// <summary>Where Oblivion Remastered is installed, to read its text from. Empty: found through Steam.</summary>

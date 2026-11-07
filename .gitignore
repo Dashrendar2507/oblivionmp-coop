@@ -9,3 +9,4 @@ build.log
 __pycache__/
 strings.json
 *.locres
+coop-quest-sync-strings.json

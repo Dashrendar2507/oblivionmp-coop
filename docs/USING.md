@@ -155,8 +155,8 @@ Create `config.json` in `mods\CoopQuestSync\server\` to change these. Every entr
 | `IntervalSeconds` | `1` | How often the server checks the players' games. |
 | `StateFile` | `"coop-quest-sync-state.json"` | Where the shared progress and settings are kept. |
 | `GamePlugins` | the game's plugins | The order of the game's own plugins in `Plugins.txt`. Only matters for DLC items and NPC names. |
-| `StringsFile` | `""` | The game's text. Empty: `strings.json` next to the server DLL, made from the game on first start. |
+| `StringsFile` | `""` | The game's text. Empty: `coop-quest-sync-strings.json` in the server's folder (next to the state file), made from the game on first start or copied once from a `strings.json` next to the server DLL. |
 | `GameFolder` | `""` | Where Oblivion Remastered is installed, to read its text from. Empty: found through Steam. |
-| `Language` | `"en"` | Language of the game's text (`de`, `fr`, `es`, `it`...). Delete `strings.json` after changing it. |
+| `Language` | `"en"` | Language of the game's text (`de`, `fr`, `es`, `it`...). Delete `coop-quest-sync-strings.json` after changing it. |
 | `PanelDatabase` | `"data/web.db"` | The ReadyM admin panel's database, where the mod finds the server's admins. Empty: only admins added on the co-op page. |
 | `PanelPermission` | `"players.manage"` | The panel permission (set per admin under **Admins**) a panel admin needs for the co-op admin commands. Superusers always can. Empty: every active panel admin. |
