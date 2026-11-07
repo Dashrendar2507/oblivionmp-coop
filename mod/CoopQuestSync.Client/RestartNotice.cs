@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using OblivionMp.Sdk;
 using OblivionMpCSharpMod;
 using ReadyM.Cef;
 using ReadyM.SDK.Attributes;
@@ -11,12 +12,15 @@ namespace CoopQuestSync.Client;
 /// started with (its running.txt) isn't the one this mod brings.
 /// </summary>
 [Service]
-public sealed partial class RestartNotice(CefHost cef, ILogger logger)
+public sealed partial class RestartNotice(CefHost cef, IPlayers players, IInput input, ILogger logger)
 {
     /// <summary>The overlay's content folder (WitnessOverlay registers it while mods start).</summary>
     private const string Host = "coopwitness";
-    /// <summary>Wait this long after joining before showing it, so it doesn't come up during the loading screen.</summary>
-    private const float DelaySeconds = 8f;
+    /// <summary>
+    /// Shown once the player has been in the world this long without a menu: a page made before the join's reload
+    /// was lost with it (2026-11-07).
+    /// </summary>
+    private const float DelaySeconds = 5f;
 
     private bool _wanted;
     private bool _shown;
@@ -34,6 +38,11 @@ public sealed partial class RestartNotice(CefHost cef, ILogger logger)
     {
         if (!_wanted || _shown)
             return;
+        if (players.LocalMainCharacter is null || !input.CanApplyInput())
+        {
+            _wait = DelaySeconds;
+            return;
+        }
         _wait -= Time.DeltaTime;
         if (_wait > 0)
             return;
@@ -48,6 +57,7 @@ public sealed partial class RestartNotice(CefHost cef, ILogger logger)
             browser.Navigate($"readym://{Host}/notice.html");
             cef.Assign(viewport, browser.Handle);
             cef.SetVisible(viewport, true);
+            logger.LogInformation("[QuestSync] Restart note shown.");
         }
         catch (Exception e)
         {

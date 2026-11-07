@@ -146,11 +146,21 @@ public sealed partial class CombatService(IEntities entities, IServerEvents even
     private string CalmAreas(IReadOnlyCollection<AreaId> areas, PlayerId? clearBountyOf)
     {
         var refs = new List<uint>();
-        // NPCs the server can't place (AreaId.Invalid, seen in a dungeon on 2026-11-07) are stopped too: in a game
-        // that doesn't have them, the command just fails.
+        // NPCs the server can't place (AreaId.Invalid) are left alone: on 2026-11-07 running StopCombat on such NPCs
+        // crashed the game inside OblivionMP, while OblivionMP was also logging "Multiple entities mapped to the same
+        // game object" for that dungeon.
+        var skipped = 0;
         foreach (var npc in entities.Query<Npc>())
-            if (Fighting(npc) && (areas.Contains(npc.Cell.AreaId) || npc.Cell.AreaId.Equals(AreaId.Invalid)))
+        {
+            if (!Fighting(npc))
+                continue;
+            if (areas.Contains(npc.Cell.AreaId))
                 refs.Add(npc.RefId);
+            else if (npc.Cell.AreaId.Equals(AreaId.Invalid))
+                skipped++;
+        }
+        if (skipped > 0)
+            logger.LogInformation("[QuestSync] Calm: left {Count} fighting NPC(s) alone that the server can't place in an area (StopCombat on those crashed the game).", skipped);
         var players = sync.Players.Where(p => p.Value.Area is { } a && areas.Contains(a)).Select(p => p.Key).ToList();
         foreach (var id in players)
         {

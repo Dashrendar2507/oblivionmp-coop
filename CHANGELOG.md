@@ -13,7 +13,8 @@
 * Console commands try the shapes OblivionMP's UE4SS accepts (it wants four arguments where other mods pass three).
 * Voices play at the player's spot without a callback (the callback version crashed the game).
 * The game's text lookup reads the list of string tables the way OblivionMP's UE4SS returns it.
-* `/coop calm` also stops fighting NPCs the server can't place in an area.
+* `/coop calm` leaves alone fighting NPCs the server can't place in an area: StopCombat on those crashed the game.
+* The restart note waits until you're in the world (one made during the join's loading screen was lost).
 * The "you are down" message warns that R is OblivionMP's own rebirth, which reloads the save.
 * **Fewer crashes on load**: the add-on no longer watches every new object the game makes (thousands during a load),
   no longer keeps the player controller, and does all its game work in one job at a time on the game thread. The
