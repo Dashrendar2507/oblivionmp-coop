@@ -29,6 +29,8 @@ public sealed partial class TravelScreen(CefHost cef, IPlayers players, IInput i
     private float _inWorld;
     private float _checkIn;
     private bool _menu;
+    private float _menuFor;
+    private const float MenuAsideSeconds = 2.5f;
     private bool _moving;           // the add-on ran the coc/cow: stay up through the load
     private static string FadeIn => Path.Combine(Path.GetDirectoryName(ConsoleBridge.MenuFlag)!, "fade-in");
     // After the add-on's coc/cow: the load tears this page down, so watch for the load to end, then make the page
@@ -126,9 +128,12 @@ public sealed partial class TravelScreen(CefHost cef, IPlayers players, IInput i
             _menu = File.Exists(ConsoleBridge.MenuFlag);
             _moving |= File.Exists(TravelRan);
         }
-        // Aside for a menu (the quest pop-up must be closed before the move), but not once the add-on has run the
-        // coc: the load that follows looks like a menu.
-        var want = _moving || !_menu;
+        // Aside for a menu that stays open (a quest pop-up the add-on couldn't close must be closed by hand before
+        // the move), but not for the add-on's own quick close of the catch-up's pop-ups, which flashed the game
+        // between two fades (2026-11-07), and not once the add-on has run the coc: the load that follows looks like
+        // a menu.
+        _menuFor = _menu ? _menuFor + dt : 0;
+        var want = _moving || _menuFor < MenuAsideSeconds;
         if (_viewport is { } v && want != _visible)
         {
             _visible = want;
@@ -211,8 +216,9 @@ public sealed partial class TravelScreen(CefHost cef, IPlayers players, IInput i
             var browser = cef.CreateBrowser();
             browser.Navigate($"readym://{Host}/travel.html#{(again ? "now:" : "")}{Uri.EscapeDataString(text)}");
             cef.Assign(viewport, browser.Handle);
-            cef.SetVisible(viewport, _moving || !_menu);
-            _visible = _moving || !_menu;
+            var show = _moving || _menuFor < MenuAsideSeconds;
+            cef.SetVisible(viewport, show);
+            _visible = show;
             _viewport = viewport;
             _browser = browser.Handle;
             if (_shown++ < 20)

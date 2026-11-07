@@ -5,7 +5,8 @@
 * **Black screen while travelling**: when the server puts a player back where they left on join, or takes them to a
   teammate (Alt+Y) through another load, their screen fades to black with one line ("Taking you back to where you
   left...") and lifts once they stand in the right spot, so the save's spot, the door and the jumps stay hidden. It
-  steps aside while a menu (such as the quest pop-up) is open, until the add-on has run the move. A coc or cow tears
+  steps aside while a menu stays open for more than 2.5 s (a quest pop-up the add-on couldn't close), until the
+  add-on has run the move; the add-on's own quick close of the catch-up's pop-ups no longer flashes the game. A coc or cow tears
   down OblivionMP's pages as its load starts, so the add-on first fades the world to black with the game's camera
   fade and brings it back once the client sees the player in the new place (40 s at most): no second of the game
   before the load. Setting "Black screen while travelling" (on).
