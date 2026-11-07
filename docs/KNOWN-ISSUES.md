@@ -43,7 +43,8 @@ still works. Only English has been tried.
 ## Conversations
 
 * **The overlay runs a few seconds behind.** The game reports a line when it ends, so watchers read it after the
-  talker heard it. There is no voice.
+  talker heard it. The voice plays with the text, from nowhere (not from the NPC), and can't yet be cut short when
+  you leave the conversation: the current line finishes.
 * **You can still turn the camera while frozen.** The freeze stops walking and fighting, not looking around.
 * **Menus might not be recognised.** Barter, persuasion, training and so on are detected by the original game's
   menu numbers. If the overlay never says "is bartering" (or another menu), tell us which one.
@@ -79,6 +80,21 @@ still works. Only English has been tried.
   save starts you in the same world space as your last outdoor spot.
 * OblivionMP has no way for mods to save your character, so your spot is only as fresh as the last time the server
   saw you.
+* The game's own loading screen for the building still shows; the black travel screen hides the jumps around it.
+* **Typing `/coop test back` with the chat open** can leave the chat stuck after the move's load (it won't close
+  or take input until you restart the game). It's the same OblivionMP issue as dying with the chat open (below):
+  close the chat before the move.
+
+## OblivionMP issues seen while testing
+
+These come from OblivionMP itself, not the mod; they're listed so you don't chase them:
+
+* **R while down is OblivionMP's "rebirth"**: it heals you and reloads your save, which skips the mod's revive.
+* **A reload with the chat (K) open** can leave the chat stuck until you restart the game.
+* **"Multiple entities mapped to the same game object"** errors flooding UE4SS.log: the server ended up with two
+  copies of one NPC (seen with an NPC who walked through a load door by himself). It repeats every time someone
+  enters that area.
+* **A crash when quitting to desktop**, while OblivionMP shuts its browser down.
 
 ## The UE4SS add-on
 
@@ -86,6 +102,11 @@ still works. Only English has been tried.
   top left corner says so until you do.
 * If `UE4SS.log` has no `[CoopQuestSyncUI]` lines after that restart, the add-on isn't running: quest pop-ups may
   show while you catch up, and "back inside" won't work. Please report it with the log.
+* The add-on runs console commands (coc, cow, calm) only when the game is quiet: not during the join's catch-up and
+  not within 2 seconds of a menu opening or closing (a command run then crashed the game). After 30 seconds it runs
+  anyway.
+* If a "Quest Added" window during the catch-up can't be closed (UE4SS.log says `could not close`), close it by
+  hand; the black travel screen steps aside for it after 2.5 seconds.
 * **If the game crashes on load**, put an empty file named `off` (`off.txt` works too) in
   `%APPDATA%\ReadyM.Launcher\Oblivion\Mods\CoopQuestSyncUI\` and restart the game. That switches the add-on off
   (UE4SS.log says "switched off"); quest sync still works, but pop-ups show during catch-up and travel, back and calm

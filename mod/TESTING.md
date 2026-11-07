@@ -72,15 +72,14 @@ shared progress, so a restart keeps them.
 
 ## Test 1: you alone
 
-0. **Crashes on load** (2026-11-07). With the add-on off nothing crashed, and it still crashed with `lite`, so the
-   add-on's hook on quest pop-ups is the likely spot. The add-on that runs is the copy **on your PC**, in
+0. **Add-on update and crashes.** The add-on that runs is the copy **on your PC**, in
    `%APPDATA%\ReadyM.Launcher\Oblivion\Mods\CoopQuestSyncUI\` (paste that into the Explorer address bar).
-   * **Server:** put the new zip in as usual.
+   * **Server:** put the new zip in as usual (keep `coop-quest-sync-state.json` and `server\strings.json`).
    * **Your PC:** delete `off` and `lite` from that folder if they are there.
-   * Join once: a note in the top left corner should say the add-on was updated and to restart the game. Quit.
-   * Start again and load and join 5 times. The note should be gone, and UE4SS.log should say
+   * Join once: if the add-on changed, a note in the top left corner says so and asks you to restart the game. Quit.
+   * Start again and load and join a few times. The note should be gone, and UE4SS.log should say
      `hooked HUD notifications` before `coop.lua loaded`.
-   Tell me how many crashed, and send UE4SS.log copied right after a crash (the game starts a new one each time).
+   If the game crashes, send UE4SS.log copied right after the crash (the game starts a new one each time).
 1. Join. The server log should show `plugin found`, then `restore finished` or `nothing to restore`, then
    `caught up with the party`.
 2. Open http://localhost:9060/. Under **Co-op settings** you should see the switches. Click a quest you have
@@ -90,16 +89,19 @@ shared progress, so a restart keeps them.
 4. Talk to a merchant and open Barter. The server log should show `<you> is bartering.`, then `<you> stopped bartering.`
    when you close it, and the page shows "bartering" next to your name meanwhile. Try persuasion the same way, and
    picking a lock (`is picking a lock.`). Opening a chest should not show anything.
-5. Rejoin once. Your quests should come back as before, silently.
+5. Rejoin once. Your quests should come back as before, silently. A "Quest Added" window may flash up and close by
+   itself: UE4SS.log on your **PC** says `closed the Quest Added pop-up`. If you have to close it by hand, send that
+   log.
 6. Walk somewhere outdoors, away from where your local save starts you, and quit. Join again: a few seconds after
    you appear, you should be moved back there ("Back where you left."). Then go into a house, stand in a corner and
    quit from inside: next time you should get a loading screen into the house, then land in that corner ("Back
-   inside."). `/coop test status` shows the spot the server has. New: from the moment you're in the world until
-   you stand in your spot, the screen should be black with "Taking you back to where you left..." (the quest
-   pop-up still shows over it so you can close it). If it stays black, or never shows, send me UE4SS.log from your
-   **PC** (`...\OblivionRemastered\Binaries\Win64\UE4SS.log`): look for `Travel screen` lines. You can switch it
-   off on the web page: "Black screen while travelling".
-   Without rejoining: in a house, stand still 3 s, `/coop test pin`, walk out of the house, `/coop test back`.
+   inside."). `/coop test status` shows the spot the server has. From the moment you're in the world until you
+   stand in your spot, the screen should stay black with "Taking you back to where you left...", with no glimpse of
+   the game between the fades (UE4SS.log: `ran coc ...`, then `world back after the move`). If it stays black, or
+   the game shows through, send UE4SS.log from your **PC** (`...\OblivionRemastered\Binaries\Win64\UE4SS.log`).
+   You can switch it off on the web page: "Black screen while travelling".
+   Without rejoining: in a house, stand still 3 s, `/coop test pin`, walk out of the house, close the chat, then
+   `/coop test back` (a load with the chat open leaves OblivionMP's chat stuck).
    If you stay outside, send me UE4SS.log: the add-on writes `ran coc ...` or `could not run coc ...` there.
 
 ## Test 1b: alone, with a pretend teammate

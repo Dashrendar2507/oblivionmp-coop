@@ -98,12 +98,13 @@ The page refuses to start on the network without a password. Don't open port 906
 ### Updating to a new version
 
 1. Stop the server.
-2. Delete the old `mods\CoopQuestSync` folder and copy in the new one. The server makes `strings.json` again on
-   its next start. If you made yours by hand, move it out first and put it back in the new `server\` folder.
-4. Keep `coop-quest-sync-state.json`: it holds the shared progress and every setting from the web page. It's in
+2. Delete the old `mods\CoopQuestSync` folder and copy in the new one. Keep `server\strings.json` first and put it
+   back in the new `server\` folder: without it, quest and NPC names show as ids (MQ49) on the web page and in chat.
+   The server only makes it again by itself when it can read the game's text (see above).
+3. Keep `coop-quest-sync-state.json`: it holds the shared progress and every setting from the web page. It's in
    the folder the server runs from, usually next to `server.exe`. The server prints its full path in the `[QuestSync]`
    line it logs at start-up.
-5. Start the server. Players get the update automatically the next time they join.
+4. Start the server. Players get the update automatically the next time they join.
 
 ### Starting over
 
