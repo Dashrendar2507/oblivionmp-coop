@@ -661,80 +661,46 @@ end
 -- The "Quest Added" pop-up ---------------------------------------------------------------------------------------
 --
 -- Replaying stages on join brings up the game's full-screen "Quest Added" pop-up (not a HUD notice, so the hook above
--- can't hide it). First step: while a sync runs and for a little after, look for it and write to the log what it is
--- made of, so it can be closed the way the game closes it. Game thread.
+-- can't hide it). Game thread.
 
-local QUEST_ADDED = "WBP_ModernMenu_QuestAdded_C"
-local AFTER_SYNC = 30 -- seconds to keep looking after a sync ends
-
-local function chainOf(class)
-    local names = {}
-    local current = class
-    for _ = 1, 8 do
-        if not current then
-            break
-        end
-        local ok, name = pcall(function() return current:GetFName():ToString() end)
-        if not ok then
-            break
-        end
-        names[#names + 1] = name
-        local okSuper, super = pcall(function() return current:GetSuperStruct() end)
-        if not okSuper or not super or not super:IsValid() then
-            break
-        end
-        current = super
-    end
-    return names
-end
-
-local function functionsOf(class)
-    local names = {}
-    pcall(function()
-        class:ForEachFunction(function(fn)
-            names[#names + 1] = fn:GetFName():ToString()
-        end)
-    end)
-    return names
-end
-
--- The pop-up is a menu (it shows the cursor), so look while one is open during a sync. 2026-11-07: looking for a
--- QuestAdded widget "in the viewport" found nothing; it sits inside the game's menu layer. Now every live instance of
--- both pop-up classes is written down, visible or not, once per game.
-local POPUP_CLASSES = { "WBP_ModernMenu_QuestSkillPopup_C", QUEST_ADDED }
+-- What it is (2026-11-07 log): WBP_ModernMenu_QuestSkillPopup_C (a VLegacyQuestAddedMenu, CommonUI activatable
+-- widget) in the HUD's primary game layout, holding a WBP_ModernMenu_QuestAdded_C. Its "Continue" button runs
+-- OnQuitButtonPressed, the game's own way to close it. During the join's catch-up (and a few seconds after) the
+-- add-on presses it, so the catch-up stays silent; a quest that comes later, live, still shows its pop-up.
+local POPUP = "WBP_ModernMenu_QuestSkillPopup_C"
+local CLOSE_AFTER_SYNC = 5 -- seconds after a catch-up ends that its pop-ups still get closed
 
 function S.questAddedCheck()
-    local syncing = S.muted or (S.syncEndedAt and os.clock() - S.syncEndedAt < AFTER_SYNC)
-    if not syncing or not S.menuOpen or S.questAddedLogged then
+    local catchUp = S.muted or (S.syncEndedAt and os.clock() - S.syncEndedAt < CLOSE_AFTER_SYNC)
+    if not catchUp or not S.menuOpen then
+        S.popupTries = 0
         return
     end
-    S.questAddedLogged = true
-    for _, className in ipairs(POPUP_CLASSES) do
-        local okAll, all = pcall(FindAllOf, className)
-        local count = 0
-        if okAll and type(all) == "table" then
-            for _, widget in ipairs(all) do
-                if widget and widget:IsValid() then
-                    count = count + 1
-                    local name, visible, inViewport = "?", "?", "?"
-                    pcall(function() name = widget:GetFullName() end)
-                    pcall(function() visible = tostring(widget:IsVisible()) end)
-                    pcall(function() inViewport = tostring(widget:IsInViewport()) end)
-                    log("pop-up during a sync: " .. name .. " visible=" .. visible .. " inViewport=" .. inViewport)
-                    if count == 1 then
-                        local class = widget:GetClass()
-                        log("  class chain: " .. table.concat(chainOf(class), " < "))
-                        log("  its functions: " .. table.concat(functionsOf(class), ", "))
-                        local okSuper, super = pcall(function() return class:GetSuperStruct() end)
-                        if okSuper and super and super:IsValid() then
-                            log("  its parent's functions: " .. table.concat(functionsOf(super), ", "))
-                        end
-                    end
-                end
-            end
-        end
-        log("pop-up during a sync: " .. count .. " live " .. className)
+    local okFind, popup = pcall(FindFirstOf, POPUP)
+    if not okFind or not popup or not popup:IsValid() then
+        return
     end
+    local visible = false
+    pcall(function() visible = popup:IsVisible() end)
+    if not visible then
+        return
+    end
+    -- A pop-up that was just closed may still be fading out: give each try time to work.
+    if S.popupTriedAt and os.clock() - S.popupTriedAt < 1.5 then
+        return
+    end
+    S.popupTriedAt = os.clock()
+    S.popupTries = (S.popupTries or 0) + 1
+    if S.popupTries > 3 then
+        if S.popupTries == 4 then
+            log("could not close the Quest Added pop-up: close it by hand")
+        end
+        return
+    end
+    -- The game's own Continue first; if it is still up a second later, CommonUI's deactivate.
+    local how = S.popupTries == 1 and "OnQuitButtonPressed" or "DeactivateWidget"
+    local ok, err = pcall(function() popup[how](popup) end)
+    log((ok and "closed" or "could not close") .. " the Quest Added pop-up (" .. how .. ")" .. (ok and "" or ": " .. tostring(err)))
 end
 
 -- Menus ----------------------------------------------------------------------------------------------------------

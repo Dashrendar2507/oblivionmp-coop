@@ -26,9 +26,9 @@
 * Voices play at the player's spot without a callback (the callback version crashed the game).
 * The game's text lookup reads the list of string tables the way OblivionMP's UE4SS returns it.
 * `/coop calm` leaves alone fighting NPCs the server can't place in an area: StopCombat on those crashed the game.
-* The "Quest Added" diagnostic now looks while a menu is open during a sync and lists every live pop-up widget
-  (the first version looked for one "in the viewport" and found none).
-* The add-on writes what the "Quest Added" pop-up is made of to UE4SS.log when it shows during a sync, as the first step to closing it.
+* **The "Quest Added" pop-up closes itself during the join's catch-up**: the add-on presses its Continue
+  (OnQuitButtonPressed on WBP_ModernMenu_QuestSkillPopup_C, found with a diagnostic on 2026-11-07), so joining stays
+  silent. A quest that arrives later, live, still shows its pop-up.
 * The restart note waits until you're in the world (one made during the join's loading screen was lost).
 * The "you are down" message warns that R is OblivionMP's own rebirth, which reloads the save.
 * **Fewer crashes on load**: the add-on no longer watches every new object the game makes (thousands during a load),
