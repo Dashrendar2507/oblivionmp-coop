@@ -45,7 +45,8 @@ shared progress, so a restart keeps them.
 ## Install
 
 1. **Server:** replace the server's `mods\CoopQuestSync` folder with the one in the zip. Keep
-   `coop-quest-sync-state.json`: your shared progress carries over.
+   `coop-quest-sync-state.json` (your shared progress) and `server\strings.json` (the game's text: quest and NPC
+   names on the web page and in chat); copy them back into the new folder if you deleted the old one.
 2. **Nothing to copy for the players.** Both plugins (`CoopQuestSync.esp` and `CoopQuestSyncDialogue.esp`) are in
    the mod's `client` folder. OblivionMP puts them in each player's `Data` folder when they join, and takes them out
    when they leave, which is why they disappear after a disconnect. If you copied them into `Data` yourself before,

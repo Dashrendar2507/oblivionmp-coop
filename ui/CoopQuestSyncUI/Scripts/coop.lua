@@ -195,8 +195,15 @@ local function runConsole(cmd)
 end
 
 -- The client adds commands to command.txt, one a line. Take the file first (a rename, so lines added meanwhile go
--- to a new file), then run its lines in order. Game thread.
-function S.runCommands()
+-- to a new file) into a queue, then run one line per job, and only while the game is quiet: a console command run
+-- while the game closes a menu (OblivionMP shuts the quest pop-up during the join catch-up) crashed the game
+-- (2026-11-07, coc and StopCombat). Game thread.
+S.commandQueue = S.commandQueue or {}
+local QUIET_AFTER_SYNC = 3 -- seconds after the catch-up ends
+local QUIET_AFTER_MENU = 2 -- seconds after a menu opens or closes
+local COMMAND_MAX_WAIT = 30 -- run anyway after this long, so a stuck menu state can't hold commands forever
+
+local function takeCommands()
     os.remove(COMMAND_TAKEN)
     if not os.rename(COMMAND_FILE, COMMAND_TAKEN) then
         return -- no file, or the client is writing it: next time
@@ -205,12 +212,11 @@ function S.runCommands()
     if not f then
         return
     end
-    local commands = {}
     for line in f:lines() do
         local cmd = line:gsub("%s+$", "")
         if cmd ~= "" then
             if allowed(cmd) then
-                commands[#commands + 1] = cmd
+                S.commandQueue[#S.commandQueue + 1] = { cmd = cmd, at = os.clock() }
             else
                 log("refused command: " .. cmd)
             end
@@ -218,10 +224,46 @@ function S.runCommands()
     end
     f:close()
     os.remove(COMMAND_TAKEN)
-    for _, cmd in ipairs(commands) do
-        local ok, how = runConsole(cmd)
-        log((ok and "ran " or "could not run ") .. cmd .. " (" .. how .. ")")
+end
+
+-- Why commands should wait now, or nil when the game is quiet.
+function S.commandBusy()
+    local now = os.clock()
+    if S.muted then
+        return "quest catch-up running"
     end
+    if S.syncEndedAt and now - S.syncEndedAt < QUIET_AFTER_SYNC then
+        return "quest catch-up just ended"
+    end
+    if S.menuOpen then
+        return "a menu is open"
+    end
+    if S.menuChangedAt and now - S.menuChangedAt < QUIET_AFTER_MENU then
+        return "a menu just opened or closed"
+    end
+    return nil
+end
+
+function S.runCommands()
+    takeCommands()
+    local next = S.commandQueue[1]
+    if not next then
+        return
+    end
+    local busy = S.commandBusy()
+    if busy then
+        if os.clock() - next.at < COMMAND_MAX_WAIT then
+            if S.commandWaitLogged ~= next then
+                S.commandWaitLogged = next
+                log("waiting to run " .. next.cmd .. ": " .. busy)
+            end
+            return
+        end
+        log("running " .. next.cmd .. " after " .. COMMAND_MAX_WAIT .. " s even though " .. busy)
+    end
+    table.remove(S.commandQueue, 1)
+    local ok, how = runConsole(next.cmd)
+    log((ok and "ran " or "could not run ") .. next.cmd .. " (" .. how .. ")")
 end
 
 -- Voices ---------------------------------------------------------------------------------------------------------
@@ -629,6 +671,7 @@ function S.menuCheck()
         return
     end
     S.menuOpen = open
+    S.menuChangedAt = os.clock()
     if open then
         local f = io.open(MENU_FILE, "w")
         if f then

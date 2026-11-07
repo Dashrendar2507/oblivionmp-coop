@@ -55,6 +55,7 @@ public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents event
     private const float GroundedSpeed = 80f;
     /// <summary>Closer than this (cm) to the spot already: no need to move.</summary>
     private const float CloseEnough = 300f;
+    private static readonly float[] RecheckAfter = [2f, 5f, 10f];
     /// <summary>
     /// One game unit in centimetres, and the side of an exterior cell in game units: for the cell <c>cow</c> asks
     /// for. Only roughly right is needed: once the player is in the world space, the server puts them on the spot.
@@ -75,8 +76,10 @@ public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents event
         public ReturnSpot? Going;
         public float GoingSince;
         public Vector3? Target;
+        /// <summary>Where the game had put them before the move (the door, for a coc).</summary>
+        public Vector3 MovedFrom;
         public float MovedAt;
-        public bool Checked;
+        public int Checks;
         public float LastRecord;
         /// <summary>Travelling to this teammate: on arrival, the spot is next to where they stand then.</summary>
         public PlayerId? Joining;
@@ -183,11 +186,13 @@ public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents event
                 continue;
             }
 
-            // The game may put them back where it loaded them: check once, a couple of seconds after the move.
-            if (s.Target is { } t && !s.Checked && _clock - s.MovedAt > 2f)
+            // The game may put them back where it loaded them (at the door, 2026-11-07): check 2, 5 and 10 seconds
+            // after the move.
+            if (s.Target is { } t && s.Checks < RecheckAfter.Length && _clock - s.MovedAt > RecheckAfter[s.Checks])
             {
-                s.Checked = true;
-                if (Vector3.Distance(main.Position, t) > CloseEnough)
+                s.Checks++;
+                // Only when they stand where the game had put them, so someone who walked off isn't pulled back.
+                if (Vector3.Distance(main.Position, t) > CloseEnough && Vector3.Distance(main.Position, s.MovedFrom) <= CloseEnough)
                 {
                     main.Position = t;
                     logger.LogInformation("[QuestSync] {Player} moved back again (the game had put them elsewhere).", name);
@@ -250,11 +255,12 @@ public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents event
         s.Resolved = true;
         if (main.IsDead || Vector3.Distance(main.Position, spot.Position) <= CloseEnough)
             return;
+        s.MovedFrom = main.Position;
         main.Position = spot.Position;
         main.Rotation = spot.Yaw;
         s.Target = spot.Position;
         s.MovedAt = _clock;
-        s.Checked = false;
+        s.Checks = 0;
         rpc.SendNotice(main.PlayerId, char.ToUpperInvariant(what[0]) + what[1..] + ".");
         logger.LogInformation("[QuestSync] {Player}: {What} ({X:0}, {Y:0}, {Z:0} in {Area}).", name, what, spot.X, spot.Y, spot.Z, spot.Area);
     }

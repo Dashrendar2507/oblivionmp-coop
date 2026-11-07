@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+* **Console commands wait for a quiet moment**: the add-on runs them one at a time, not during the join's quest
+  catch-up, and not while a menu is open or within 2 seconds of one opening or closing. A `coc` run just as the game
+  closed the quest pop-up crashed the game (2026-11-07). After 30 seconds a command runs anyway.
+* Back where you left: the server checks 2, 5 and 10 seconds after the move whether the game put the player back at
+  the door, and moves them again if so.
 * **Travel to a conversation**: while a teammate talks to an NPC, Alt+Y takes you next to them, whether you're
   listening in or not, into their building or another world space too (through the add-on). Setting "Travel to a
   conversation"; `/coop join` does the same.
