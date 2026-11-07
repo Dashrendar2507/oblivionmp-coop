@@ -89,6 +89,7 @@ function S.onNotification(param)
             log("batch done, hid " .. S.hiddenCount .. " pop-up(s)")
         end
         S.muted = false
+        S.syncEndedAt = os.clock()
     elseif has(text, TOKEN) then
         hide = true
     elseif S.muted then
@@ -551,6 +552,70 @@ function S.writeLanguage()
     log("game language: " .. found)
 end
 
+-- The "Quest Added" pop-up ---------------------------------------------------------------------------------------
+--
+-- Replaying stages on join brings up the game's full-screen "Quest Added" pop-up (not a HUD notice, so the hook above
+-- can't hide it). First step: while a sync runs and for a little after, look for it and write to the log what it is
+-- made of, so it can be closed the way the game closes it. Game thread.
+
+local QUEST_ADDED = "WBP_ModernMenu_QuestAdded_C"
+local AFTER_SYNC = 30 -- seconds to keep looking after a sync ends
+
+local function chainOf(class)
+    local names = {}
+    local current = class
+    for _ = 1, 8 do
+        if not current then
+            break
+        end
+        local ok, name = pcall(function() return current:GetFName():ToString() end)
+        if not ok then
+            break
+        end
+        names[#names + 1] = name
+        local okSuper, super = pcall(function() return current:GetSuperStruct() end)
+        if not okSuper or not super or not super:IsValid() then
+            break
+        end
+        current = super
+    end
+    return names
+end
+
+local function functionsOf(class)
+    local names = {}
+    pcall(function()
+        class:ForEachFunction(function(fn)
+            names[#names + 1] = fn:GetFName():ToString()
+        end)
+    end)
+    return names
+end
+
+function S.questAddedCheck()
+    local syncing = S.muted or (S.syncEndedAt and os.clock() - S.syncEndedAt < AFTER_SYNC)
+    if not syncing or S.questAddedLogged then
+        return
+    end
+    local widget = FindFirstOf(QUEST_ADDED)
+    if not widget or not widget:IsValid() then
+        return
+    end
+    local shown = false
+    pcall(function() shown = widget:IsInViewport() end)
+    if not shown then
+        return
+    end
+    S.questAddedLogged = true
+    local class = widget:GetClass()
+    log("Quest Added pop-up during a sync: " .. table.concat(chainOf(class), " < "))
+    local okSuper, super = pcall(function() return class:GetSuperStruct() end)
+    log("  its functions: " .. table.concat(functionsOf(class), ", "))
+    if okSuper and super and super:IsValid() then
+        log("  its parent's functions: " .. table.concat(functionsOf(super), ", "))
+    end
+end
+
 -- Menus ----------------------------------------------------------------------------------------------------------
 
 -- A menu (map, inventory, journal...) shows the mouse cursor; walking around doesn't. Game thread.
@@ -649,6 +714,7 @@ function S.gameJob()
     if not S.lite and os.clock() - S.lastMenu >= MENU_EVERY then
         S.lastMenu = os.clock()
         pcall(S.menuCheck)
+        pcall(S.questAddedCheck)
     end
     for _, step in ipairs({ S.runCommands, S.runVoice, S.runText }) do
         local ok, err = pcall(step)
