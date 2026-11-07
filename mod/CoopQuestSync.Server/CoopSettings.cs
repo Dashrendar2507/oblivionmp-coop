@@ -79,6 +79,9 @@ public sealed class CoopSettings
     /// <summary>On join, put players back where they left (outdoors), or outside the building they left from.</summary>
     public bool ReturnOnJoin { get; set; } = true;
 
+    /// <summary>A black screen with one line while the game moves a player (back on join, or to a teammate).</summary>
+    public bool TravelScreen { get; set; } = true;
+
     /// <summary>The co-op keys: Alt + these. Letters (or key names such as F6) the game doesn't use; K is the chat.</summary>
     public string KeyFollow { get; set; } = "U";
 

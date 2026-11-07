@@ -94,7 +94,11 @@ shared progress, so a restart keeps them.
 6. Walk somewhere outdoors, away from where your local save starts you, and quit. Join again: a few seconds after
    you appear, you should be moved back there ("Back where you left."). Then go into a house, stand in a corner and
    quit from inside: next time you should get a loading screen into the house, then land in that corner ("Back
-   inside."). `/coop test status` shows the spot the server has.
+   inside."). `/coop test status` shows the spot the server has. New: from the moment you're in the world until
+   you stand in your spot, the screen should be black with "Taking you back to where you left..." (the quest
+   pop-up still shows over it so you can close it). If it stays black, or never shows, send me UE4SS.log from your
+   **PC** (`...\OblivionRemastered\Binaries\Win64\UE4SS.log`): look for `Travel screen` lines. You can switch it
+   off on the web page: "Black screen while travelling".
    Without rejoining: in a house, stand still 3 s, `/coop test pin`, walk out of the house, `/coop test back`.
    If you stay outside, send me UE4SS.log: the add-on writes `ran coc ...` or `could not run coc ...` there.
 

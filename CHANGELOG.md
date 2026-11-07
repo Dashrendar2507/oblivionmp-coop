@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+* **Black screen while travelling**: when the server puts a player back where they left on join, or takes them to a
+  teammate (Alt+Y) through another load, their screen fades to black with one line ("Taking you back to where you
+  left...") and lifts once they stand in the right spot, so the save's spot, the door and the jumps stay hidden. It
+  steps aside while a menu (such as the quest pop-up) is open. Setting "Black screen while travelling" (on).
 * **Console commands wait for a quiet moment**: the add-on runs them one at a time, not during the join's quest
   catch-up, and not while a menu is open or within 2 seconds of one opening or closing. A `coc` run just as the game
   closed the quest pop-up crashed the game (2026-11-07). After 30 seconds a command runs anyway.

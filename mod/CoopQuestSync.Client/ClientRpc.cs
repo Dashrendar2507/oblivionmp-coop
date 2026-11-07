@@ -9,7 +9,7 @@ namespace CoopQuestSync.Client;
 
 /// <summary>Client side of <see cref="CoopRpcContracts"/>: what the server tells this game to show or do.</summary>
 [RpcHandlersFor(typeof(CoopRpcContracts))]
-public sealed partial class ClientRpc(WitnessOverlay overlay, PartyTags tags, CoopKeys keys, ConsoleBridge console, Resurrection resurrection, IUserInterface ui)
+public sealed partial class ClientRpc(WitnessOverlay overlay, PartyTags tags, CoopKeys keys, ConsoleBridge console, Resurrection resurrection, TravelScreen travel, IUserInterface ui)
 {
     partial void OnConversationStarted(string json) => overlay.Started(json);
 
@@ -32,6 +32,8 @@ public sealed partial class ClientRpc(WitnessOverlay overlay, PartyTags tags, Co
     partial void OnStopChase() => console.Run("player.scaonactor");
 
     partial void OnClearBounty() => console.Run("player.SetCrimeGold 0");
+
+    partial void OnTravel(string text) => travel.Set(text);
 
     partial void OnPlayVoice(string voice) => console.Voice(voice);
 

@@ -48,6 +48,12 @@ public static partial class CoopRpcContracts
     [ServerToClient] public static partial void GoToWorld(string place);
 
     /// <summary>
+    /// The game is about to move this player (back where they left, or to a teammate): a black screen with this line
+    /// covers the jumps. Sent again on arrival (a load can drop the page). Empty: they are there, the screen lifts.
+    /// </summary>
+    [ServerToClient] public static partial void Travel(string text);
+
+    /// <summary>
     /// Stop these NPCs' fights (ref ids in hexadecimal, separated by spaces): the add-on runs
     /// <c>&lt;ref&gt;.StopCombat</c> for each. From /coop calm.
     /// </summary>

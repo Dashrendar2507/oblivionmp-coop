@@ -56,6 +56,8 @@ public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents event
     /// <summary>Closer than this (cm) to the spot already: no need to move.</summary>
     private const float CloseEnough = 300f;
     private static readonly float[] RecheckAfter = [2f, 5f, 10f];
+    /// <summary>The travel screen lifts after this long whatever happens.</summary>
+    private const float ScreenMaxSeconds = 45f;
     /// <summary>
     /// One game unit in centimetres, and the side of an exterior cell in game units: for the cell <c>cow</c> asks
     /// for. Only roughly right is needed: once the player is in the world space, the server puts them on the spot.
@@ -80,6 +82,11 @@ public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents event
         public Vector3 MovedFrom;
         public float MovedAt;
         public int Checks;
+        /// <summary>The travel screen is up on their game (<see cref="CoopRpc.SendTravel"/>).</summary>
+        public bool Screen;
+        public bool ScreenAsked;
+        public string ScreenText = "";
+        public float ScreenSince;
         public float LastRecord;
         /// <summary>Travelling to this teammate: on arrival, the spot is next to where they stand then.</summary>
         public PlayerId? Joining;
@@ -142,6 +149,13 @@ public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents event
 
             if (!s.Started)
             {
+                if (!s.ScreenAsked)
+                {
+                    s.ScreenAsked = true;
+                    if (sync.Settings.ReturnOnJoin && sync.Returns.TryGetValue(name, out var back)
+                        && (Fix(back).Area != area || Vector3.Distance(main.Position, back.Position) > CloseEnough))
+                        RaiseScreen(id, s, "Taking you back to where you left...");
+                }
                 if (!settled)
                     continue;
                 s.Started = true;
@@ -157,6 +171,8 @@ public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents event
                 if (area == going.Area && settled)
                 {
                     s.Going = null;
+                    if (s.Screen)
+                        rpc.SendTravel(id, s.ScreenText); // the load may have dropped the page
                     if (s.Joining is { } joining)
                     {
                         s.Joining = null;
@@ -199,6 +215,10 @@ public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents event
                 }
             }
 
+            // The screen lifts once they stand where they should, after the first check that the game left them there.
+            if (s.Screen && ((s.Resolved && (s.Target is null || s.Checks > 0 || main.IsDead)) || _clock - s.ScreenSince > ScreenMaxSeconds))
+                LowerScreen(id, s);
+
             if (s.Resolved && settled)
                 Record(main, name, area, s);
         }
@@ -227,6 +247,8 @@ public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents event
         {
             s.Going = spot;
             s.GoingSince = _clock;
+            if (s.Joining is { } to)
+                RaiseScreen(main.PlayerId, s, $"Travelling to {sync.Nickname(to)}...");
             rpc.SendGoToCell(main.PlayerId, cell);
             logger.LogInformation("[QuestSync] {Player} {Why} {Cell}: asking their game to go there.",
                 name, s.Joining is null ? "left inside" : "travels into", cell);
@@ -236,6 +258,8 @@ public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents event
         {
             s.Going = spot;
             s.GoingSince = _clock;
+            if (s.Joining is { } to)
+                RaiseScreen(main.PlayerId, s, $"Travelling to {sync.Nickname(to)}...");
             rpc.SendGoToWorld(main.PlayerId, place);
             logger.LogInformation("[QuestSync] {Player} {Why} {Area}: asking their game to go there (cow {Place}).",
                 name, s.Joining is null ? "left outdoors in" : "travels to", spot.Area, place);
@@ -248,6 +272,23 @@ public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents event
         }
         logger.LogInformation("[QuestSync] {Player} left in {Then} but joined in {Now}; they stay where the game put them.", name, spot.Area, area);
         s.Resolved = true;
+    }
+
+    /// <summary>A black screen with this line on the player's game while it moves them (setting "Black screen while travelling").</summary>
+    private void RaiseScreen(PlayerId id, Session s, string text)
+    {
+        if (!sync.Settings.TravelScreen)
+            return;
+        s.Screen = true;
+        s.ScreenText = text;
+        s.ScreenSince = _clock;
+        rpc.SendTravel(id, text);
+    }
+
+    private void LowerScreen(PlayerId id, Session s)
+    {
+        s.Screen = false;
+        rpc.SendTravel(id, "");
     }
 
     private void Place(MainCharacter main, string name, Session s, ReturnSpot spot, string what)
