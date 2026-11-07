@@ -28,6 +28,8 @@ public sealed partial class GameData(QuestSyncConfig config, ILogger logger)
     private readonly Dictionary<uint, string> _npcs = new();
     private readonly Dictionary<uint, string> _menus = new();
     private readonly Dictionary<uint, string> _cells = new();
+    private readonly Dictionary<uint, string> _voices = new();
+    private readonly Dictionary<string, string> _voicesByName = new();
     private Dictionary<string, string> _text = new(StringComparer.Ordinal);
     private int[] _toGame = [];
     private Dictionary<int, int> _fromGame = new();
@@ -86,6 +88,16 @@ public sealed partial class GameData(QuestSyncConfig config, ILogger logger)
             foreach (var p in JsonDocument.Parse(npcs).RootElement.EnumerateObject())
                 _npcs[TokenMap.ParseHex(p.Name)] = p.Value.GetString()!;
 
+        var voices = TokenMap.ReadEmbedded("voices.json");
+        if (voices is not null)
+        {
+            var root = JsonDocument.Parse(voices).RootElement;
+            foreach (var p in root.GetProperty("npcs").EnumerateObject())
+                _voices[TokenMap.ParseHex(p.Name)] = p.Value.GetString()!;
+            foreach (var p in root.GetProperty("names").EnumerateObject())
+                _voicesByName[p.Name] = p.Value.GetString()!;
+        }
+
         var cells = TokenMap.ReadEmbedded("cells.json");
         if (cells is not null)
             foreach (var p in JsonDocument.Parse(cells).RootElement.EnumerateObject())
@@ -102,6 +114,9 @@ public sealed partial class GameData(QuestSyncConfig config, ILogger logger)
         var path = string.IsNullOrWhiteSpace(config.StringsFile) ? Path.Combine(dir, "strings.json") : Path.GetFullPath(config.StringsFile);
         try
         {
+            // First start: make it from the host's own copy of the game.
+            if (!File.Exists(path) && string.IsNullOrWhiteSpace(config.StringsFile))
+                GameText.Build(path, config.GameFolder, config.Language, logger);
             if (File.Exists(path))
                 _text = JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(path)) ?? new();
         }
@@ -115,7 +130,9 @@ public sealed partial class GameData(QuestSyncConfig config, ILogger logger)
     public List<Line> SampleLines(int count)
     {
         EnsureLoaded();
-        var pool = _lines.Values.Where(l => l.Speaker is not null && l.Lines.Length > 0 && l.Quest is not null).ToList();
+        // Lines with a known voice, so the test can play it.
+        var pool = _lines.Values.Where(l => l.Speaker is not null && l.Lines.Length > 0 && l.Quest is not null
+            && VoiceOfName(l.Speaker) is not null && VoiceLine(l, l.Lines[0]) is not null).ToList();
         if (pool.Count == 0)
             pool = _lines.Values.ToList();
         if (pool.Count == 0)
@@ -187,6 +204,38 @@ public sealed partial class GameData(QuestSyncConfig config, ILogger logger)
     /// <summary>The name of an NPC or creature, by its base form id in the game's numbering.</summary>
     public string? NpcName(uint gameBaseId)
         => FromGame(gameBaseId) is { } id && _npcs.TryGetValue(id, out var key) ? Name(key) : null;
+
+    /// <summary>An NPC's name key (LOC_FN_...), by its base form id in the game's numbering.</summary>
+    public string? NpcKey(uint gameBaseId)
+        => FromGame(gameBaseId) is { } id && _npcs.TryGetValue(id, out var key) ? key : null;
+
+    /// <summary>A quest's name key, by its editor id.</summary>
+    public string? QuestKey(string editorId) => Map.Quest(editorId)?.Name;
+
+    /// <summary>An NPC's voice ("imperial_m"), by its base form id in the game's numbering.</summary>
+    public string? VoiceOf(uint gameBaseId)
+        => FromGame(gameBaseId) is { } id && _voices.TryGetValue(id, out var voice) ? voice : null;
+
+    /// <summary>An NPC's voice by their name key (LOC_FN_...), for a line whose speaker is only known by name.</summary>
+    public string? VoiceOfName(string? nameKey)
+        => nameKey is not null && _voicesByName.TryGetValue(nameKey, out var voice) ? voice : null;
+
+    /// <summary>
+    /// The voice file of one spoken line, without the speaker's voice: "&lt;quest&gt;_&lt;topic&gt;_&lt;line form id&gt;_&lt;n&gt;",
+    /// as the game names it (Play_imperial_m_ms26_ms26filecharges_000363be_1). Read from the line's text key
+    /// (LOC_RT_&lt;topic&gt;_&lt;form id&gt;_&lt;plugin&gt;_RESP&lt;n&gt;). Only lines of Oblivion.esm for now: the others keep their
+    /// voices in their own plugin's folder, with a numbering not checked yet.
+    /// </summary>
+    public static string? VoiceLine(Line line, string textKey)
+    {
+        if (line.Quest is null)
+            return null;
+        var m = Regex.Match(textKey, "^LOC_RT_(.+)_([0-9A-Fa-f]{8})_Oblivion_RESP([0-9]+)$");
+        if (!m.Success)
+            return null;
+        var name = $"{line.Quest}_{m.Groups[1].Value}_{m.Groups[2].Value}_{m.Groups[3].Value}".ToLowerInvariant();
+        return Regex.IsMatch(name, "^[a-z0-9_]{1,120}$") ? name : null;
+    }
 
     /// <summary>Text for a localization key; for a name without text, the key made readable.</summary>
     public string Name(string? key)

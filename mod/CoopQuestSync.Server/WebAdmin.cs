@@ -18,7 +18,7 @@ namespace CoopQuestSync.Server;
 /// Requests run on a background thread; anything that changes the game goes through <see cref="QuestTokenSync.Enqueue"/>.
 /// </summary>
 [Service]
-public sealed partial class WebAdmin(QuestTokenSync sync, GameData data, QuestSyncConfig config, ILogger logger, CommandAccess access)
+public sealed partial class WebAdmin(QuestTokenSync sync, GameData data, QuestSyncConfig config, CombatService combat, ILogger logger, CommandAccess access)
 {
     private TcpListener? _listener;
     private CancellationTokenSource? _cts;
@@ -239,6 +239,14 @@ public sealed partial class WebAdmin(QuestTokenSync sync, GameData data, QuestSy
                     if (error is not null)
                         logger.LogWarning("[QuestSync] Web: setting {Key} refused: {Error}", key, error);
                 });
+                break;
+            }
+
+            case "calm":
+            {
+                // A player's name (their area and bounty), or "all" for every area with a player in it.
+                var who = Str("player");
+                sync.Enqueue(() => logger.LogInformation("[QuestSync] Web: {Result}", combat.Calm(null, string.IsNullOrEmpty(who) ? "all" : who)));
                 break;
             }
 

@@ -6,7 +6,7 @@ using ReadyM.Sdk.Common.Input;
 namespace CoopQuestSync.Client;
 
 /// <summary>
-/// The co-op keys (Alt + a letter): listen in or leave a conversation, revive the teammate next to you, respawn when
+/// The co-op keys (Alt + a letter): listen in or leave a conversation, travel to the talker, revive the teammate next to you, respawn when
 /// you are down. The letters come from the server (web page), so a key the game also uses can be moved.
 ///
 /// The binds are polled, not "unhandled by UI": the game's own input takes the keys it uses before an unhandled bind
@@ -14,17 +14,17 @@ namespace CoopQuestSync.Client;
 /// </summary>
 public sealed class CoopKeys(IInput input, Func<ClientRpc> rpc, ILogger logger)
 {
-    public static readonly Dictionary<string, string> Defaults = new() { ["follow"] = "L", ["revive"] = "H", ["respawn"] = "G" };
+    public static readonly Dictionary<string, string> Defaults = new() { ["follow"] = "U", ["join"] = "Y", ["revive"] = "H", ["respawn"] = "G" };
 
     private readonly Dictionary<string, (string Key, IDisposable? Bind)> _binds = new();
     private readonly Dictionary<string, DateTime> _lastPress = new();
 
-    /// <summary>"Alt+L", for the overlay and the tags.</summary>
+    /// <summary>"Alt+U", for the overlay and the tags.</summary>
     public string Name(string action) => "Alt+" + (_binds.TryGetValue(action, out var b) ? b.Key : Defaults[action]);
 
     public void Start() => Apply(Defaults);
 
-    /// <summary>The server's keys. json: { follow, revive, respawn }.</summary>
+    /// <summary>The server's keys. json: { follow, join, revive, respawn }.</summary>
     public void Update(string json)
     {
         var keys = JsonSerializer.Deserialize<Dictionary<string, string>>(json) ?? new();
@@ -64,6 +64,7 @@ public sealed class CoopKeys(IInput input, Func<ClientRpc> rpc, ILogger logger)
         switch (action)
         {
             case "follow": rpc().SendToggleFollow(); break;
+            case "join": rpc().SendJoinTalker(); break;
             case "revive": rpc().SendReviveNearest(); break;
             case "respawn": rpc().SendGiveUp(); break;
         }

@@ -31,13 +31,14 @@ rejoin. The defaults keep it sane: nobody gets teleported or thrown into a fight
   the topic and the line. Watchers can't click anything.
 * Players in the same area stand still until the conversation ends (unless they're in combat).
 * The overlay says when the talker is bartering, persuading, training, picking a lock and so on.
-* **Alt+L** leaves or rejoins a conversation you're watching. Optionally, players only listen in when they press it.
+* **Alt+U** leaves or rejoins a conversation you're watching. Optionally, players only listen in when they press it.
 * Quest updates wait until you're out of a conversation.
 
 **Party**
 * **Revive instead of death.** When you die you go down. A teammate next to you presses **Alt+H** to bring you back.
   After 60 s, or when you press **Alt+G**, you respawn next to the party leader.
-* **Back where you left.** When you join, you come back where you left, inside buildings too.
+* **Back where you left.** When you join, you come back where you left, inside buildings too, behind a black
+  travel screen so you don't see the jumps.
 * "Talking" and "Down" tags over players' heads.
 * Rewards handed out in conversation go to everyone. Quest items (keys, letters) can be shared too (off by default).
 * Level scaling and difficulty for the whole session.
@@ -114,8 +115,9 @@ The OblivionMP SDK can't read or set the game's own quests, so a small game plug
 - `mod/CoopQuestSync.Server/web/index.html`: the admin page, served by the server mod on port 9060 (see
   `WebAdmin.cs`).
 - `mod/CoopQuestSync.Client/web/index.html`: the in-game conversation overlay.
-- `ui/CoopQuestSyncUI/`: a UE4SS Lua add-on that hides HUD pop-ups while stages are replayed (so catching up is
-  silent) and runs `coc` for "back where you left". The client installs it by itself.
+- `ui/CoopQuestSyncUI/`: a UE4SS Lua add-on that hides HUD pop-ups and closes the "Quest Added" windows while
+  stages are replayed (so catching up is silent), and runs the console's `coc`, `cow` and calm commands (back where
+  you left, travel, `/coop calm`), plays the watchers' voices and looks up the game's text. The client installs it by itself.
 - `probe/`: the Phase 0 test mod (inventory logging and `/qsprobe`).
 - `tools/check_no_game_files.py`: fails when the game's own files (`strings.json`, `*.locres`, `*.esm`, the DLC
   plugins) are in the repository or in a release zip. CI runs it on every push.
