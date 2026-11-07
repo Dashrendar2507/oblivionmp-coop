@@ -62,4 +62,11 @@ public sealed partial class QuestSyncConfig
     /// A relative path is from the server's working folder. Empty: don't read it (only the admins added on our page).
     /// </summary>
     public string PanelDatabase { get; set; } = "data/web.db";
+
+    /// <summary>
+    /// The ReadyM panel permission a panel admin needs for the co-op admin commands (the panel's Admins view, per admin):
+    /// players.manage, settings.manage, users.manage, terminal.access or dashboard.access. Superusers always may.
+    /// Empty: every active panel admin.
+    /// </summary>
+    public string PanelPermission { get; set; } = "players.manage";
 }

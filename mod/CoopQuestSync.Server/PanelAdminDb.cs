@@ -19,7 +19,11 @@ public static class PanelAdminDb
 {
     public sealed record Result(HashSet<Guid> Ids, bool Ok, string Status);
 
-    public static Result Load(string path)
+    /// <param name="permission">
+    /// With the server's own layout (Users + UserPermissions): the panel permission an admin needs, such as
+    /// "players.manage". Superusers always pass. Empty: every active panel user.
+    /// </param>
+    public static Result Load(string path, string permission = "")
     {
         // Relative to the working folder, or failing that to the server's own folder (they differ when the server
         // is started from elsewhere).
@@ -36,6 +40,9 @@ public static class PanelAdminDb
             using var db = new Db(full);
             var tables = db.Query("SELECT name FROM sqlite_master WHERE type = 'table'").Select(r => r.Values[0] as string)
                 .OfType<string>().ToList();
+            if (KnownLayout(db, tables, permission, lib) is { } known)
+                return known;
+
             // Logs and the like may name players who are not admins (who an admin kicked, for one), so leave them out.
             // In OblivionMP server 1.0.1 the panel's admins are its "Users" (accounts that sign in to the panel, shown
             // under Admins), next to GamePlayers, WhitelistedPlayers and BannedPlayers, which are players, not admins.
@@ -98,6 +105,63 @@ public static class PanelAdminDb
         {
             return new Result([], false, $"could not read the panel database: {e.Message}");
         }
+    }
+
+    /// <summary>
+    /// The OblivionMP server 1.0.1 layout: Users(Id, SubjectId = ReadyM account id, Username, IsActive, IsSuperuser...)
+    /// and UserPermissions(UserId, Permission, GrantedAt), permissions like players.manage or settings.manage.
+    /// Null when the database doesn't look like that, so the general search runs instead.
+    /// </summary>
+    private static Result? KnownLayout(Db db, List<string> tables, string permission, string lib)
+    {
+        if (!tables.Contains("Users"))
+            return null;
+        var users = db.Query("SELECT * FROM \"Users\"");
+        var cols = db.LastColumns;
+        int Col(string name) => Array.FindIndex(cols, c => c.Equals(name, StringComparison.OrdinalIgnoreCase));
+        int id = Col("Id"), subject = Col("SubjectId"), active = Col("IsActive"), super = Col("IsSuperuser");
+        if (id < 0 || subject < 0)
+            return null;
+
+        var granted = new Dictionary<string, HashSet<string>>();
+        var allPermissions = new SortedSet<string>(StringComparer.Ordinal);
+        if (tables.Contains("UserPermissions"))
+        {
+            var rows = db.Query("SELECT * FROM \"UserPermissions\"");
+            int user = Array.FindIndex(db.LastColumns, c => c.Equals("UserId", StringComparison.OrdinalIgnoreCase));
+            int perm = Array.FindIndex(db.LastColumns, c => c.Equals("Permission", StringComparison.OrdinalIgnoreCase));
+            if (user >= 0 && perm >= 0)
+                foreach (var r in rows)
+                    if (Key(r.Values[user]) is { } u && r.Values[perm] is string p)
+                    {
+                        (granted.TryGetValue(u, out var set) ? set : granted[u] = []).Add(p);
+                        allPermissions.Add(p);
+                    }
+        }
+
+        static bool True(object? v) => v is long n ? n != 0 : v is string t && (t == "1" || t.Equals("true", StringComparison.OrdinalIgnoreCase));
+        var ids = new HashSet<Guid>();
+        int inactive = 0, lacking = 0;
+        foreach (var r in users)
+        {
+            if (active >= 0 && r.Values[active] is not null && !True(r.Values[active]))
+            {
+                inactive++;
+                continue;
+            }
+            var isSuper = super >= 0 && True(r.Values[super]);
+            if (!isSuper && permission.Length > 0
+                && !(Key(r.Values[id]) is { } k && granted.TryGetValue(k, out var perms) && perms.Contains(permission)))
+            {
+                lacking++;
+                continue;
+            }
+            AddGuids(ids, r.Values[subject]);
+        }
+        var rule = permission.Length > 0 ? $"superusers and users with {permission}" : "every active user";
+        var status = $"{ids.Count} of {users.Count} panel user(s) may use admin commands ({rule}; {inactive} inactive, "
+            + $"{lacking} without the permission). Panel permissions: {string.Join(", ", allPermissions)} [SQLite: {lib}]";
+        return new Result(ids, ids.Count > 0, ids.Count > 0 ? status : "no panel user may use admin commands: " + status);
     }
 
     private static string Quote(string identifier) => "\"" + identifier.Replace("\"", "\"\"") + "\"";

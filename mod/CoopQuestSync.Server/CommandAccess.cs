@@ -156,7 +156,7 @@ public sealed partial class CommandAccess(IPlayers players, IChat chat, QuestTok
             if (DateTime.UtcNow - _panelReadAt < PanelRefresh)
                 return _panel;
             _panelReadAt = DateTime.UtcNow;
-            _panel = PanelAdminDb.Load(config.PanelDatabase);
+            _panel = PanelAdminDb.Load(config.PanelDatabase, config.PanelPermission.Trim());
             if (_panel.Status != _loggedStatus)
             {
                 _loggedStatus = _panel.Status;

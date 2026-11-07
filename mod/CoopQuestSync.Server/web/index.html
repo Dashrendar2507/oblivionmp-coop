@@ -308,7 +308,7 @@ function renderSettings() {
   </div>
   <div class="sgroup"><h3>Commands</h3>
     ${srow("Who can use admin commands", "/qs push, auto, source, reset, /qsprobe and /coop test. The others (/qs status, /coop follow...) are for everyone.", sel("commandAccess", choices.commandAccess, st.commandAccess))}
-    ${srow("ReadyM panel admins", "Everyone in the Admins view of the ReadyM admin panel (port 9050) is an admin here too.", `<span class="edid">${acc ? esc(acc.panelOk ? "Working" : "Not available") : ""}</span>`)}
+    ${srow("ReadyM panel admins", "Admins of the ReadyM admin panel (port 9050) with the players.manage permission, and superusers, are admins here too.", `<span class="edid">${acc ? esc(acc.panelOk ? "Working" : "Not available") : ""}</span>`)}
     ${acc && !acc.panelOk ? `<p class="hint">${esc(acc.panel)}</p>` : ""}
     ${srow("Admins added here", "Use \"Make admin\" next to a player above. Stored by ReadyM account, so it works whatever their nickname.",
       st.admins.length ? st.admins.map(a => `<span class="admin">${esc(a.name || a.id)} <button class="mini" data-admin-remove="${esc(a.id)}" title="${esc(a.id)}">Remove</button></span>`).join(" ") : `<span class="edid">None</span>`)}

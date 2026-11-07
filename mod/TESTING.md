@@ -9,7 +9,9 @@ can use ...".
 
 Who counts as an admin:
 
-* **The admins of the ReadyM admin panel** (http://localhost:9050, the **Admins** view). The SDK doesn't tell mods
+* **The admins of the ReadyM admin panel** (http://localhost:9050, the **Admins** view) who have the
+  **players.manage** permission there; superusers always count. `PanelPermission` in config.json picks another
+  permission, or empty for every panel admin. The SDK doesn't tell mods
   about them, so the mod reads the panel's own database, `data\web.db` in the server folder (read only, every
   10 seconds, so a change there applies within seconds).
 * **Players you add on the co-op page** (http://localhost:9060): **Make admin** next to an online player, or
@@ -291,7 +293,7 @@ the zip.
   "AutoSync": true, "UndoReplayRewards": true,
   "GamePlugins": "Oblivion.esm,DLCBattlehornCastle.esp,DLCFrostcrag.esp,DLCHorseArmor.esp,DLCMehrunesRazor.esp,DLCOrrery.esp,DLCShiveringIsles.esp,DLCSpellTomes.esp,DLCThievesDen.esp,DLCVileLair.esp,Knights.esp,AltarESPMain.esp,AltarDeluxe.esp,AltarESPLocal.esp",
   "StringsFile": "",
-  "PanelDatabase": "data/web.db"
+  "PanelDatabase": "data/web.db", "PanelPermission": "players.manage"
 }
 ```
 

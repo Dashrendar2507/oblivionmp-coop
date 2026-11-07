@@ -118,7 +118,8 @@ reaches the stage always gets everything. These switches decide what everyone el
 `scaonactor` and `SetCrimeGold 0`. The web page has the same, as **Calm** on each player and **Calm all fights**.
 
 `/qs push`, `/qs auto`, `/qs source`, `/qs reset`, `/coop calm`, `/qsprobe` and `/coop test` are for admins: the
-admins of the ReadyM admin panel (port 9050, **Admins**), plus anyone added with **Make admin** on the co-op page.
+admins of the ReadyM admin panel (port 9050, **Admins**) who have the **players.manage** permission (superusers
+always do), plus anyone added with **Make admin** on the co-op page.
 **Co-op settings > Commands** on the page can open them to everyone. Everyone else gets "Only server admins can
 use ...". Players are recognised by their ReadyM account, so a nickname change doesn't matter.
 
@@ -158,3 +159,4 @@ Create `config.json` in `mods\CoopQuestSync\server\` to change these. Every entr
 | `GameFolder` | `""` | Where Oblivion Remastered is installed, to read its text from. Empty: found through Steam. |
 | `Language` | `"en"` | Language of the game's text (`de`, `fr`, `es`, `it`...). Delete `strings.json` after changing it. |
 | `PanelDatabase` | `"data/web.db"` | The ReadyM admin panel's database, where the mod finds the server's admins. Empty: only admins added on the co-op page. |
+| `PanelPermission` | `"players.manage"` | The panel permission (set per admin under **Admins**) a panel admin needs for the co-op admin commands. Superusers always can. Empty: every active panel admin. |
