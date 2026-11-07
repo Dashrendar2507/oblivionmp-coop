@@ -44,9 +44,11 @@ shared progress, so a restart keeps them.
 
 ## Install
 
-1. **Server:** replace the server's `mods\CoopQuestSync` folder with the one in the zip. Keep
-   `coop-quest-sync-state.json` (your shared progress) and `server\strings.json` (the game's text: quest and NPC
-   names on the web page and in chat); copy them back into the new folder if you deleted the old one.
+1. **Server:** replace the server's `mods\CoopQuestSync` folder with the one in the zip. Your shared progress
+   (`coop-quest-sync-state.json`) and the game's text (`coop-quest-sync-strings.json`, quest and NPC names on the
+   web page and in chat) live in the server's own folder, next to `server.exe`, and stay. If names show as ids
+   (MQ49), put your `strings.json` in the new `mods\CoopQuestSync\server\` folder once and restart: the server
+   copies it out and keeps it from then on.
 2. **Nothing to copy for the players.** Both plugins (`CoopQuestSync.esp` and `CoopQuestSyncDialogue.esp`) are in
    the mod's `client` folder. OblivionMP puts them in each player's `Data` folder when they join, and takes them out
    when they leave, which is why they disappear after a disconnect. If you copied them into `Data` yourself before,
@@ -74,7 +76,8 @@ shared progress, so a restart keeps them.
 
 0. **Add-on update and crashes.** The add-on that runs is the copy **on your PC**, in
    `%APPDATA%\ReadyM.Launcher\Oblivion\Mods\CoopQuestSyncUI\` (paste that into the Explorer address bar).
-   * **Server:** put the new zip in as usual (keep `coop-quest-sync-state.json` and `server\strings.json`).
+   * **Server:** put the new zip in as usual (keep `coop-quest-sync-state.json`; the game's text now stays in
+     `coop-quest-sync-strings.json` next to it).
    * **Your PC:** delete `off` and `lite` from that folder if they are there.
    * Join once: if the add-on changed, a note in the top left corner says so and asks you to restart the game. Quit.
    * Start again and load and join a few times. The note should be gone, and UE4SS.log should say

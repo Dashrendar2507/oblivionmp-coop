@@ -105,26 +105,44 @@ public sealed partial class GameData(QuestSyncConfig config, ILogger logger)
 
         LoadText();
         logger.LogInformation("[QuestSync] Game data: {Lines} dialogue lines, {Npcs} names, {Text} text entries{Note}.",
-            _lines.Count, _npcs.Count, _text.Count, _text.Count == 0 ? " (no strings.json: names and lines show as keys)" : "");
+            _lines.Count, _npcs.Count, _text.Count, _text.Count == 0 ? " (no " + KeptFileName + " or strings.json: names and lines show as keys)" : "");
     }
 
+    /// <summary>
+    /// The game's text, kept next to the state file (the server's working folder) as coop-quest-sync-strings.json, so
+    /// replacing the mod's folder on an update doesn't lose it (2026-11-07: names showed as ids after an update). An
+    /// older strings.json next to the DLL is copied there. Without either, the server makes it from the host's game.
+    /// </summary>
     private void LoadText()
     {
         var dir = Path.GetDirectoryName(typeof(GameData).Assembly.Location) ?? ".";
-        var path = string.IsNullOrWhiteSpace(config.StringsFile) ? Path.Combine(dir, "strings.json") : Path.GetFullPath(config.StringsFile);
+        var custom = !string.IsNullOrWhiteSpace(config.StringsFile);
+        var path = custom ? Path.GetFullPath(config.StringsFile) : Path.GetFullPath(KeptFileName);
         try
         {
+            var besideDll = Path.Combine(dir, "strings.json");
+            if (!custom && !File.Exists(path) && File.Exists(besideDll))
+            {
+                File.Copy(besideDll, path);
+                logger.LogInformation("[QuestSync] Copied the game's text to {Path}, where updates of the mod keep it.", path);
+            }
             // First start: make it from the host's own copy of the game.
-            if (!File.Exists(path) && string.IsNullOrWhiteSpace(config.StringsFile))
+            if (!File.Exists(path) && !custom)
                 GameText.Build(path, config.GameFolder, config.Language, logger);
             if (File.Exists(path))
+            {
                 _text = JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(path)) ?? new();
+                logger.LogInformation("[QuestSync] The game's text: {Path}", path);
+            }
         }
         catch (Exception e)
         {
             logger.LogWarning("[QuestSync] Could not read {Path}: {Error}", path, e.Message);
         }
     }
+
+    /// <summary>The game's text, in the server's working folder next to coop-quest-sync-state.json.</summary>
+    public const string KeptFileName = "coop-quest-sync-strings.json";
 
     /// <summary>A few random topic lines that name their speaker, for test conversations.</summary>
     public List<Line> SampleLines(int count)

@@ -244,11 +244,20 @@ function S.commandBusy()
     return nil
 end
 
+local function hasFile(path)
+    local f = io.open(path, "r")
+    if f then
+        f:close()
+        return true
+    end
+    return false
+end
+
 -- The game's camera fade, black over the world (menus and the client's pages stay on top). Game thread.
 local BLACK = { R = 0.0, G = 0.0, B = 0.0, A = 1.0 }
 local FADE_OUT = 0.3
 local FADE_IN = 0.6
-local FADE_MAX = 40 -- the world comes back after this long whatever happens
+local FADE_MAX = 20 -- the world comes back after this long whatever happens
 
 local function cameraFade(from, to, duration, hold)
     local pc = playerController()
@@ -302,7 +311,9 @@ function S.runCommands()
         log("running " .. next.cmd .. " after " .. COMMAND_MAX_WAIT .. " s even though " .. busy)
     end
     local moves = next.cmd:match("^coc ") or next.cmd:match("^cow ")
-    if moves and not next.faded then
+    -- Only with a client that brings the world back (it writes fade-ok): an older one left it black for the whole
+    -- FADE_MAX (2026-11-07).
+    if moves and not next.faded and hasFile(FOLDER .. "fade-ok") then
         next.faded = true
         if cameraFade(0.0, 1.0, FADE_OUT, true) then
             S.fadeHeld = true
@@ -685,22 +696,23 @@ function S.questAddedCheck()
     if not visible then
         return
     end
-    -- A pop-up that was just closed may still be fading out: give each try time to work.
+    -- A pop-up that was just closed may still be fading out: give each press time to work. The catch-up can bring
+    -- several in a row in the same widget, so each one gets the game's own Continue. Never CommonUI's
+    -- DeactivateWidget: it hid the pop-up but left the game thinking a menu was open, and Esc stopped working
+    -- (2026-11-07).
     if S.popupTriedAt and os.clock() - S.popupTriedAt < 1.5 then
         return
     end
     S.popupTriedAt = os.clock()
     S.popupTries = (S.popupTries or 0) + 1
-    if S.popupTries > 3 then
-        if S.popupTries == 4 then
-            log("could not close the Quest Added pop-up: close it by hand")
+    if S.popupTries > 6 then
+        if S.popupTries == 7 then
+            log("stopped closing Quest Added pop-ups: close any left by hand")
         end
         return
     end
-    -- The game's own Continue first; if it is still up a second later, CommonUI's deactivate.
-    local how = S.popupTries == 1 and "OnQuitButtonPressed" or "DeactivateWidget"
-    local ok, err = pcall(function() popup[how](popup) end)
-    log((ok and "closed" or "could not close") .. " the Quest Added pop-up (" .. how .. ")" .. (ok and "" or ": " .. tostring(err)))
+    local ok, err = pcall(function() popup:OnQuitButtonPressed() end)
+    log((ok and "closed" or "could not close") .. " the Quest Added pop-up" .. (ok and "" or ": " .. tostring(err)))
 end
 
 -- Menus ----------------------------------------------------------------------------------------------------------

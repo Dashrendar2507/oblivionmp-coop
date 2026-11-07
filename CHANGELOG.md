@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+* **The game's text survives updates**: the server keeps it as `coop-quest-sync-strings.json` in its own folder,
+  next to `coop-quest-sync-state.json`, instead of `strings.json` inside the mod's folder (an update wiped it and
+  quest names showed as ids). An old `strings.json` next to the DLL is copied there once.
+* **Esc works after the catch-up**: the add-on closes each Quest Added pop-up only with the game's own Continue. Its
+  fallback, CommonUI's DeactivateWidget, hid the pop-up but left the game thinking a menu was open.
+* The world fades to black around a move only with a client that brings it back (it writes `fade-ok` in the add-on
+  folder); an older client left it black for 40 s. At most 20 s now.
 * **Black screen while travelling**: when the server puts a player back where they left on join, or takes them to a
   teammate (Alt+Y) through another load, their screen fades to black with one line ("Taking you back to where you
   left...") and lifts once they stand in the right spot, so the save's spot, the door and the jumps stay hidden. It

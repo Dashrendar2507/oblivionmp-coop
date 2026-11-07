@@ -143,8 +143,16 @@ public sealed partial class TravelScreen(CefHost cef, IPlayers players, IInput i
         }
     }
 
+    private bool _saidFadeOk;
+
     private void WatchMove(float dt)
     {
+        // Tells the add-on this client brings the world back after a move, so it may fade it out first.
+        if (!_saidFadeOk && Directory.Exists(Path.GetDirectoryName(FadeIn)))
+        {
+            _saidFadeOk = true;
+            Touch(Path.Combine(Path.GetDirectoryName(FadeIn)!, "fade-ok"));
+        }
         if (_fadeInIn >= 0)
         {
             _fadeInIn -= dt;
