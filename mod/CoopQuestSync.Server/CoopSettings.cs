@@ -105,6 +105,25 @@ public sealed class CoopSettings
 
     public string DifficultyTaken { get; set; } = "Unset";
 
+    // ---- Command access ----
+
+    /// <summary>
+    /// Who may use the commands that change things for everybody (/qs push, auto, source, reset, /qsprobe, /coop test):
+    /// "admins" (the admins of the ReadyM admin panel, plus <see cref="Admins"/>) or "everyone".
+    /// </summary>
+    public string CommandAccess { get; set; } = "admins";
+
+    /// <summary>Extra admins added on this page, by ReadyM account id. Admins of the ReadyM panel need no entry here.</summary>
+    public List<AdminEntry> Admins { get; set; } = [];
+
+    public sealed class AdminEntry
+    {
+        public string Id { get; set; } = "";
+
+        /// <summary>Their nickname when they were added, only to show on the page.</summary>
+        public string Name { get; set; } = "";
+    }
+
     // ---------------------------------------------------------------------------------------------------------
 
     public bool Allowed(string phase, string category)
@@ -138,6 +157,8 @@ public sealed class CoopSettings
         KeyRespawn = CleanKey(KeyRespawn, "G");
         DifficultyDealt ??= "Unset";
         DifficultyTaken ??= "Unset";
+        CommandAccess = CommandAccess is "everyone" ? "everyone" : "admins";
+        Admins = (Admins ?? []).Where(a => a is not null && Guid.TryParse(a.Id, out _)).DistinctBy(a => Guid.Parse(a.Id)).ToList();
     }
 
     private static string CleanKey(string? key, string fallback)
@@ -173,7 +194,7 @@ public sealed class CoopSettings
             return null;
         }
         var prop = typeof(CoopSettings).GetProperty(key, System.Reflection.BindingFlags.IgnoreCase | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
-        if (prop is null || prop.PropertyType == typeof(Dictionary<string, bool>))
+        if (prop is null || prop.PropertyType == typeof(Dictionary<string, bool>) || prop.PropertyType == typeof(List<AdminEntry>))
             return "unknown setting";
         try
         {

@@ -13,11 +13,12 @@ game is missing one of them can't load our plugins, and nothing gets synced for 
 [open an issue](https://github.com/Dashrendar2507/oblivionmp-coop/issues/new/choose) with your `Plugins.txt`: a
 version without the Deluxe dependency can be built.
 
-### Chat commands aren't limited to admins
+### Who counts as an admin comes from the panel's own database
 
-Any player can type `/qs reset`, `/qs push`, `/qs source` or `/coop calm` in chat. Only play with people you trust for now, and
-keep a copy of `coop-quest-sync-state.json` if your playthrough matters to you. The web page is only open on the
-server computer by default.
+The SDK doesn't tell mods who the server's admins are, so the mod reads the ReadyM admin panel's database
+(`data/web.db`) to find them. That file's layout isn't documented and could change with a server update. If it can't
+be read, the server log says why, and only the admins added on the co-op page (**Make admin**) can use the admin
+commands.
 
 ### The game's text comes from the players' own games
 

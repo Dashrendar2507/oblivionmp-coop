@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+* **Admin-only commands**: `/qs push`, `/qs auto`, `/qs source`, `/qs reset`, `/coop calm`, `/qsprobe` and
+  `/coop test` are for admins: the ReadyM admin panel's admins (read from its `data/web.db`), plus players added
+  with **Make admin** on the co-op page. **Co-op settings > Commands** can open them to everyone. `/qs whoami` shows
+  your ReadyM id and status; `/coop test asghost on|off` tests the refusals alone. config.json: `PanelDatabase`.
+
 * **Black screen while travelling**: when the server puts a player back where they left on join, or takes them to a
   teammate (Alt+Y) through another load, their screen fades to black with one line ("Taking you back to where you
   left...") and lifts once they stand in the right spot, so the save's spot, the door and the jumps stay hidden. It
