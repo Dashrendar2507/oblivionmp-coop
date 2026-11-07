@@ -59,6 +59,13 @@ public sealed partial class QuestSyncConfig
     public string Language { get; set; } = "en";
 
     /// <summary>
+    /// Learn the game's text from the players' own games (their CoopQuestSyncUI add-on looks it up in the running game),
+    /// one file per language next to the state file, so the web page and chat lines have words without anyone making a
+    /// file by hand, and each player's chat lines come in their own game's language.
+    /// </summary>
+    public bool LearnTextFromPlayers { get; set; } = true;
+
+    /// <summary>
     /// The ReadyM admin panel's database, where its admin list lives. Its admins may use every co-op command.
     /// A relative path is from the server's working folder. Empty: don't read it (only the admins added on our page).
     /// </summary>

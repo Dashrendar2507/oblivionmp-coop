@@ -55,34 +55,38 @@ Bethesda, so the mod never ships it. Instead it reads the text from each player'
 * **Players** (the conversation overlay): the CoopQuestSyncUI add-on looks each line's text up in the running game,
   in the language the game is set to. Nothing to do. With several languages in one party, everyone reads in their
   own.
-* **The server** (the web page and chat lines) keeps the text the mod uses in `coop-quest-sync-strings.json`, in the
-  folder the server runs from (next to `server.exe` and `coop-quest-sync-state.json`), where updates of the mod
-  don't touch it. Please don't share that file. When it's missing, the server tries to make it on start-up from the
-  game on the same computer (found through Steam, or `"GameFolder"` in `config.json`).
-  **That only works with Oodle's `oo2core_9_win64.dll` on that computer, and the Steam version of the remaster
-  doesn't include one** (its text is Oodle-compressed). The mod never downloads it. So on most computers, make the
-  file once **by hand** with FModel (below). Until then, or on a dedicated host without the game, the page shows
-  names worked out from the game's ids ("Ysabel Andronicus" from `LOC_FN_YsabelAndronicus`); everything else works.
+* **The server** (the web page and chat lines) learns the text from the players' games. Each player's game says
+  which language it runs in; for each language the server doesn't have yet, it asks one player of that language for
+  the text, a batch at a time, in the background, once they're in the world (a few minutes for the whole game). It
+  keeps it in `coop-quest-sync-strings.<language>.json` (for example `coop-quest-sync-strings.fr.json`), in the
+  folder the server runs from (next to `server.exe` and `coop-quest-sync-state.json`), where updates of the mod don't
+  touch it, so each language is learned once. Chat lines then reach each player in their own language. The web page
+  uses the language set in `config.json` (`"Language"`, English by default), or whichever one it learned. Please
+  don't share those files. A dedicated host without the game works the same way.
 
-The server's start-up log says what happened (lines starting with `[QuestSync]`):
+Before that, the server also tries two other ways: a `coop-quest-sync-strings.json` the host made by hand (below),
+and reading the game installed on the server computer. The second needs Oodle's `oo2core_9_win64.dll`, which the
+Steam version of the remaster doesn't include, and the mod never downloads it, so on most computers it fails and the
+server learns from the players instead. Until the first player has been in for a few minutes, the page shows names
+worked out from the game's ids ("Ysabel Andronicus" from `LOC_FN_YsabelAndronicus`); everything else works.
 
-* `The game's text: C:\...\coop-quest-sync-strings.json`: the server has its text. Done.
-* `Copied the game's text to ...coop-quest-sync-strings.json, where updates of the mod keep it.`: it found a
-  `strings.json` you made by hand in `mods\CoopQuestSync\server\` and moved a copy out. Done.
-* `Wrote ...coop-quest-sync-strings.json: 24730 of the ... texts the mod uses`: it made the file from the game. Done.
+The server's log says what happened (lines starting with `[QuestSync]`):
+
+* `The game's text: C:\...\coop-quest-sync-strings.json`: the host's own file. Done.
+* `The game's text in fr (from the players' games): ...coop-quest-sync-strings.fr.json, 24730 of 24730.`: learned
+  before. Done.
 * `Couldn't read the game's text from OblivionRemastered-Windows.pak: the game's text is Oodle-compressed and there's
-  no oo2core_9_win64.dll on this computer`: the usual case on a Steam install. Use the FModel route below.
-* `Oblivion Remastered isn't installed on this computer`: either nothing to do (a dedicated host), or put the
-  game's folder (the one with `OblivionRemastered.exe`) in `config.json` as `"GameFolder"` and restart the server.
-  See [the settings](USING.md#configjson-server-host-optional).
-* `GameFolder ... doesn't hold Oblivion Remastered`: the `"GameFolder"` in `config.json` is wrong.
-* `Game data: ... 0 text entries (no coop-quest-sync-strings.json or strings.json: names and lines show as keys)`:
-  the server has no text this time; one of the lines above says why.
+  no oo2core_9_win64.dll on this computer`, then `The server will learn the game's text from the players' games
+  instead`: the usual case. Nothing to do.
+* When a player joins: `Alice's game runs in fr.`, `Learning the game's text in fr from Alice's game ...`, progress
+  lines, then `The game's text in fr is complete ...`.
+* `Alice's game didn't send the text asked for in 45 s (is the CoopQuestSyncUI add-on running?)`: that player's
+  add-on isn't running. The server asks another player of that language, or that player again next time they join.
 
-For the server's page in another language, set `"Language"` in `config.json` (`de`, `fr`, `es`, `it`...), delete
-`coop-quest-sync-strings.json` and restart the server.
+To stop the server learning (if you only want a file you made yourself), set `"LearnTextFromPlayers": false` in
+`config.json`. For the web page in another language, set `"Language"` (`de`, `fr`, `es`, `it`...).
 
-**By hand** (needed on a standard Steam install, see above), once per server:
+**By hand**, if you'd rather make the file yourself (optional):
 
 1. Install [FModel](https://fmodel.app) and point it at the game (`OblivionRemastered\Content\Paks`).
 2. Find `Localization/Game/en/Game.locres` (or your language instead of `en`), right-click it and choose

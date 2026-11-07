@@ -16,6 +16,12 @@ public sealed partial class CoopRpc
     public event Action<PlayerId>? GiveUpRequested;
     public event Action<PlayerId>? FollowToggled;
     public event Action<PlayerId>? JoinRequested;
+    public event Action<PlayerId, string>? TextLanguageReported;
+    public event Action<PlayerId, string>? TextFoundReceived;
+
+    partial void OnTextLanguage(RpcContext context, string language) => TextLanguageReported?.Invoke(context.Sender, language);
+
+    partial void OnTextFound(RpcContext context, string json) => TextFoundReceived?.Invoke(context.Sender, json);
 
     partial void OnJoinTalker(RpcContext context) => JoinRequested?.Invoke(context.Sender);
 

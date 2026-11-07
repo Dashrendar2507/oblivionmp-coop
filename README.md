@@ -5,7 +5,7 @@
 progress is shared live, players who join later catch up silently, and conversations, deaths and rewards are
 handled with a party in mind.
 
-> **Status: public test (0.5.1).** It works, but it is young and has only been tested by a handful of people.
+> **Status: public test (0.5.2).** It works, but it is young and has only been tested by a handful of people.
 > Expect rough edges, back up your saves, and please [report what you find](CONTRIBUTING.md). Every report helps.
 
 ## Disclaimer - use of AI
@@ -32,7 +32,7 @@ rejoin. The defaults keep it sane: nobody gets teleported or thrown into a fight
 * Players in the same area stand still until the conversation ends (unless they're in combat).
 * The overlay says when the talker is bartering, persuading, training, picking a lock and so on.
 * Watchers hear the NPC's voice with each line, played from their own game in their own game's language, and read
-  the text in that language too (nothing of the game's is shipped with the mod).
+  the text in that language too, as do the chat lines (nothing of the game's is shipped with the mod).
 * **Alt+U** leaves or rejoins a conversation you're watching. Optionally, players only listen in when they press it.
 * **Alt+Y** takes you to whoever is talking, into their building or another world space too.
 * Quest updates wait until you're out of a conversation.
@@ -75,11 +75,10 @@ The short version (the full, step-by-step guide is in **[docs/INSTALL.md](docs/I
    Then join through the ReadyM Launcher as usual. The launcher downloads the mod and the game plugins for you.
 3. **Every player, first join only:** the mod installs a small UE4SS add-on and asks you to **restart the game
    once**. After that, nothing else to do.
-4. **Server host, optional:** for real quest and NPC names on the web page and in chat, the server needs the game's
-   text. It tries to read it from the game on the server computer on its first start, but the Steam version of
-   the remaster doesn't come with the Oodle library that takes, so today you make the file once by hand with FModel
-   ([how](docs/INSTALL.md#real-names-and-lines-on-the-page-and-the-overlay)). Without it the page shows names worked
-   out from the game's ids. The in-game overlay doesn't need it.
+4. **Nothing to do for the game's text.** The mod never ships Bethesda's text. Each player's add-on reads it from
+   their own running game, in their own language, and the server learns it from the players' games the first time a
+   player of each language joins (a few minutes in the background), for the web page and chat lines
+   ([details](docs/INSTALL.md#real-names-and-lines-on-the-page-and-the-overlay)). Nothing is downloaded.
 
 **Requirements:** Oblivion Remastered (all official plugins, including the Deluxe ones, see
 [known issues](docs/KNOWN-ISSUES.md)), the ReadyM Launcher, and an OblivionMP 1.0.1 server with its standard mods
@@ -94,7 +93,9 @@ The important ones (full list in [docs/KNOWN-ISSUES.md](docs/KNOWN-ISSUES.md)):
 * Friendly fire can't be turned off (OblivionMP doesn't tell mods who hit whom).
 * The conversation overlay is a few seconds behind the talker. The voice plays with the text, from nowhere rather
   than from the NPC.
-* The server can't read the game's text by itself on a standard Steam install (see Install, step 4).
+* The server learns the game's text from the players' games, since it can't read the game's files without an Oodle
+  library the game doesn't ship (see Install, step 4). Until the first player has been in for a few minutes, the web
+  page shows names worked out from the game's ids.
 * Followers and companions aren't shared.
 * Quest stage scripts still run in each player's own game, so a few quests may behave oddly when replayed. Tell
   us which ones.

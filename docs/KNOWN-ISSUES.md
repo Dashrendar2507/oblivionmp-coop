@@ -23,12 +23,17 @@ commands.
 ### The game's text comes from the players' own games
 
 Each player's add-on looks the overlay's text up in the running game, so the overlay always has words. The server
-(the web page and chat lines) can't do that: it would have to read the game's `.pak` files, and the remaster's text
-in them is Oodle-compressed. Reading it needs `oo2core_9_win64.dll`, which the Steam version of the game doesn't
-include, and the mod never downloads anything. So on a standard install the server logs `Couldn't read the game's
-text ... no oo2core_9_win64.dll on this computer`, and the host makes the file once by hand with FModel
-([INSTALL.md](INSTALL.md#real-names-and-lines-on-the-page-and-the-overlay)). Without it the web page shows names
-worked out from the game's ids. Only English has been tried.
+can't read the game's files on a standard install (the remaster's text is Oodle-compressed and the game ships no
+`oo2core_9_win64.dll`; the mod never downloads anything), so it learns the text from the players' games instead:
+a few minutes in the background, the first time a player of each language joins. Until then the web page shows
+names worked out from the game's ids.
+
+* Any player of a language can teach the server that language's text, so a player with a modded or tampered game
+  could put odd names on the page and in chat. Only keys the server asked for are taken, the first answer wins, and a
+  host's own file always comes first. Delete `coop-quest-sync-strings.<language>.json` to learn it again, or set
+  `"LearnTextFromPlayers": false`.
+* The web page shows one language (`"Language"` in config.json, English by default, or the first one learned).
+* Only English has been tried so far.
 
 ## Quests
 

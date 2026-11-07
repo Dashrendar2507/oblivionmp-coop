@@ -1,6 +1,7 @@
-# Co-op Quest Sync 0.5.1: how to test
+# Co-op Quest Sync 0.5.2: how to test
 
-This is the full test plan for what is on `main` today (0.5.1). What changed in each version is in
+This is the full test plan for 0.5.2. New since 0.5.1: the server learns the game's text from the players' games
+(Test 0, steps B and C). What changed in each version is in
 [CHANGELOG.md](../CHANGELOG.md); the keys, commands and settings are in [docs/USING.md](../docs/USING.md).
 
 Every file below says where it is: **Server** (the computer that runs `server.exe`) or **PC** (the computer you play
@@ -13,7 +14,7 @@ on). When you host and play on the same computer, both are on it, but they are s
 | Server folder | **Server:** the folder with `server.exe`, for example `C:\Users\<you>\Desktop\oblivion-server-win64-1.0.1\`. Below it's written `<server folder>`. |
 | The mod on the server | **Server:** `<server folder>\mods\CoopQuestSync\` (`manifest.json`, `client\`, `server\`). Replaced on every update. |
 | Shared progress and settings | **Server:** `<server folder>\coop-quest-sync-state.json`. Keep it across updates. |
-| The game's text for the server | **Server:** `<server folder>\coop-quest-sync-strings.json`. Never share it, never put it in a zip. |
+| The game's text for the server | **Server:** `<server folder>\coop-quest-sync-strings.json` (yours, by hand) and `<server folder>\coop-quest-sync-strings.<language>.json` (learned from the players' games). Never share them, never put them in a zip. |
 | Optional settings file | **Server:** `<server folder>\mods\CoopQuestSync\server\config.json` |
 | ReadyM admin list | **Server:** `<server folder>\data\web.db` (read only, by the mod) |
 | Server log | **Server:** the server console window, the newest log file in `<server folder>`, or the admin panel's **Terminal** tab (http://localhost:9050). The mod's lines start with `[QuestSync]`. |
@@ -39,73 +40,86 @@ on). When you host and play on the same computer, both are on it, but they are s
    delete it.
 4. **Server:** start the server. Its log should show:
    * `Loaded 287 quests / 2696 stages from the token map`
-   * `Game data: 11019 dialogue lines, ... names, 24730 text entries` (0 text entries is Test 0 below)
+   * `Game data: 11019 dialogue lines, ... names, 24730 text entries` (0 is fine: see Test 0)
    * `Quest admin page: http://localhost:9060/`
 
-## Test 0: the server's own text (strings file)
+## Test 0: the server's own text (names on the web page and in chat)
 
-The server shows quest and NPC names on its web page and in chat from `<server folder>\coop-quest-sync-strings.json`.
-When that file is missing, it tries to make it from the game installed on the same computer. This test checks
-each way it can get the file, and what the log says when it can't.
+The server shows quest and NPC names on its web page and in chat. It gets them, in this order:
 
-**What to expect:** on a standard Steam install the server **can't** make the file by itself. The remaster's text
-is Oodle-compressed, reading it needs `oo2core_9_win64.dll`, and the game doesn't ship that file (your UE4SS.log of
-2026-11-07 says so: `there's no oo2core_9_win64.dll on this computer`). The mod never downloads it. That's why you
-had to put `strings.json` in by hand. So step B is expected to fail, and the test checks that it fails cleanly and
-says why.
+1. **The host's file**, `<server folder>\coop-quest-sync-strings.json` (the one you made by hand, in the server's
+   `Language`, English by default).
+2. **From the game on the server computer.** This needs Oodle's `oo2core_9_win64.dll`, which the Steam version doesn't
+   include, so on your setup it fails (your UE4SS.log of 2026-11-07 says `there's no oo2core_9_win64.dll on this
+   computer`). The mod never downloads it.
+3. **New: from the players' own games.** Each player's game says which language it runs in. For each language the
+   server lacks, it asks one player of that language for the text, 200 keys at a time; their add-on looks them up in
+   the running game. The server keeps it in `<server folder>\coop-quest-sync-strings.<language>.json` (for example
+   `coop-quest-sync-strings.fr.json`), so each language is only learned once. Chat lines such as "Alice advanced ..."
+   then reach each player in their own game's language. Nothing to do by hand, and nothing is downloaded.
 
 **A. The copy you put in by hand is kept.**
 
-1. **Server:** check that `<server folder>\coop-quest-sync-strings.json` exists. If it does, skip to step 3.
-2. **Server:** if it doesn't, put your `strings.json` (the one you placed by hand) in
-   `<server folder>\mods\CoopQuestSync\server\` and start the server. The log should show
+1. **Server:** check that `<server folder>\coop-quest-sync-strings.json` exists. If it doesn't, put your
+   `strings.json` in `<server folder>\mods\CoopQuestSync\server\` and start the server: the log shows
    `Copied the game's text to <server folder>\coop-quest-sync-strings.json, where updates of the mod keep it.`
-3. **Server:** the log shows `The game's text: <server folder>\coop-quest-sync-strings.json` and
-   `Game data: ... 24730 text entries`. On http://localhost:9060/, MS93 shows its name, not `MS93`.
+2. **Server:** the log shows `The game's text: <server folder>\coop-quest-sync-strings.json` and
+   `Game data: ... 24730 text entries`.
+3. Join (game in English). The server log shows `<you>'s game runs in en. The server has 0 of the mod's 24730 texts
+   still to learn in it.` and nothing more about learning: it already has English.
 
-**B. The server tries to make its own.**
+**B. Without the file, the server learns it from your game.**
 
-1. **Server:** stop the server. Move `<server folder>\coop-quest-sync-strings.json` to your desktop, and move any
-   `strings.json` out of `<server folder>\mods\CoopQuestSync\server\` too. Keep both safe.
-2. **Server:** start the server. Look for these `[QuestSync]` lines, in this order:
-   * `OblivionRemastered-Windows.pak: .pak version 11, 241371 files, compression Oodle, with a directory index.`
-     (it found the game);
-   * `Reading the game's text from OblivionRemastered-Windows.pak (OblivionRemastered/Content/Localization/Game/en/Game.locres, Oodle).`
+1. **Server:** stop the server. Move `<server folder>\coop-quest-sync-strings.json` to your desktop, and any
+   `strings.json` out of `<server folder>\mods\CoopQuestSync\server\`. Keep both safe.
+2. **Server:** start the server. Expected `[QuestSync]` lines, in this order:
+   * `OblivionRemastered-Windows.pak: .pak version 11, ... compression Oodle ...` (it found the game);
    * `Couldn't read the game's text from OblivionRemastered-Windows.pak: the game's text is Oodle-compressed and
-     there's no oo2core_9_win64.dll on this computer. ...`
-   * `Game data: ... 0 text entries (no coop-quest-sync-strings.json or strings.json: names and lines show as keys).`
-3. Check:
-   * **Server:** no `coop-quest-sync-strings.json` was made in `<server folder>`.
-   * The server still starts, http://localhost:9060/ still opens, and quests show names worked out from their ids
-     (for example "Ysabel Andronicus" from `LOC_FN_YsabelAndronicus`).
-   * **Server:** nothing new appeared next to `server.exe` or in `mods\CoopQuestSync\` (nothing was downloaded).
-4. If instead you see `Wrote <server folder>\coop-quest-sync-strings.json: ... of the ... texts the mod uses`, the
-   server **did** make its own file: please send me the log, that's news. Other lines you might see:
-   * `Oblivion Remastered isn't installed on this computer (or set GameFolder in config.json) ...`: it didn't find
-     the game through Steam. Put `{ "GameFolder": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Oblivion Remastered" }`
-     in `<server folder>\mods\CoopQuestSync\server\config.json` and try again.
-   * `GameFolder ... doesn't hold Oblivion Remastered.`: that path is wrong.
-   * `No Localization/Game/en/Game.locres in the game's .pak files`: the language in config.json isn't one the
-     game has.
-5. **Server:** stop the server, move `coop-quest-sync-strings.json` back into `<server folder>`, start the server,
-   and check `The game's text: ...` again.
+     there's no oo2core_9_win64.dll on this computer. ...` (expected);
+   * `The server will learn the game's text from the players' games instead, in each player's language, as they
+     join (<server folder>\coop-quest-sync-strings.<language>.json).`
+   * `Game data: ... 0 text entries (no coop-quest-sync-strings.json or strings.json yet: ...)`.
+   The page opens, with names worked out from the ids. Nothing new appears next to `server.exe` or in
+   `mods\CoopQuestSync\` (nothing was downloaded).
+3. **PC:** join. Once you're in the world and caught up, the server log shows:
+   * `<you>'s game runs in en. The server has 24730 of the mod's 24730 texts still to learn in it.`
+   * `Learning the game's text in en from <you>'s game: 24730 texts, 200 at a time.`
+   * `The game's text in en: 10% (...)`, `20%`... about every 15 s;
+   * after 2 to 4 minutes: `The game's text in en is complete: ... of 24730 texts, kept in
+     <server folder>\coop-quest-sync-strings.en.json.`
+   Meanwhile **PC** UE4SS.log shows `[QuestSync] Sent the server ... of 200 game text(s) in en.` lines and the
+   add-on's `text: found ...` lines. **Play normally while it runs and tell me if the game stutters.**
+4. `/coop test status` in chat ends with `Your game's language: en (server has ... texts learned in it).`
+5. Refresh http://localhost:9060/: quests show their real names.
+6. **Server:** restart the server. The log shows `The game's text in en (from the players' games):
+   <server folder>\coop-quest-sync-strings.en.json, 24730 of 24730.`, and joining doesn't learn anything again.
 
-**C. The text survives an update.**
+**C. Two languages (alone is enough).**
+
+1. **PC:** switch the game to French (or any other language): in the game's settings, or in Steam, right-click the
+   game, **Properties**, **Language**. Restart the game.
+2. Join. The server log shows `<you>'s game runs in fr.` and learns French the same way, into
+   `<server folder>\coop-quest-sync-strings.fr.json`.
+3. Once it says complete: `/coop test stage <quest> <stage>` with a stage you don't have yet (see Test 3, step 5).
+   The chat reply should name the quest in French. With a second player in English, they'd see "... advanced ..." lines in English and you in French.
+4. **PC:** switch the game back to your language afterwards.
+
+**D. The text survives an update.**
 
 1. **Server:** stop the server, delete `<server folder>\mods\CoopQuestSync\` and copy the zip's `CoopQuestSync`
-   folder in again.
-2. **Server:** start the server. The log shows `The game's text: <server folder>\coop-quest-sync-strings.json`, and
-   the page still shows real names.
+   folder in again. Start it: the `The game's text ...` lines show the same files, and the page still has names.
 
-**D. Players don't need the server's text.**
+**E. Players don't need the server's text.**
 
-1. **Server:** stop the server, move `<server folder>\coop-quest-sync-strings.json` to your desktop, start the
-   server.
-2. **PC:** join, then type `/coop test talk`. The overlay should show real sentences, looked up in your own game.
-   **PC** UE4SS.log should show `[CoopQuestSyncUI] string tables: ...` and `text: found 5 of 5 key(s)`.
-3. **Server:** put `coop-quest-sync-strings.json` back and restart the server.
+1. With the server's text files moved away (step B.1), and before the learning is done: `/coop test talk`. The
+   overlay still shows real sentences, looked up in your own game (**PC** UE4SS.log: `text: found 5 of 5 key(s)`).
 
-Send me the server log from step B either way.
+**Put things back:** **Server:** move your `coop-quest-sync-strings.json` back into `<server folder>` if you want the
+hand-made one. The learned `coop-quest-sync-strings.en.json` can stay; never share either.
+
+**If it goes wrong:** `<you>'s game didn't send the text asked for in 45 s` means the add-on didn't answer (check
+that **PC** UE4SS.log has `[CoopQuestSyncUI]` lines). Send the server log and UE4SS.log. `"LearnTextFromPlayers":
+false` in `<server folder>\mods\CoopQuestSync\server\config.json` turns learning off.
 
 ## Test 1: admin-only commands
 
@@ -218,13 +232,14 @@ Stand next to each other:
 * **PC:** UE4SS.log, copied before you start the game again.
 * For the overlay or the travel screen: a screenshot.
 * **PC:** your `Plugins.txt`, if quests from the DLCs or Knights don't sync.
-* Never send `coop-quest-sync-strings.json` or `strings.json` anywhere public.
+* Never send `coop-quest-sync-strings*.json` or `strings.json` anywhere public.
 
 ## Known limits
 
 The full list is in [docs/KNOWN-ISSUES.md](../docs/KNOWN-ISSUES.md). The ones that matter for testing:
 
-* The server can't make its own text file on a standard Steam install (Test 0, step B). The overlay doesn't need it.
+* The server can't read its text from the game's files on a standard Steam install; it learns it from the players'
+  games instead (Test 0, step B). The overlay doesn't need it.
 * The overlay runs a few seconds behind the talker (the game reports a line when it ends). The voice plays with the
   text, from nowhere (not from the NPC).
 * Going back into a building, travelling into another one or world space, and `/coop calm` all need the add-on
@@ -245,7 +260,7 @@ The full list is in [docs/KNOWN-ISSUES.md](../docs/KNOWN-ISSUES.md). The ones th
 ```json
 {
   "WebBind": "127.0.0.1", "WebPassword": "", "WebPort": 9060,
-  "GameFolder": "", "Language": "en", "StringsFile": "",
+  "GameFolder": "", "Language": "en", "StringsFile": "", "LearnTextFromPlayers": true,
   "PanelDatabase": "data/web.db", "PanelPermission": "players.manage"
 }
 ```

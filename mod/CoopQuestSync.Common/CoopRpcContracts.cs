@@ -74,6 +74,22 @@ public static partial class CoopRpcContracts
     /// <summary>The player was revived, or is respawned: the game brings them back to life.</summary>
     [ServerToClient] public static partial void Resurrect();
 
+    /// <summary>
+    /// The server would like the game's text for these keys (LOC_..., one per line), in this player's language: their
+    /// game looks them up (the CoopQuestSyncUI add-on asks the running game) and answers with <see cref="TextFound"/>.
+    /// That is how the server gets its text without reading the game's compressed files.
+    /// </summary>
+    [ServerToClient] public static partial void TextWanted(string keys);
+
+    /// <summary>The language this player's game runs in ("en", "fr", "pt-BR"...), once the client knows it.</summary>
+    [ClientToServer] public static partial void TextLanguage(string language);
+
+    /// <summary>
+    /// The answer to <see cref="TextWanted"/>. json: { language, text: { key: text } }; an empty text means the game
+    /// has none for that key.
+    /// </summary>
+    [ClientToServer] public static partial void TextFound(string json);
+
     /// <summary>The player pressed the revive key: the server looks for a downed player close by.</summary>
     [ClientToServer] public static partial void ReviveNearest();
 

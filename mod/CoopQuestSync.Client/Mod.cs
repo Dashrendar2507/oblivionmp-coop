@@ -22,6 +22,9 @@ public sealed partial class Mod(IDependencyContainer services, IInput input, ILo
         services.RegisterSingleton<CoopKeys, CoopKeys>(keys);
         keys.Start();
 
+        // The game's text: the server asks this game for it (in its language) and keeps it for its page and chat.
+        GameTextCache.Rpc = () => services.Resolve<ClientRpc>();
+
         logger.LogInformation("[QuestSync] Client half loaded.");
     }
 }

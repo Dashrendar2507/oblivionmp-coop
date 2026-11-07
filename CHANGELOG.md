@@ -1,11 +1,22 @@
 # Changelog
 
+## 0.5.2 (public test)
+
+* **The server learns the game's text from the players' games**, so nobody makes a file by hand. Each player's
+  client says which language its game runs in; for each language the server lacks, it asks one player of that
+  language for the text, 200 keys at a time, in the background once they're in the world, and their add-on looks it
+  up in the running game. Kept as `coop-quest-sync-strings.<language>.json` next to the state file. "X advanced ..."
+  chat lines now reach each player in their own game's language. `/coop test status` shows your game's language.
+  A host's own `coop-quest-sync-strings.json` still comes first. config.json: `LearnTextFromPlayers` (on). No add-on
+  change, so no game restart.
+
+* **Docs**: the README, install guide and known issues say why the server can't read the game's text from its files
+  on a standard Steam install (no `oo2core_9_win64.dll`, and the mod never downloads one) and list every log line
+  about it. `mod/TESTING.md` is rewritten, with a test for the server's text and the PC or server location of every
+  file.
+
 ## 0.5.1 (public test)
 
-* **Docs**: the README, install guide, known issues and test plan now say plainly that the server can't make its own
-  text file on a standard Steam install (the game ships no `oo2core_9_win64.dll`, and the mod never downloads one),
-  list every start-up log line about it, and give the FModel route as the way to do it. `mod/TESTING.md` is
-  rewritten for 0.5.1, with a test for the server's text file and the PC or server location of every file.
 * **The game's text survives updates**: the server keeps it as `coop-quest-sync-strings.json` in its own folder,
   next to `coop-quest-sync-state.json`, instead of `strings.json` inside the mod's folder (an update wiped it and
   quest names showed as ids). An old `strings.json` next to the DLL is copied there once.
