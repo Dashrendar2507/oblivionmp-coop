@@ -85,7 +85,7 @@ still works. Only English has been tried.
 * After the mod installs or updates the add-on, you have to **restart the game once** for it to start.
 * If `UE4SS.log` has no `[CoopQuestSyncUI]` lines after that restart, the add-on isn't running: quest pop-ups may
   show while you catch up, and "back inside" won't work. Please report it with the log.
-* **If the game crashes on load**, put an empty file named `off` (no extension) in
+* **If the game crashes on load**, put an empty file named `off` (`off.txt` works too) in
   `%APPDATA%\ReadyM.Launcher\Oblivion\Mods\CoopQuestSyncUI\` and restart the game. That switches the add-on off
   (UE4SS.log says "switched off"); quest sync still works, but pop-ups show during catch-up and travel, back and calm
   don't. If the crashes stop, the add-on is the cause: tell us, with UE4SS.log from a crash with it on. Delete `off`

@@ -22,14 +22,17 @@ end
 
 local LOGIC = scriptsFolder() .. "coop.lua"
 -- A file named "off" in the add-on folder keeps the add-on from doing anything, to tell whether a crash comes from it.
-local OFF = (os.getenv("APPDATA") or "") .. "\\ReadyM.Launcher\\Oblivion\\Mods\\CoopQuestSyncUI\\off"
+-- Windows hides extensions, so a new text document named "off" is really "off.txt": both count.
+local FOLDER = (os.getenv("APPDATA") or "") .. "\\ReadyM.Launcher\\Oblivion\\Mods\\CoopQuestSyncUI\\"
 local current = nil
 
 local function switchedOff()
-    local f = io.open(OFF, "r")
-    if f then
-        f:close()
-        return true
+    for _, name in ipairs({ "off", "off.txt" }) do
+        local f = io.open(FOLDER .. name, "r")
+        if f then
+            f:close()
+            return true
+        end
     end
     return false
 end

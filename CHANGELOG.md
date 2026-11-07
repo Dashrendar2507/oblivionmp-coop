@@ -13,8 +13,8 @@
 * **Fewer crashes on load**: the add-on no longer watches every new object the game makes (thousands during a load),
   no longer keeps the player controller, and does all its game work in one job at a time on the game thread. The
   crashes on loading a save and after the join pop-up came from UE4SS's background thread.
-* An empty file named `off` in the add-on folder switches the add-on off (restart the game), to tell whether a
-  crash comes from it.
+* An empty file named `off` (or `off.txt`) in the add-on folder switches the add-on off (restart the game), to tell
+  whether a crash comes from it; one named `lite` stops only its regular menu checks.
 * Voices are looked up in the game's own folders (one per race and sex).
 * A revive or respawn waits until the chat or menu is closed (getting up with the chat open left it stuck).
 * The server log says who fights where and in whose game (`Combat:` lines), to see what is shared already.

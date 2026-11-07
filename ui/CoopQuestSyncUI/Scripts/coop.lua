@@ -21,7 +21,8 @@
 -- in that thread while loading. So this file keeps the add-on's footprint small: no watchers on new objects (they
 -- fire thousands of times during a load), one LoopAsync that only looks at files, and all game work in a single
 -- ExecuteInGameThread job that is never queued again before the last one has finished. A file named "off" in the
--- add-on folder stops everything (main.lua reads it), to tell whether a crash comes from here.
+-- add-on folder stops everything (main.lua reads it), to tell whether a crash comes from here; one named "lite" stops
+-- the regular menu checks.
 
 local S = CQS or {}
 CQS = S
@@ -551,6 +552,13 @@ local function exists(path)
     return false
 end
 
+-- A file named "lite" (or "lite.txt") in the add-on folder stops the regular menu checks, so the add-on only touches
+-- the game when the co-op mod asks for something (and for the HUD hook). To narrow down a crash.
+S.lite = exists(FOLDER .. "lite") or exists(FOLDER .. "lite.txt")
+if S.lite then
+    log("lite: no menu checks (delete the file \"lite\" in the add-on folder to turn them back on)")
+end
+
 -- The HUD class may not be loaded when the add-on starts, so try again every couple of seconds until the hook takes.
 function S.hookHud()
     if S.hudHooked or os.clock() - S.lastHudTry < HUD_EVERY then
@@ -578,7 +586,7 @@ function S.gameJob()
         end
     end
     pcall(S.hookHud)
-    if os.clock() - S.lastMenu >= MENU_EVERY then
+    if not S.lite and os.clock() - S.lastMenu >= MENU_EVERY then
         S.lastMenu = os.clock()
         pcall(S.menuCheck)
     end
@@ -602,7 +610,7 @@ function S.tick()
     if now - S.jobDoneAt < GAP then
         return
     end
-    local due = now - S.lastMenu >= MENU_EVERY or not S.languageWritten or (not S.hudHooked and now - S.lastHudTry >= HUD_EVERY)
+    local due = (not S.lite and now - S.lastMenu >= MENU_EVERY) or not S.languageWritten or (not S.hudHooked and now - S.lastHudTry >= HUD_EVERY)
         or #S.textQueue > 0 or exists(COMMAND_FILE) or exists(VOICE_FILE) or exists(TEXT_REQUEST)
     if not due then
         return
