@@ -29,6 +29,8 @@ public sealed partial class TravelScreen(CefHost cef, IPlayers players, IInput i
     private float _inWorld;
     private float _checkIn;
     private bool _menu;
+    private bool _moving;           // the add-on ran the coc/cow: stay up through the load
+    private static string TravelRan => Path.Combine(Path.GetDirectoryName(ConsoleBridge.MenuFlag)!, "travel-ran");
     private ViewportHandle? _viewport;
     private BrowserHandle? _browser;
     private bool _visible;
@@ -46,6 +48,11 @@ public sealed partial class TravelScreen(CefHost cef, IPlayers players, IInput i
             return;
         }
         _fresh = true;
+        if (_text is null)
+        {
+            _moving = false;
+            try { File.Delete(TravelRan); } catch { /* not there, or the add-on is writing it */ }
+        }
         _text = text;
         _up = 0;
     }
@@ -108,8 +115,11 @@ public sealed partial class TravelScreen(CefHost cef, IPlayers players, IInput i
         {
             _checkIn = 0.2f;
             _menu = File.Exists(ConsoleBridge.MenuFlag);
+            _moving |= File.Exists(TravelRan);
         }
-        var want = !_menu;
+        // Aside for a menu (the quest pop-up must be closed before the move), but not once the add-on has run the
+        // coc: the load that follows looks like a menu.
+        var want = _moving || !_menu;
         if (_viewport is { } v && want != _visible)
         {
             _visible = want;
@@ -133,8 +143,8 @@ public sealed partial class TravelScreen(CefHost cef, IPlayers players, IInput i
             var browser = cef.CreateBrowser();
             browser.Navigate($"readym://{Host}/travel.html#{(again ? "now:" : "")}{Uri.EscapeDataString(text)}");
             cef.Assign(viewport, browser.Handle);
-            cef.SetVisible(viewport, !_menu);
-            _visible = !_menu;
+            cef.SetVisible(viewport, _moving || !_menu);
+            _visible = _moving || !_menu;
             _viewport = viewport;
             _browser = browser.Handle;
             if (_shown++ < 20)

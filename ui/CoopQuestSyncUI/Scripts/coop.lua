@@ -264,6 +264,15 @@ function S.runCommands()
     table.remove(S.commandQueue, 1)
     local ok, how = runConsole(next.cmd)
     log((ok and "ran " or "could not run ") .. next.cmd .. " (" .. how .. ")")
+    if ok and (next.cmd:match("^coc ") or next.cmd:match("^cow ")) then
+        -- The client's black travel screen stays up from here: the load that follows shows the cursor, which
+        -- otherwise reads as a menu and moved the screen aside (2026-11-07).
+        local f = io.open(FOLDER .. "travel-ran", "w")
+        if f then
+            f:write(next.cmd)
+            f:close()
+        end
+    end
 end
 
 -- Voices ---------------------------------------------------------------------------------------------------------
