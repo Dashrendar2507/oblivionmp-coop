@@ -146,8 +146,10 @@ public sealed partial class CombatService(IEntities entities, IServerEvents even
     private string CalmAreas(IReadOnlyCollection<AreaId> areas, PlayerId? clearBountyOf)
     {
         var refs = new List<uint>();
+        // NPCs the server can't place (AreaId.Invalid, seen in a dungeon on 2026-11-07) are stopped too: in a game
+        // that doesn't have them, the command just fails.
         foreach (var npc in entities.Query<Npc>())
-            if (Fighting(npc) && areas.Contains(npc.Cell.AreaId))
+            if (Fighting(npc) && (areas.Contains(npc.Cell.AreaId) || npc.Cell.AreaId.Equals(AreaId.Invalid)))
                 refs.Add(npc.RefId);
         var players = sync.Players.Where(p => p.Value.Area is { } a && areas.Contains(a)).Select(p => p.Key).ToList();
         foreach (var id in players)

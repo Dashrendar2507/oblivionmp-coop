@@ -129,12 +129,15 @@ local function describe(path)
         return
     end
     local params = {}
-    pcall(function()
+    local ok, err = pcall(function()
         fn:ForEachProperty(function(prop)
-            params[#params + 1] = prop:GetFName():ToString() .. ":" .. prop:GetClass():GetFName():ToString()
+            local name = prop:GetFName():ToString()
+            local kind = "?"
+            pcall(function() kind = prop:GetClass():GetFName():ToString() end)
+            params[#params + 1] = name .. ":" .. kind
         end)
     end)
-    log("  " .. path .. "(" .. table.concat(params, ", ") .. ")")
+    log("  " .. path .. "(" .. table.concat(params, ", ") .. ")" .. (ok and "" or (" [can't list: " .. tostring(err):gsub("\n.*", "") .. "]")))
 end
 
 -- Console commands -----------------------------------------------------------------------------------------------
@@ -148,28 +151,45 @@ local function allowed(cmd)
     return false
 end
 
--- Two ways into the game's console from UE4SS; the log says which one worked, or why neither did. The first is
--- the one other Oblivion Remastered mods use: KismetSystemLibrary with the local player as the world context.
+-- Into the game's console from UE4SS. Other Oblivion Remastered mods call KismetSystemLibrary.ExecuteConsoleCommand
+-- with the local player as the world context and three arguments, but OblivionMP's UE4SS asks for four (2026-11-07),
+-- so a few shapes are tried; the log says which one worked, or why none did. A shape that worked is tried first next
+-- time.
+local function consoleShapes(pc, cmd)
+    local ksl = StaticFindObject("/Script/Engine.Default__KismetSystemLibrary")
+    return {
+        { "KSL(player, cmd, pc, nil)", function() ksl:ExecuteConsoleCommand(pc.Player, cmd, pc, nil) end },
+        { "KSL(pc, cmd, pc, nil)", function() ksl:ExecuteConsoleCommand(pc, cmd, pc, nil) end },
+        { "KSL(player, cmd, pc, false)", function() ksl:ExecuteConsoleCommand(pc.Player, cmd, pc, false) end },
+        { "KSL(player, cmd, pc)", function() ksl:ExecuteConsoleCommand(pc.Player, cmd, pc) end },
+        { "pc:ConsoleCommand(cmd, true)", function() pc:ConsoleCommand(cmd, true) end },
+    }
+end
+
 local function runConsole(cmd)
     local pc = playerController()
     if not pc then
         return false, "no player controller"
     end
+    local shapes = consoleShapes(pc, cmd)
+    if S.consoleShape then
+        table.insert(shapes, 1, table.remove(shapes, S.consoleShape))
+    end
     local errors = {}
-    local ok, err = pcall(function()
-        local ksl = StaticFindObject("/Script/Engine.Default__KismetSystemLibrary")
-        ksl:ExecuteConsoleCommand(pc.Player, cmd, pc)
-    end)
-    if ok then
-        return true, "KismetSystemLibrary.ExecuteConsoleCommand"
+    for _, shape in ipairs(shapes) do
+        local ok, err = pcall(shape[2])
+        if ok then
+            for n, original in ipairs(consoleShapes(pc, cmd)) do
+                if original[1] == shape[1] then
+                    S.consoleShape = n
+                end
+            end
+            return true, shape[1]
+        end
+        errors[#errors + 1] = shape[1] .. ": " .. tostring(err):gsub("\n.*", "")
     end
-    errors[#errors + 1] = tostring(err):gsub("\n.*", "")
-    ok, err = pcall(function() pc:ConsoleCommand(cmd, true) end)
-    if ok then
-        return true, "PlayerController.ConsoleCommand"
-    end
-    errors[#errors + 1] = tostring(err):gsub("\n.*", "")
     describe("/Script/Engine.KismetSystemLibrary:ExecuteConsoleCommand")
+    describe("/Script/Engine.PlayerController:ConsoleCommand")
     return false, table.concat(errors, " / ")
 end
 
@@ -252,25 +272,29 @@ local function statics()
     return StaticFindObject("/Script/AkAudio.Default__AkGameplayStatics")
 end
 
--- Plays an event on the local player: heard from where the player stands, so from nowhere in particular.
+-- Plays an event where the local player stands, so it's heard from nowhere in particular. Only calls without a
+-- callback: passing an empty callback (PostOnActor, PostEvent) crashed the game (2026-11-07).
 local function postEvent(event, pawn)
+    local where = nil
+    pcall(function() where = pawn:K2_GetActorLocation() end)
+    if not where then
+        return false, "can't tell where the player is"
+    end
+    local loc = { X = where.X, Y = where.Y, Z = where.Z }
+    local rot = { Pitch = 0, Yaw = 0, Roll = 0 }
     local tries = {
-        { "AkAudioEvent:PostOnActor", "/Script/AkAudio.AkAudioEvent:PostOnActor",
-            function() return event:PostOnActor(pawn, {}, 0, false) end },
-        { "AkGameplayStatics:PostEvent", "/Script/AkAudio.AkGameplayStatics:PostEvent",
-            function() return statics():PostEvent(event, pawn, 0, {}, false) end },
-        { "AkGameplayStatics:PostEvent (4)", "/Script/AkAudio.AkGameplayStatics:PostEvent",
-            function() return statics():PostEvent(event, pawn, 0, {}) end },
+        { "PostEventAtLocation (4)", function() return statics():PostEventAtLocation(event, loc, rot, pawn) end },
+        { "PostEventAtLocation (5)", function() return statics():PostEventAtLocation(event, loc, rot, "", pawn) end },
     }
     local errors = {}
     for _, t in ipairs(tries) do
-        local ok, id = pcall(t[3])
+        local ok, id = pcall(t[2])
         if ok then
             return true, t[1], id
         end
         errors[#errors + 1] = t[1] .. ": " .. tostring(id):gsub("\n.*", "")
-        describe(t[2])
     end
+    describe("/Script/AkAudio.AkGameplayStatics:PostEventAtLocation")
     return false, table.concat(errors, " | ")
 end
 
@@ -350,6 +374,21 @@ local TEXT_TABLES = {
 
 S.tableIds = S.tableIds or nil
 
+-- A UE4SS value as text: an FName or FString, wrapped or not.
+local function asText(value)
+    for _, get in ipairs({
+        function() return value:ToString() end,
+        function() return value:get():ToString() end,
+        function() return value:get() end,
+    }) do
+        local ok, text = pcall(get)
+        if ok and type(text) == "string" then
+            return text
+        end
+    end
+    return type(value) == "string" and value or nil
+end
+
 -- The registered string tables' ids, by short name ("ST_FullNames" -> "/Game/.../ST_FullNames.ST_FullNames").
 local function tableIds()
     if S.tableIds then
@@ -359,13 +398,20 @@ local function tableIds()
     local ok, err = pcall(function()
         local lib = StaticFindObject("/Script/Engine.Default__KismetStringTableLibrary")
         local list = lib:GetRegisteredStringTables()
-        list:ForEach(function(_, element)
-            local id = element:get():ToString()
-            local short = id:match("([%w_]+)$")
+        local function add(element)
+            local id = asText(element)
+            local short = id and id:match("([%w_]+)$")
             if short then
                 ids[short] = id
             end
-        end)
+        end
+        if type(list) == "table" then
+            for _, element in pairs(list) do
+                add(element)
+            end
+        else
+            list:ForEach(function(_, element) add(element) end)
+        end
     end)
     local count = 0
     for _ in pairs(ids) do count = count + 1 end
@@ -393,17 +439,23 @@ function S.lookupText(key)
     if not lib or not lib:IsValid() then
         return nil
     end
-    -- The string table by its id: the localised text.
-    local id = tableIds()[namespace]
-    if id then
+    -- The string table by its id: the localised text. The id the game registered, or the plain table name.
+    local candidates = {}
+    if tableIds()[namespace] then
+        candidates[#candidates + 1] = tableIds()[namespace]
+    end
+    candidates[#candidates + 1] = namespace
+    for _, id in ipairs(candidates) do
         local ok, text = pcall(function() return lib:TextFromStringTable(FName(id), key):ToString() end)
         if ok and usable(text, key) then
             return text
         end
-        if not ok and not S.textWarned then
+        if not S.textWarned then
             S.textWarned = true
-            log("TextFromStringTable failed: " .. tostring(text):gsub("\n.*", ""))
-            describe("/Script/Engine.KismetTextLibrary:TextFromStringTable")
+            log("TextFromStringTable(" .. id .. ", " .. key .. ") " .. (ok and ("gave " .. tostring(text)) or ("failed: " .. tostring(text):gsub("\n.*", ""))))
+            if not ok then
+                describe("/Script/Engine.KismetTextLibrary:TextFromStringTable")
+            end
         end
     end
     -- Or the localisation table by namespace and key.

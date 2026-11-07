@@ -219,7 +219,7 @@ public sealed partial class PartyService(IEntities entities, IServerEvents event
             default:
                 _downed[id] = new Downed { Until = _clock + settings.ReviveSeconds, LastReminder = _clock };
                 logger.LogInformation("[QuestSync] {Player} is down ({Seconds} s to revive).", name, settings.ReviveSeconds);
-                rpc.SendNotice(id, $"You are down. A teammate can revive you ({settings.Key("revive")} next to you). Back in {settings.ReviveSeconds} s, or {settings.Key("respawn")} to respawn now.");
+                rpc.SendNotice(id, $"You are down. A teammate can revive you ({settings.Key("revive")} next to you). Back in {settings.ReviveSeconds} s, or {settings.Key("respawn")} to respawn now. Don't press R: that's OblivionMP's own rebirth, which reloads your save.");
                 foreach (var (other, _) in sync.Players)
                     if (other != id)
                         chat.SendTo(other, $"{name} is down! Stand next to them and press {settings.Key("revive")} to revive.", ChatLineKind.System);

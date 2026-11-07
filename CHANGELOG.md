@@ -10,6 +10,11 @@
 * **The follow key is now Alt+U** (it was Alt+L; L also hides the game's interface, compass included). A server
   that had L moves to U.
 * The add-on's console commands (pin/back, travel, calm) use the call other Oblivion Remastered mods use.
+* Console commands try the shapes OblivionMP's UE4SS accepts (it wants four arguments where other mods pass three).
+* Voices play at the player's spot without a callback (the callback version crashed the game).
+* The game's text lookup reads the list of string tables the way OblivionMP's UE4SS returns it.
+* `/coop calm` also stops fighting NPCs the server can't place in an area.
+* The "you are down" message warns that R is OblivionMP's own rebirth, which reloads the save.
 * **Fewer crashes on load**: the add-on no longer watches every new object the game makes (thousands during a load),
   no longer keeps the player controller, and does all its game work in one job at a time on the game thread. The
   crashes on loading a save and after the join pop-up came from UE4SS's background thread. The HUD hook is
