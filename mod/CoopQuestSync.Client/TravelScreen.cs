@@ -30,6 +30,14 @@ public sealed partial class TravelScreen(CefHost cef, IPlayers players, IInput i
     private float _checkIn;
     private bool _menu;
     private bool _moving;           // the add-on ran the coc/cow: stay up through the load
+    private static string FadeIn => Path.Combine(Path.GetDirectoryName(ConsoleBridge.MenuFlag)!, "fade-in");
+    // After the add-on's coc/cow: the load tears this page down, so watch for the load to end, then make the page
+    // again and tell the add-on to bring the world back (it faded it to black before the move).
+    private bool _watching;
+    private bool _sawLoad;
+    private float _watchFor;
+    private float _settled;
+    private float _fadeInIn = -1;
     private static string TravelRan => Path.Combine(Path.GetDirectoryName(ConsoleBridge.MenuFlag)!, "travel-ran");
     private ViewportHandle? _viewport;
     private BrowserHandle? _browser;
@@ -93,6 +101,7 @@ public sealed partial class TravelScreen(CefHost cef, IPlayers players, IInput i
             _inWorld += dt;
         else
             _inWorld = 0;
+        WatchMove(dt);
         if (_text is null)
             return;
         _up += dt;
@@ -126,6 +135,65 @@ public sealed partial class TravelScreen(CefHost cef, IPlayers players, IInput i
             cef.SetVisible(v, want);
             foreach (var (old, _, _) in _retired)
                 cef.SetVisible(old, want);
+        }
+    }
+
+    private void WatchMove(float dt)
+    {
+        if (_fadeInIn >= 0)
+        {
+            _fadeInIn -= dt;
+            if (_fadeInIn < 0)
+                Touch(FadeIn);
+        }
+        _checkIn2 -= dt;
+        if (!_watching)
+        {
+            if (_checkIn2 > 0)
+                return;
+            _checkIn2 = 0.2f;
+            if (!File.Exists(TravelRan))
+                return;
+            _watching = true;
+            _sawLoad = false;
+            _watchFor = 0;
+            _settled = 0;
+        }
+        _watchFor += dt;
+        var playing = players.LocalMainCharacter is not null && input.CanApplyInput();
+        if (!playing)
+        {
+            _sawLoad = true;
+            _settled = 0;
+        }
+        else if (_sawLoad)
+            _settled += dt;
+        if (_settled < 1f && _watchFor < 20f)
+            return;
+        _watching = false;
+        _moving = false;
+        try { File.Delete(TravelRan); } catch { /* next time */ }
+        logger.LogInformation("[QuestSync] In the new place after the move{Note}.", _settled >= 1f ? "" : " (no load seen)");
+        if (_text is not null)
+        {
+            _fresh = true;      // the load took the page: a new one, black at once
+            _fadeInIn = 0.6f;   // the world comes back behind it once it has painted
+        }
+        else
+            Touch(FadeIn);
+    }
+
+    private float _checkIn2;
+
+    private void Touch(string path)
+    {
+        try
+        {
+            File.WriteAllText(path, "1");
+        }
+        catch (Exception e)
+        {
+            logger.LogDebug("[QuestSync] Could not write {Path}: {Error}", path, e.Message);
         }
     }
 

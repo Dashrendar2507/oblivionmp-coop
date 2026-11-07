@@ -244,6 +244,46 @@ function S.commandBusy()
     return nil
 end
 
+-- The game's camera fade, black over the world (menus and the client's pages stay on top). Game thread.
+local BLACK = { R = 0.0, G = 0.0, B = 0.0, A = 1.0 }
+local FADE_OUT = 0.3
+local FADE_IN = 0.6
+local FADE_MAX = 40 -- the world comes back after this long whatever happens
+
+local function cameraFade(from, to, duration, hold)
+    local pc = playerController()
+    if not pc then
+        return false
+    end
+    local ok, err = pcall(function()
+        local pcm = pc.PlayerCameraManager
+        if not pcm or not pcm:IsValid() then
+            error("no camera manager")
+        end
+        pcm:StartCameraFade(from, to, duration, BLACK, false, hold)
+    end)
+    if not ok then
+        log("camera fade failed: " .. tostring(err))
+    end
+    return ok
+end
+
+-- A coc or cow tears down OblivionMP's pages (the client's black travel screen too) as the load starts, and the game
+-- showed a second of the world before its own fade (2026-11-07). So the world fades to black first and stays black
+-- until the client says the player is in the new place (a file named fade-in), or FADE_MAX.
+function S.fadeCheck()
+    if not S.fadeHeld then
+        return
+    end
+    local asked = os.rename(FOLDER .. "fade-in", FOLDER .. "fade-in.taken")
+    if asked or os.clock() - S.fadeHeldAt > FADE_MAX then
+        os.remove(FOLDER .. "fade-in.taken")
+        S.fadeHeld = false
+        cameraFade(1.0, 0.0, FADE_IN, false)
+        log(asked and "world back after the move" or "world back after " .. FADE_MAX .. " s")
+    end
+end
+
 function S.runCommands()
     takeCommands()
     local next = S.commandQueue[1]
@@ -261,17 +301,32 @@ function S.runCommands()
         end
         log("running " .. next.cmd .. " after " .. COMMAND_MAX_WAIT .. " s even though " .. busy)
     end
+    local moves = next.cmd:match("^coc ") or next.cmd:match("^cow ")
+    if moves and not next.faded then
+        next.faded = true
+        if cameraFade(0.0, 1.0, FADE_OUT, true) then
+            S.fadeHeld = true
+            S.fadeHeldAt = os.clock()
+            next.runAfter = os.clock() + FADE_OUT + 0.1
+            os.remove(FOLDER .. "fade-in")
+        end
+    end
+    if next.runAfter and os.clock() < next.runAfter then
+        return
+    end
     table.remove(S.commandQueue, 1)
     local ok, how = runConsole(next.cmd)
     log((ok and "ran " or "could not run ") .. next.cmd .. " (" .. how .. ")")
-    if ok and (next.cmd:match("^coc ") or next.cmd:match("^cow ")) then
-        -- The client's black travel screen stays up from here: the load that follows shows the cursor, which
-        -- otherwise reads as a menu and moved the screen aside (2026-11-07).
+    if moves and ok then
+        -- The client's black travel screen stays up from here, and tells the add-on when the player has arrived.
         local f = io.open(FOLDER .. "travel-ran", "w")
         if f then
             f:write(next.cmd)
             f:close()
         end
+    elseif moves and S.fadeHeld then
+        S.fadeHeld = false
+        cameraFade(1.0, 0.0, FADE_IN, false)
     end
 end
 
@@ -643,27 +698,42 @@ local function functionsOf(class)
     return names
 end
 
+-- The pop-up is a menu (it shows the cursor), so look while one is open during a sync. 2026-11-07: looking for a
+-- QuestAdded widget "in the viewport" found nothing; it sits inside the game's menu layer. Now every live instance of
+-- both pop-up classes is written down, visible or not, once per game.
+local POPUP_CLASSES = { "WBP_ModernMenu_QuestSkillPopup_C", QUEST_ADDED }
+
 function S.questAddedCheck()
     local syncing = S.muted or (S.syncEndedAt and os.clock() - S.syncEndedAt < AFTER_SYNC)
-    if not syncing or S.questAddedLogged then
-        return
-    end
-    local widget = FindFirstOf(QUEST_ADDED)
-    if not widget or not widget:IsValid() then
-        return
-    end
-    local shown = false
-    pcall(function() shown = widget:IsInViewport() end)
-    if not shown then
+    if not syncing or not S.menuOpen or S.questAddedLogged then
         return
     end
     S.questAddedLogged = true
-    local class = widget:GetClass()
-    log("Quest Added pop-up during a sync: " .. table.concat(chainOf(class), " < "))
-    local okSuper, super = pcall(function() return class:GetSuperStruct() end)
-    log("  its functions: " .. table.concat(functionsOf(class), ", "))
-    if okSuper and super and super:IsValid() then
-        log("  its parent's functions: " .. table.concat(functionsOf(super), ", "))
+    for _, className in ipairs(POPUP_CLASSES) do
+        local okAll, all = pcall(FindAllOf, className)
+        local count = 0
+        if okAll and type(all) == "table" then
+            for _, widget in ipairs(all) do
+                if widget and widget:IsValid() then
+                    count = count + 1
+                    local name, visible, inViewport = "?", "?", "?"
+                    pcall(function() name = widget:GetFullName() end)
+                    pcall(function() visible = tostring(widget:IsVisible()) end)
+                    pcall(function() inViewport = tostring(widget:IsInViewport()) end)
+                    log("pop-up during a sync: " .. name .. " visible=" .. visible .. " inViewport=" .. inViewport)
+                    if count == 1 then
+                        local class = widget:GetClass()
+                        log("  class chain: " .. table.concat(chainOf(class), " < "))
+                        log("  its functions: " .. table.concat(functionsOf(class), ", "))
+                        local okSuper, super = pcall(function() return class:GetSuperStruct() end)
+                        if okSuper and super and super:IsValid() then
+                            log("  its parent's functions: " .. table.concat(functionsOf(super), ", "))
+                        end
+                    end
+                end
+            end
+        end
+        log("pop-up during a sync: " .. count .. " live " .. className)
     end
 end
 
@@ -768,7 +838,7 @@ function S.gameJob()
         pcall(S.menuCheck)
         pcall(S.questAddedCheck)
     end
-    for _, step in ipairs({ S.runCommands, S.runVoice, S.runText }) do
+    for _, step in ipairs({ S.fadeCheck, S.runCommands, S.runVoice, S.runText }) do
         local ok, err = pcall(step)
         if not ok then
             log("job: " .. tostring(err))

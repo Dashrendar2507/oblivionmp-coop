@@ -5,9 +5,10 @@
 * **Black screen while travelling**: when the server puts a player back where they left on join, or takes them to a
   teammate (Alt+Y) through another load, their screen fades to black with one line ("Taking you back to where you
   left...") and lifts once they stand in the right spot, so the save's spot, the door and the jumps stay hidden. It
-  steps aside while a menu (such as the quest pop-up) is open, until the add-on has run the move: the load that
-  follows looked like a menu, which let a second of the game show before its own fade. Setting "Black screen while
-  travelling" (on).
+  steps aside while a menu (such as the quest pop-up) is open, until the add-on has run the move. A coc or cow tears
+  down OblivionMP's pages as its load starts, so the add-on first fades the world to black with the game's camera
+  fade and brings it back once the client sees the player in the new place (40 s at most): no second of the game
+  before the load. Setting "Black screen while travelling" (on).
 * **Console commands wait for a quiet moment**: the add-on runs them one at a time, not during the join's quest
   catch-up, and not while a menu is open or within 2 seconds of one opening or closing. A `coc` run just as the game
   closed the quest pop-up crashed the game (2026-11-07). After 30 seconds a command runs anyway.
@@ -25,6 +26,8 @@
 * Voices play at the player's spot without a callback (the callback version crashed the game).
 * The game's text lookup reads the list of string tables the way OblivionMP's UE4SS returns it.
 * `/coop calm` leaves alone fighting NPCs the server can't place in an area: StopCombat on those crashed the game.
+* The "Quest Added" diagnostic now looks while a menu is open during a sync and lists every live pop-up widget
+  (the first version looked for one "in the viewport" and found none).
 * The add-on writes what the "Quest Added" pop-up is made of to UE4SS.log when it shows during a sync, as the first step to closing it.
 * The restart note waits until you're in the world (one made during the join's loading screen was lost).
 * The "you are down" message warns that R is OblivionMP's own rebirth, which reloads the save.
