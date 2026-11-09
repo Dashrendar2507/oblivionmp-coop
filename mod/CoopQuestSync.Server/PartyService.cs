@@ -137,7 +137,7 @@ public sealed partial class PartyService(IEntities entities, IServerEvents event
         _elapsed = 0;
 
         var settings = sync.Settings;
-        var keys = JsonSerializer.Serialize(new { follow = settings.KeyFollow, join = settings.KeyJoin, revive = settings.KeyRevive, respawn = settings.KeyRespawn });
+        var keys = JsonSerializer.Serialize(new { follow = settings.KeyFollow, join = settings.KeyJoin, revive = settings.KeyRevive, respawn = settings.KeyRespawn, @goto = settings.KeyGoto });
         foreach (var main in entities.Query<MainCharacter>())
         {
             var id = main.PlayerId;

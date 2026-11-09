@@ -16,8 +16,22 @@ public sealed partial class CoopRpc
     public event Action<PlayerId>? GiveUpRequested;
     public event Action<PlayerId>? FollowToggled;
     public event Action<PlayerId>? JoinRequested;
+    public event Action<PlayerId>? GotoRequested;
 
-    partial void OnJoinTalker(RpcContext context) => JoinRequested?.Invoke(context.Sender);
+    /// <summary>
+    /// Asked first when the join key comes in: true when it was taken (a teammate asked to come, and this accepts), so
+    /// the conversation join doesn't run as well.
+    /// </summary>
+    public Func<PlayerId, bool>? JoinTaken;
+
+    partial void OnJoinTalker(RpcContext context)
+    {
+        if (JoinTaken?.Invoke(context.Sender) == true)
+            return;
+        JoinRequested?.Invoke(context.Sender);
+    }
+
+    partial void OnTravelToFriend(RpcContext context) => GotoRequested?.Invoke(context.Sender);
 
     partial void OnToggleFollow(RpcContext context) => FollowToggled?.Invoke(context.Sender);
 

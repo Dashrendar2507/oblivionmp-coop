@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+* **Travel to a teammate any time**, not only to a conversation: `/coop goto <name>` (the start of a name is
+  enough) takes you next to them, into their building or world space too, behind the black travel screen. The new
+  goto key, **Alt+O**, goes to the last teammate you picked, else the leader, else the only other player. Not while
+  down, talking or (setting) fighting, and once per cooldown (60 s). The teammate sees "Alice is coming to you".
+  `/coop goto lock` makes teammates ask first: you see "Alice wants to come to you" and let them with Alt+Y or
+  `/coop accept` within 20 s. Kept in the state file. Settings "Travel to teammates any time", "Seconds between
+  trips", "No trips during a fight", and the Goto key.
+
 * **The game's text survives updates**: the server keeps it as `coop-quest-sync-strings.json` in its own folder,
   next to `coop-quest-sync-state.json`, instead of `strings.json` inside the mod's folder (an update wiped it and
   quest names showed as ids). An old `strings.json` next to the DLL is copied there once.

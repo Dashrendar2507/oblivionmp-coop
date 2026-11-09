@@ -1,5 +1,48 @@
 # Co-op Quest Sync 0.5: how to test
 
+## New: travel to a teammate any time
+
+You can now travel to a teammate whenever you like, not only while they talk to an NPC:
+
+* `/coop goto <name>` (the start of the name is enough) takes you next to them, into their building or city too,
+  behind the black travel screen. They see "Alice is coming to you".
+* **Alt+O** (or `/coop goto` alone) goes to the last teammate you picked, else the leader, else the only other player.
+* Not while you're down, talking or fighting, and once a minute.
+* `/coop goto lock`: teammates must ask first. You see "Alice wants to come to you" and let them with **Alt+Y** or
+  `/coop accept` within 20 seconds; ignoring it says no. `/coop goto unlock` undoes it. The server remembers it.
+
+New settings on the page (**Co-op settings > Party**): **Travel to teammates any time** (on), **Seconds between trips**
+(60), **No trips during a fight** (on), and **Goto** in the Keys row (O).
+
+### Test alone (Ghost plays the teammate)
+
+All in game on the **client PC**, after joining your server. `/coop test` needs you to be an admin, which you are.
+
+1. **Page (server PC, http://localhost:9060):** the four new settings above are there with those defaults.
+2. Type `/coop goto`, then press **Alt+O**. Both say "Nobody else is playing right now."
+3. Walk into a building and type `/coop test pin`. Walk out of the building, then type `/coop test goto`. The chat
+   says "Travelling to Ghost (your pinned spot)..." and you end up back inside, on the pinned spot.
+4. Type `/coop test goto` again at once: "You can travel again in N s."
+5. Start a fight (a rat, a mud crab), and while it lasts type `/coop test goto`: "You can't travel during a fight."
+6. Type `/coop test askme`: the middle of the screen says "Ghost wants to come to you: Alt+Y or /coop accept to let
+   them." Press **Alt+Y**: "Test: you let Ghost come." Then `/coop test askme` again and do nothing for 20 seconds:
+   "Test: you didn't answer Ghost (that's a no)."
+7. Type `/coop goto lock`, then `/coop test status`: the end says "Goto: locked (others ask)". Restart the server
+   (**server PC**), join again, and `/coop test status` still says locked. Type `/coop goto unlock`.
+
+### Test with a friend
+
+1. Your friend types `/coop goto <the start of your name>`: they arrive next to you and you see "<friend> is coming to
+   you". Try it with you inside a building and them outside, and with you in a city and them in the wilds.
+2. A minute later your friend presses **Alt+O**: same trip, no name needed.
+3. You type `/coop goto lock`. Your friend presses **Alt+O**: you see "<friend> wants to come to you". Press
+   **Alt+Y**: they travel. Then again, but ignore it: after 20 seconds they see "<you> didn't answer."
+4. While you talk to an NPC with nobody asking to come, **Alt+Y** on your friend's side still takes them to your
+   conversation, as before.
+
+If something goes wrong, send me the **server log** lines with `[QuestSync]` and `goto`, `travels to` or `asks to`
+in them, and `UE4SS.log` from the **client PC** if a trip into a building or city didn't happen.
+
 ## New in 0.5.1: admin-only commands
 
 Only server admins can now use the commands that change things for everybody: `/qs push`, `/qs auto`,

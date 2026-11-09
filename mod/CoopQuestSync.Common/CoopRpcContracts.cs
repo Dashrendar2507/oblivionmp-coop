@@ -32,7 +32,7 @@ public static partial class CoopRpcContracts
     /// </summary>
     [ServerToClient] public static partial void PartyStatus(string json);
 
-    /// <summary>The co-op keys, Alt + these letters. json: { follow, join, revive, respawn }.</summary>
+    /// <summary>The co-op keys, Alt + these letters. json: { follow, join, revive, respawn, goto }.</summary>
     [ServerToClient] public static partial void Keys(string json);
 
     /// <summary>
@@ -85,4 +85,10 @@ public static partial class CoopRpcContracts
 
     /// <summary>A downed player gives up waiting and respawns next to the party.</summary>
     [ClientToServer] public static partial void GiveUp();
+
+    /// <summary>
+    /// The goto key: travel to a teammate (the last one picked with /coop goto, the leader, or the only other player),
+    /// or accept the request of a teammate who asked to come.
+    /// </summary>
+    [ClientToServer] public static partial void TravelToFriend();
 }

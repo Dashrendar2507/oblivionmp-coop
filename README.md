@@ -37,6 +37,8 @@ rejoin. The defaults keep it sane: nobody gets teleported or thrown into a fight
 **Party**
 * **Revive instead of death.** When you die you go down. A teammate next to you presses **Alt+H** to bring you back.
   After 60 s, or when you press **Alt+G**, you respawn next to the party leader.
+* **Travel to a teammate any time** with `/coop goto <name>` or **Alt+O**. Players who'd rather be asked first type
+  `/coop goto lock`.
 * **Back where you left.** When you join, you come back where you left, inside buildings too, behind a black
   travel screen so you don't see the jumps.
 * "Talking" and "Down" tags over players' heads.

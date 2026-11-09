@@ -376,8 +376,13 @@ public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents event
     /// area, else into their building or world space through the add-on first. Returns what to tell the player, or
     /// null when they were moved at once (the move says so itself).
     /// </summary>
-    public string? Bring(PlayerId who, PlayerId to)
+    public string? Bring(PlayerId who, PlayerId to) => Bring(who, to, out _);
+
+    /// <inheritdoc cref="Bring(PlayerId, PlayerId)"/>
+    /// <param name="started">True when the player was moved or is on their way; false when the trip was refused.</param>
+    public string? Bring(PlayerId who, PlayerId to, out bool started)
     {
+        started = false;
         if (!entities.TryLookup(who, out MainCharacter main) || !sync.Players.TryGetValue(who, out var view) || view.Area is not { } areaId)
             return "The server doesn't know where you are yet.";
         if (main.IsDead)
@@ -397,6 +402,7 @@ public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents event
             _sessions[who] = s = new Session { Area = here, Since = _clock };
         s.Started = true;
         s.Joining = to;
+        started = true;
         if (spot.Area == here)
         {
             s.Joining = null;

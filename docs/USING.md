@@ -8,6 +8,7 @@
 | **Alt+Y** | While someone talks to an NPC: travel to them, listening in or not (into their building or city too). | `/coop join` |
 | **Alt+H** | Revive the downed teammate standing next to you. | `/coop revive` |
 | **Alt+G** | While you're down: give up and respawn next to the party. | `/coop giveup` |
+| **Alt+O** | Any time: travel to a teammate (the last one you picked with `/coop goto`, else the leader, else the only other player). | `/coop goto [name]` |
 
 The game sees the letter too. If one of these letters does something in your game, the host can pick other letters
 under **Keys** on the web page; every player's game switches within a few seconds. **K** is OblivionMP's chat key.
@@ -31,6 +32,13 @@ under **Keys** on the web page; every player's game switches within a few second
 * **Back where you left.** When you join, the server puts you back where you were when you left, inside buildings
   too. The screen goes black with "Taking you back to where you left..." until you stand in your spot, so you don't
   see the jumps. Travelling to a teammate (Alt+Y) through a load does the same.
+* **Travel to a teammate any time.** Type `/coop goto <name>` (the start of the name is enough) to travel next to
+  them, into their building or city too. After that, **Alt+O** takes you to the same teammate again; with only one
+  other player online it needs no name at all. Not while you're down, talking or fighting, and once a minute (the
+  host can change both). The teammate sees "Alice is coming to you".
+* **Ask first.** Type `/coop goto lock` if you'd rather not have people pop up next to you: teammates then ask, and
+  you see "Alice wants to come to you". Press **Alt+Y** or type `/coop accept` within 20 seconds to let them come;
+  ignore it to say no. `/coop goto unlock` undoes it. The server remembers your choice.
 
 ## The web admin page
 
@@ -90,7 +98,10 @@ reaches the stage always gets everything. These switches decide what everyone el
 | Revive distance | 400 cm | About four metres. |
 | Put players back where they left | On | On join. |
 | Black screen while travelling | On | Hides the jumps while a player is put back where they left, or travels to a teammate. |
-| Keys | U, Y, H, G | The letters for Alt+U, Alt+Y, Alt+H, Alt+G. |
+| Travel to teammates any time | On | `/coop goto <name>` and Alt+O. Into another building or city, it needs the CoopQuestSyncUI add-on. |
+| Seconds between trips | 60 | Per player, for `/coop goto` and Alt+O. 0 means no wait. |
+| No trips during a fight | On | A player in combat can't use `/coop goto`. |
+| Keys | U, Y, H, G, O | The letters for Alt+U, Alt+Y, Alt+H, Alt+G, Alt+O. |
 | Tags over heads | On | Talking, bartering, picking a lock, down. |
 | Level of spawns and loot | Server default (halfway) | Lowest player level, halfway, or highest player level. |
 | Difficulty, damage dealt / taken | Game default | Novice to Master. |

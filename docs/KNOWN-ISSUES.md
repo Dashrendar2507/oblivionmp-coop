@@ -54,7 +54,7 @@ still works. Only English has been tried.
 * **Letting watchers walk around** during someone's conversation ("Freeze watchers: Nobody") hasn't been tested
   much. NPCs near the walker may stand still or jump into place. Reports welcome.
 * **The compass may disappear** while a co-op banner or overlay is on screen.
-* **Travelling to a conversation (Alt+Y)** into another building or world space relies on the add-on running the
+* **Travelling to a conversation (Alt+Y) or to a teammate (`/coop goto`, Alt+O)** into another building or world space relies on the add-on running the
   console's `coc` or `cow` command. You arrive on a spot the talker walked through a moment ago, or a step beside
   them, which in a tight room can be against a wall.
 
