@@ -28,6 +28,12 @@ under **Keys** on the web page; every player's game switches within a few second
   first other player by name, if the leader is the one down). If nobody is in your area, you come back where you
   last stood on solid ground a few seconds before you died, so a fall doesn't kill you twice. Don't press **R** while
   down: that's OblivionMP's own "rebirth", which reloads your save.
+* **New players.** A player who has never left the sewers gets a window on their first join: start in the prison
+  with the game's own intro, or at the sewer exit with the intro skipped. The prison is only offered until someone
+  has left the sewers on the server: the Emperor and the Blades are shared, so the intro can only play once per
+  world. At the sewer exit you get the Amulet of Kings, "Deliver the Amulet" in your journal, and a starter kit, and
+  the race, class and birthsign menus open one after the other. The sewer gate lets you change them again before you
+  go out, as in the game. The party's quest progress reaches you once you're out of the sewers.
 * **Back where you left.** When you join, the server puts you back where you were when you left, inside buildings
   too. The screen goes black with "Taking you back to where you left..." until you stand in your spot, so you don't
   see the jumps. Travelling to a teammate (Alt+Y) through a load does the same.
@@ -96,6 +102,16 @@ reaches the stage always gets everything. These switches decide what everyone el
 | Difficulty, damage dealt / taken | Game default | Novice to Master. |
 | Friendly fire | Always on | OblivionMP can't tell mods who hit whom. |
 
+**New players**
+
+| Setting | Default | Meaning |
+| --- | --- | --- |
+| New players start | Ask | Ask: a window offers the prison intro or the sewer exit. Sewer exit: always there, with a short note. Game's own: the mod leaves the start alone. |
+| Offer the prison intro | Fresh world | Fresh world: only until someone has left the sewers on this server. Always: for testing. Never. |
+| Prison intro here | | Whether someone has left the sewers on this server. **Played: reset** offers the prison again (only on a fresh world). |
+| Starter kit | On | Gear for the sewer exit start: iron shortsword and bow, 25 arrows, 5 lockpicks, 3 healing potions, a torch, leather cuirass and boots. config.json `StarterKitItems` changes it. |
+| Take back spare amulets | On | Every new player gets an Amulet of Kings. Once Jauffre has it ("Deliver the Amulet" stage 50), the other copies go. |
+
 ## Chat commands
 
 | Command | What it does |
@@ -108,6 +124,9 @@ reaches the stage always gets everything. These switches decide what everyone el
 | `/qs source <name>\|all` | Share only one player's progress, or everyone's. |
 | `/qs reset` | Reset every shared quest. |
 | `/qs whoami` | Your ReadyM id, and whether the server counts you as an admin. |
+| `/qs newstart` | Where new players start, and where each player is (in the intro, at the sewer exit, out). |
+| `/qs newstart again <name>` | Show that player the start window again (only while they haven't left the sewers). |
+| `/qs newstart fresh` | Offer the prison intro again. Only on a fresh world: the Emperor alive, the prison doors closed. |
 | `/coop follow`, `/coop join`, `/coop revive`, `/coop giveup` | Same as the keys. |
 | `/coop calm` | Stop the fights in your area: each NPC fighting there stops, and guards stop chasing the players there. For a fight that went wrong, such as a quest giver turned hostile. |
 | `/coop calm <name>` | The same in that player's area, and their bounty goes to 0. |
@@ -117,7 +136,7 @@ reaches the stage always gets everything. These switches decide what everyone el
 `/coop calm` needs the CoopQuestSyncUI add-on in the players' games: it runs the console's `StopCombat`,
 `scaonactor` and `SetCrimeGold 0`. The web page has the same, as **Calm** on each player and **Calm all fights**.
 
-`/qs push`, `/qs auto`, `/qs source`, `/qs reset`, `/coop calm`, `/qsprobe` and `/coop test` are for admins: the
+`/qs push`, `/qs auto`, `/qs source`, `/qs reset`, `/qs newstart again|fresh`, `/coop calm`, `/qsprobe` and `/coop test` are for admins: the
 admins of the ReadyM admin panel (port 9050, **Admins**) who have the **players.manage** permission (superusers
 always do), plus anyone added with **Make admin** on the co-op page.
 **Co-op settings > Commands** on the page can open them to everyone. Everyone else gets "Only server admins can

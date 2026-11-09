@@ -41,6 +41,20 @@ still works. Only English has been tried.
 * **The tutorial (MQ01) isn't shared.** It's the game's help pop-ups, not a real quest.
 * **"Leader only"** shares only the leader's stages. Stages others reached before you switched stay shared.
 
+## New players
+
+* **The prison intro plays once per world.** The Emperor, the Blades and the prison doors are shared. Once someone
+  has played the intro, the Emperor stays dead and the doors stay open for everybody, so later players start at the
+  sewer exit. The mod offers the prison only until someone has left the sewers on the server.
+* **Two new players in the prison at the same time** won't both get the intro: the Emperor and the Blades follow
+  one player (the game that runs them). Start one at a time, or have the second one take the sewer exit.
+* **Baurus** leaves for his later part in the main quest at the end of the intro. If nobody plays the intro on the
+  server, he may stay in the prison. Not tested yet.
+* **Everyone who starts gets an Amulet of Kings.** It's a quest item and can't be dropped. The spare copies go once
+  Jauffre has it (setting "Take back spare amulets").
+* **OblivionMP may change how new characters start.** If a new player hasn't left the sewers but the intro isn't
+  running, the mod only offers the sewer exit, and the server log says `OblivionMP's new-player start has changed`.
+
 ## Conversations
 
 * **The overlay runs a few seconds behind.** The game reports a line when it ends, so watchers read it after the

@@ -184,7 +184,7 @@ function render() {
 }
 
 function phaseText(p) {
-  return { Ready: "in sync", CatchingUp: "catching up", Restoring: "restoring progress", Handshake: "joining", NoPlugin: "plugin not found" }[p] || p;
+  return { Ready: "in sync", Intro: "new: in the intro (progress waits)", CatchingUp: "catching up", Restoring: "restoring progress", Handshake: "joining", NoPlugin: "plugin not found" }[p] || p;
 }
 
 function row(q) {
@@ -250,6 +250,8 @@ const choices = {
   death: [["revive", "Down, wait for a revive"], ["respawn", "Respawn next to the party"], ["off", "Game default"]],
   scaling: [["default", "Server default (halfway)"], ["lowest", "Lowest player level"], ["mid", "Halfway"], ["highest", "Highest player level"]],
   commandAccess: [["admins", "Admins only"], ["everyone", "Everyone"]],
+  newStart: [["ask", "Ask"], ["sewers", "Sewer exit"], ["off", "Game's own"]],
+  prisonStart: [["fresh", "Fresh world"], ["always", "Always"], ["never", "Never"]],
   difficultyDealt: ["Unset", "Novice", "Apprentice", "Adept", "Journeyman", "Expert", "Master"].map(t => [t, t === "Unset" ? "Game default" : t]),
 };
 choices.difficultyTaken = choices.difficultyDealt;
@@ -306,6 +308,14 @@ function renderSettings() {
     ${srow("Difficulty, damage taken", "", sel("difficultyTaken", choices.difficultyTaken, st.difficultyTaken))}
     ${srow("Friendly fire", "Always on: OblivionMP can't tell mods who hit whom.", `<span class="edid">On</span>`)}
   </div>
+  <div class="sgroup"><h3>New players</h3>
+    ${srow("New players start", "Ask: the prison intro or the sewer exit. The party's progress reaches them once they leave the sewers.", sel("newStart", choices.newStart, st.newStart))}
+    ${srow("Offer the prison intro", "Fresh world: until someone has left the sewers. The Emperor is shared, so the intro plays once.", sel("prisonStart", choices.prisonStart, st.prisonStart))}
+    ${srow("Prison intro here", state.sewersLeft ? "Someone has left the sewers. Reset only on a fresh world." : "Nobody has left the sewers yet.",
+      state.sewersLeft ? `<button class="mini" data-prison-fresh title="Mark the prison intro as not played">Played: reset</button>` : `<span class="edid">Not played</span>`)}
+    ${srow("Starter kit", "For the sewer exit start: sword, bow, arrows, lockpicks, potions, torch, leather armour (config.json StarterKitItems).", chk("starterKit", st.starterKit))}
+    ${srow("Take back spare amulets", "Each new player gets one. Once Jauffre has it, the other copies go.", chk("takeSpareAmulets", st.takeSpareAmulets))}
+  </div>
   <div class="sgroup"><h3>Commands</h3>
     ${srow("Who can use admin commands", "/qs push, auto, source, reset, /qsprobe and /coop test. The others (/qs status, /coop follow...) are for everyone.", sel("commandAccess", choices.commandAccess, st.commandAccess))}
     ${srow("ReadyM panel admins", "Admins of the ReadyM admin panel (port 9050) with the players.manage permission, and superusers, are admins here too.", `<span class="edid">${acc ? esc(acc.panelOk ? "Working" : "Not available") : ""}</span>`)}
@@ -316,6 +326,12 @@ function renderSettings() {
 }
 
 $("settings").addEventListener("click", e => {
+  const fresh = e.target.closest("[data-prison-fresh]");
+  if (fresh) {
+    if (confirm("Only on a fresh world: the Emperor alive and the prison doors closed. Offer the prison intro to new players again?")) act({ action: "prison-fresh" });
+    fresh.blur();
+    return;
+  }
   const b = e.target.closest("[data-admin-remove]");
   if (!b) return;
   if (confirm("Remove this admin?")) act({ action: "admin-remove", id: b.dataset.adminRemove });

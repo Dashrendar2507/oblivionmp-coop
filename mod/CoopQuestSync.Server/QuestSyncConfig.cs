@@ -59,6 +59,14 @@ public sealed partial class QuestSyncConfig
     public string Language { get; set; } = "en";
 
     /// <summary>
+    /// The starter kit for players who skip the intro (setting "Starter kit"): form id (hexadecimal, as the game's
+    /// console shows it) and count, separated by commas. The default is an iron shortsword, an iron bow, 25 iron arrows,
+    /// 5 lockpicks, 3 healing potions, a torch, a leather cuirass and leather boots.
+    /// </summary>
+    public string StarterKitItems { get; set; } =
+        "00000C0D:1,00025231:1,00017829:25,0000000A:5,00098496:3,0002CF9F:1,0002319A:1,0002319B:1";
+
+    /// <summary>
     /// The ReadyM admin panel's database, where its admin list lives. Its admins may use every co-op command.
     /// A relative path is from the server's working folder. Empty: don't read it (only the admins added on our page).
     /// </summary>

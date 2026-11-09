@@ -21,9 +21,9 @@ namespace CoopQuestSync.Server;
 /// push, auto, source and reset are for admins only (see <see cref="CommandAccess"/>).
 /// </summary>
 [Service]
-public sealed partial class QuestCommands(IChat chat, IEntities entities, QuestTokenSync sync, CommandAccess access)
+public sealed partial class QuestCommands(IChat chat, IEntities entities, QuestTokenSync sync, CommandAccess access, NewStart newStart)
 {
-    private const string Usage = "/qs status | mine [quest] | shared [quest] | push <quest> <stage> | auto on|off | source <name>|all | reset | whoami";
+    private const string Usage = "/qs status | mine [quest] | shared [quest] | push <quest> <stage> | auto on|off | source <name>|all | reset | newstart [again <name> | fresh] | whoami";
 
     private void Start() => chat.AddCommand("qs", Usage, Run);
 
@@ -31,7 +31,7 @@ public sealed partial class QuestCommands(IChat chat, IEntities entities, QuestT
     {
         var parts = arguments.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         var sub = parts.FirstOrDefault()?.ToLowerInvariant();
-        if (sub is "push" or "auto" or "source" or "reset" && !access.Allow(sender, "/qs " + sub))
+        if ((sub is "push" or "auto" or "source" or "reset" || sub == "newstart" && parts.Length > 1) && !access.Allow(sender, "/qs " + sub))
             return;
         switch (sub)
         {
@@ -85,6 +85,23 @@ public sealed partial class QuestCommands(IChat chat, IEntities entities, QuestT
                 Reply(sender, sync.SourcePlayer is null
                     ? "Everyone's progress is shared."
                     : $"Only {sync.SourcePlayer}'s progress is shared now. Other players still get it, but what they do on their own stays in their game.");
+                break;
+
+            case "newstart" when parts.Length == 1:
+                Reply(sender, newStart.Describe());
+                break;
+
+            case "newstart" when parts.Length >= 3 && parts[1].Equals("again", StringComparison.OrdinalIgnoreCase):
+            {
+                var name = string.Join(' ', parts.Skip(2));
+                var match = sync.Players.Keys.Where(id => sync.Nickname(id).Equals(name, StringComparison.OrdinalIgnoreCase)).ToList();
+                Reply(sender, match.Count == 0 ? $"No player called {name} is in the game." : newStart.OfferAgain(match[0]));
+                break;
+            }
+
+            case "newstart" when parts.Length == 2 && parts[1].Equals("fresh", StringComparison.OrdinalIgnoreCase):
+                newStart.MarkPrisonFresh();
+                Reply(sender, "The prison intro is marked as not played. New players may start there again, until someone leaves the sewers. Only do this on a fresh world: the Emperor must be alive and the prison doors closed.");
                 break;
 
             case "reset":

@@ -105,6 +105,30 @@ public sealed class CoopSettings
 
     public string DifficultyTaken { get; set; } = "Unset";
 
+    // ---- New players ----
+
+    /// <summary>
+    /// What a player who has never left the sewers gets on joining: "ask" (a window: the prison intro or the sewer exit),
+    /// "sewers" (always the sewer exit, with a short note), or "off" (the game's own start, nothing from the mod).
+    /// Either way, the party's quest progress waits until they are out of the sewers.
+    /// </summary>
+    public string NewStart { get; set; } = "ask";
+
+    /// <summary>
+    /// When the prison intro is offered: "fresh" (only until someone has left the sewers on this server: the Emperor and
+    /// the Blades are shared, so the intro can only be played once), "always" (for testing), or "never".
+    /// </summary>
+    public string PrisonStart { get; set; } = "fresh";
+
+    /// <summary>Players who skip the intro get some gear (config.json StarterKitItems), like what the prison gives.</summary>
+    public bool StarterKit { get; set; } = true;
+
+    /// <summary>
+    /// Once someone has given the Amulet of Kings to Jauffre (Deliver the Amulet, stage 50), the copies other players
+    /// still carry go away. Every player who starts gets one, and it's a quest item, so it can't be dropped.
+    /// </summary>
+    public bool TakeSpareAmulets { get; set; } = true;
+
     // ---- Command access ----
 
     /// <summary>
@@ -158,6 +182,8 @@ public sealed class CoopSettings
         DifficultyDealt ??= "Unset";
         DifficultyTaken ??= "Unset";
         CommandAccess = CommandAccess is "everyone" ? "everyone" : "admins";
+        NewStart = NewStart is "sewers" or "off" ? NewStart : "ask";
+        PrisonStart = PrisonStart is "always" or "never" ? PrisonStart : "fresh";
         Admins = (Admins ?? []).Where(a => a is not null && Guid.TryParse(a.Id, out _)).DistinctBy(a => Guid.Parse(a.Id)).ToList();
     }
 

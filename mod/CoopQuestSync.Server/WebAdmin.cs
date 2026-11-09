@@ -18,7 +18,7 @@ namespace CoopQuestSync.Server;
 /// Requests run on a background thread; anything that changes the game goes through <see cref="QuestTokenSync.Enqueue"/>.
 /// </summary>
 [Service]
-public sealed partial class WebAdmin(QuestTokenSync sync, GameData data, QuestSyncConfig config, CombatService combat, ILogger logger, CommandAccess access)
+public sealed partial class WebAdmin(QuestTokenSync sync, GameData data, QuestSyncConfig config, CombatService combat, ILogger logger, CommandAccess access, NewStart newStart)
 {
     private TcpListener? _listener;
     private CancellationTokenSource? _cts;
@@ -249,6 +249,10 @@ public sealed partial class WebAdmin(QuestTokenSync sync, GameData data, QuestSy
                 sync.Enqueue(() => logger.LogInformation("[QuestSync] Web: {Result}", combat.Calm(null, string.IsNullOrEmpty(who) ? "all" : who)));
                 break;
             }
+
+            case "prison-fresh":
+                sync.Enqueue(newStart.MarkPrisonFresh);
+                break;
 
             case "reset-all":
                 sync.Enqueue(sync.ClearShared);

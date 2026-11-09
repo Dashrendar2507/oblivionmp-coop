@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+* **New players choose where to start**: a player who has never left the sewers gets the game's own message box on
+  their first join: "In the prison: play the intro" or "At the sewer exit: skip the intro". The prison is only
+  offered until someone has left the sewers on the server (the Emperor and the Blades are shared, so the intro plays
+  once per world). The sewer exit start sets "Deliver the Amulet" in the player's journal, gives the Amulet of Kings
+  and a starter kit, puts them just inside the sewer gate, and opens the race, class and birthsign menus; the gate
+  then offers to change them again, as in the game. Settings "New players start", "Offer the prison intro",
+  "Starter kit" and "Take back spare amulets"; `/qs newstart`. config.json: `StarterKitItems`.
+* **The party's progress no longer breaks a new player's intro**: shared stages wait until the player is out of the
+  sewers. Replaying "Deliver the Amulet" on join stopped the intro and left a new player stuck in the prison cell.
+  Players who haven't left the sewers aren't taken back to where their nickname last played, and can't travel to a
+  teammate until they're out.
+* The plugin generator's script compiler knows `MessageBox` with buttons, `GetButtonPressed`, `MoveTo` and
+  `AddTopic`, checked byte for byte against the game's own scripts.
+
 * **The game's text survives updates**: the server keeps it as `coop-quest-sync-strings.json` in its own folder,
   next to `coop-quest-sync-state.json`, instead of `strings.json` inside the mod's folder (an update wiped it and
   quest names showed as ids). An old `strings.json` next to the DLL is copied there once.

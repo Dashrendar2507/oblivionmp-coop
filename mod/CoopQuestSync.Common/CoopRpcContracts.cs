@@ -74,6 +74,12 @@ public static partial class CoopRpcContracts
     /// <summary>The player was revived, or is respawned: the game brings them back to life.</summary>
     [ServerToClient] public static partial void Resurrect();
 
+    /// <summary>
+    /// A new player stands at the sewer exit (the intro skipped): the game opens the race, class and birthsign menus,
+    /// one after the other.
+    /// </summary>
+    [ServerToClient] public static partial void MakeCharacter();
+
     /// <summary>The player pressed the revive key: the server looks for a downed player close by.</summary>
     [ClientToServer] public static partial void ReviveNearest();
 

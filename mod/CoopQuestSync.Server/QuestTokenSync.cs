@@ -71,6 +71,12 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
     /// <summary>Where each player last stood outdoors: the fallback when they can't be taken back inside.</summary>
     public Dictionary<string, ReturnSpot> Outdoors { get; } = new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// Someone has left the sewers on this server, so the prison intro has been played (or skipped) here: new players
+    /// start at the sewer exit. See <see cref="NewStart"/>.
+    /// </summary>
+    public bool SewersLeft { get; set; }
+
     /// <summary>Saves the state file on the next pass.</summary>
     public void MarkDirty() => _dirty = true;
 
@@ -134,6 +140,14 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
         public bool InDialogue;
         public bool InCombat;
         public AreaId? Area;
+
+        /// <summary>
+        /// The plugin's CQSIntro: 0 once the player has left the sewers (MQ01 88), 1 while they are in the prison intro,
+        /// 2 while they never left the sewers but no intro runs (not the vanilla start). See <see cref="NewStart"/>.
+        /// </summary>
+        public int Intro;
+        /// <summary>Shared stages wait until the player is out of the sewers: replaying MQ02 would stop their intro.</summary>
+        public bool IntroHeld;
     }
 
     private readonly record struct Snapshot(uint? ModIndex, HashSet<QuestStage> Stages, int Busy, int Ack,
@@ -234,6 +248,7 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
             }
             view.ModIndex = snap.ModIndex;
             view.Own = snap.Own;
+            view.Intro = Map.IntroLocalId != 0 ? snap.Own.GetValueOrDefault(Map.IntroLocalId) : 0;
             var slot = snap.ModIndex.Value;
 
             switch (view.Phase)
@@ -380,6 +395,24 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
                 if (!_players.TryGetValue(main.PlayerId, out var view) || view.Phase != Phase.Ready)
                     continue;
                 var joining = nowReady.Any(m => m.PlayerId == main.PlayerId);
+                // Still in the intro (or about to choose a start): no shared stages yet. MQ02 25 stops the intro, and
+                // the party's progress would land in the prison. The catch-up runs once they are out of the sewers.
+                if (HoldsForIntro(view))
+                {
+                    if ((joining || sharedChanged || view.PendingPush) && !view.IntroHeld)
+                    {
+                        view.IntroHeld = true;
+                        logger.LogInformation("[QuestSync] {Player}: still in the intro; the party's progress waits until they leave the sewers.", Nickname(main.PlayerId));
+                    }
+                    view.PendingPush = false;
+                    continue;
+                }
+                if (view.IntroHeld)
+                {
+                    view.IntroHeld = false;
+                    joining = true;
+                    logger.LogInformation("[QuestSync] {Player}: out of the sewers; catching up with the party.", Nickname(main.PlayerId));
+                }
                 if (!(joining || sharedChanged || view.PendingPush))
                     continue;
                 if (Settings.HoldDuringDialogue && view.InDialogue && !joining)
@@ -406,6 +439,21 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
         if (_dirty)
             SaveState();
         RebuildState();
+    }
+
+    /// <summary>
+    /// Whether the party's progress waits for this player: they are in the prison intro, or never left the sewers and
+    /// are choosing or taking a start (<see cref="NewStart"/>). A player who never left the sewers while the mod leaves
+    /// the start to the game ("off") and no intro runs is not held: nothing would ever end the wait.
+    /// </summary>
+    public bool HoldsForIntro(PlayerView view)
+    {
+        if (view.Intro == 1)
+            return true;
+        if (view.Intro != 2)
+            return false;
+        return Settings.NewStart != "off"
+               || view.Own.GetValueOrDefault(Map.StartDoneLocalId) > 0 || view.Own.GetValueOrDefault(Map.StartPrisonLocalId) > 0;
     }
 
     /// <summary>"Alice advanced Quest: journal text" in the other players' chat.</summary>
@@ -705,7 +753,8 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
             {
                 id = id.ToString(),
                 name = Nickname(id),
-                phase = view.ModIndex is null ? "NoPlugin" : view.CatchingUp ? "CatchingUp" : view.Phase.ToString(),
+                phase = view.ModIndex is null ? "NoPlugin" : view.CatchingUp ? "CatchingUp" : view.Phase == Phase.Ready && HoldsForIntro(view) ? "Intro" : view.Phase.ToString(),
+                intro = view.Intro,
                 stages = view.Stages.GroupBy(s => s.Quest).ToDictionary(g => g.Key, g => g.Select(s => s.Stage).Order().ToArray()),
                 area = view.Area is { } a ? GameData.AreaKey(a) : null,
                 talking = view.InDialogue,
@@ -725,6 +774,7 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
             players,
             shared = Shared.ToDictionary(kv => kv.Key, kv => kv.Value.ToArray()),
             reset = ResetQuests.ToArray(),
+            sewersLeft = SewersLeft,
             access = AccessInfo?.Invoke(),
         }, CoopSettings.Json);
     }
@@ -739,6 +789,7 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
         public CoopSettings? Settings { get; set; }
         public Dictionary<string, ReturnSpot>? Returns { get; set; }
         public Dictionary<string, ReturnSpot>? Outdoors { get; set; }
+        public bool? SewersLeft { get; set; }
     }
 
     private void LoadState()
@@ -766,6 +817,7 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
                 Outdoors[player] = spot;
             if (state.AutoSync is { } auto)
                 AutoSync = auto;
+            SewersLeft = state.SewersLeft ?? false;
             if (state.Settings is not null)
                 Settings = state.Settings;
             else if (!string.IsNullOrWhiteSpace(state.SourcePlayer))
@@ -795,6 +847,7 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
                 Settings = Settings,
                 Returns = Returns,
                 Outdoors = Outdoors,
+                SewersLeft = SewersLeft,
             };
             var tmp = StatePath + ".tmp";
             File.WriteAllText(tmp, JsonSerializer.Serialize(state, new JsonSerializerOptions { WriteIndented = true }));

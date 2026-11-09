@@ -1,4 +1,74 @@
-# Co-op Quest Sync 0.5: how to test
+# Co-op Quest Sync 0.6: how to test
+
+## New in 0.6: where new players start
+
+A player who has never left the sewers now gets a window when they join: **In the prison: play the intro** or
+**At the sewer exit: skip the intro**. The skip puts them next to the sewer gate with the Amulet of Kings (unless the
+party already took it to Jauffre), a starter kit, the "Deliver the Amulet" quest and Baurus's topics, and opens the
+race, class and birthsign menus one after the other. The gate then lets them change any of it, as in the game.
+While a player is still in the intro, the party's quest progress waits, so it can't break their intro (before 0.6 it
+stopped the intro quests). It arrives as soon as they walk out of the sewer gate.
+
+The prison is only offered while nobody on the server has left the sewers yet (setting **Offer the prison intro**,
+default **Fresh world**), because the intro scripts move and kill NPCs that everyone shares. Players who already left
+the sewers see nothing new.
+
+To test it you need a character that is still in the intro. On 1.0 the server keeps a save per player, so for the
+test we hide yours and start a new game:
+
+1. **Server folder:** stop the server. Type `/qs whoami` first if you don't know your ReadyM id. In
+   `<server folder>\saves\players\`, move the file with your ReadyM id in its name (`player_<id>.sav`) to another
+   folder, for example your desktop. This is your real character: keep it safe.
+2. **Server folder:** start the server. On the co-op page (http://localhost:9060), **Co-op settings > New players**:
+   set **Offer the prison intro** to **Always** (your old character has left the sewers, so **Fresh world** would only
+   offer the sewer exit).
+3. **Client PC:** start Oblivion Remastered on its own (not through the launcher), **New Game**, and wait until you
+   are in the prison cell. Save there. Your local saves are in
+   `%USERPROFILE%\Documents\My Games\Oblivion Remastered\Saved\SaveGames\`; if you want to keep those
+   untouched, copy that folder somewhere first. Quit.
+4. **Client PC:** join the server through the launcher. You should be in the prison cell, and after a second or two
+   the window asks where you want to start. The server log says
+   `<name> is new: asking where they want to start (prison or sewer exit).`
+
+   If you are not in the cell (the server put your old place back), or no window appears, send me the server log
+   lines with `[QuestSync]` and `new player` or `intro` in them. That tells me how 1.0 starts a new character.
+
+Test A, the skip:
+
+1. Press **At the sewer exit: skip the intro**. You are moved to the sewer exit, next to the gate.
+2. Your inventory has the Amulet of Kings, an iron shortsword, an iron bow, 25 iron arrows, 5 lockpicks, 3 healing
+   potions, a torch, a leather cuirass and leather boots. The journal shows "Deliver the Amulet".
+3. After a few seconds the race menu opens (name, race, face). When you close it the class menu opens, then the
+   birthsign menu. Then: "Your character is ready. The sewer gate lets you change it before you go out."
+4. Use the sewer gate. It shows the game's own box (Edit Race, Birthsign, Class, Finished). Press **Finished**.
+5. Outside, the party's quest progress arrives. The server log says
+   `<name>: out of the sewers; catching up with the party.`
+
+Test B, the prison: repeat steps 1 to 4 above with a fresh new-game save, then press **In the prison: play the
+intro**. The intro plays as usual (the Emperor comes to the cell). Please tell me if anything looks wrong with the
+Emperor, his guards or Baurus, since other players share them. While you are inside, the page shows you as
+**new: in the intro (progress waits)**. When you leave through the sewer gate, the catch-up arrives as in test A.
+
+Afterwards, put things back:
+
+* **Server folder:** stop the server, delete the test `player_<id>.sav` in `<server folder>\saves\players\` and
+  move your real one back.
+* **Client PC:** remove the test saves from the SaveGames folder (or put your copy back).
+* **Page:** set **Offer the prison intro** back to **Fresh world**.
+
+Your normal character should see no change at all: `/qs newstart` lists it as "out of the sewers", and the page
+never shows it as **new**. The first time a character that has left the sewers joins, the server log says
+`<name> is out of the sewers: from now on, new players start at the sewer exit.` (once per server).
+
+Other things on the page and in chat:
+
+* **New players start**: **Ask** (the window), **Sewer exit** (everyone skips, the window only says so), or **Game's
+  own** (the mod does nothing, as before 0.6).
+* **Starter kit** and **Take back spare amulets** (a player who still has an Amulet of Kings after the party gave
+  one to Jauffre loses it). The kit's items are `StarterKitItems` in the server folder's `config.json`.
+* `/qs newstart` shows each player's start. Admins: `/qs newstart again <name>` shows the window to that player again
+  (if they are still in the intro), and `/qs newstart fresh` (or **Played: reset** on the page) lets the prison be
+  offered again.
 
 ## New in 0.5.1: admin-only commands
 
