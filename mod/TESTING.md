@@ -1,395 +1,275 @@
-# Co-op Quest Sync 0.6: how to test
+# Co-op Quest Sync 0.6.3: every test still to do
 
-## New in 0.6: where new players start
+0.6.3 puts all the test work in one build, for OblivionMP **1.0.x** (your server is 1.0.1):
 
-A player who has never left the sewers now gets a window when they join: **In the prison: play the intro** or
-**At the sewer exit: skip the intro**. The skip puts them next to the sewer gate with the Amulet of Kings (unless the
-party already took it to Jauffre), a starter kit, the "Deliver the Amulet" quest and Baurus's topics, and opens the
-race, class and birthsign menus one after the other. The gate then lets them change any of it, as in the game.
-While a player is still in the intro, the party's quest progress waits, so it can't break their intro (before 0.6 it
-stopped the intro quests). It arrives as soon as they walk out of the sewer gate.
+* **0.5.4**: `/coop calm near` calms every NPC fighting within 15 m, `/coop calm <name>` works in dungeons and
+  without the trailing dot, and the server learns the game's text from the players' games.
+* **0.6.2**: the black screen covers every move through a load, and Alt+G / revive bring you back to the party
+  after OblivionMP's reload.
+* **0.6.1**: travel to a teammate any time (`/coop goto`, Alt+O, `/coop goto lock`).
+* **0.6.0**: new players choose where they start (prison intro or sewer exit).
 
-The prison is only offered while nobody on the server has left the sewers yet (setting **Offer the prison intro**,
-default **Fresh world**), because the intro scripts move and kill NPCs that everyone shares. Players who already left
-the sewers see nothing new.
-
-To test it you need a character that is still in the intro. On 1.0 the server keeps a save per player, so for the
-test we hide yours and start a new game:
-
-1. **Server folder:** stop the server. Type `/qs whoami` first if you don't know your ReadyM id. In
-   `<server folder>\saves\players\`, move the file with your ReadyM id in its name (`player_<id>.sav`) to another
-   folder, for example your desktop. This is your real character: keep it safe.
-2. **Server folder:** start the server. On the co-op page (http://localhost:9060), **Co-op settings > New players**:
-   set **Offer the prison intro** to **Always** (your old character has left the sewers, so **Fresh world** would only
-   offer the sewer exit).
-3. **Client PC:** start Oblivion Remastered on its own (not through the launcher), **New Game**, and wait until you
-   are in the prison cell. Save there. Your local saves are in
-   `%USERPROFILE%\Documents\My Games\Oblivion Remastered\Saved\SaveGames\`; if you want to keep those
-   untouched, copy that folder somewhere first. Quit.
-4. **Client PC:** join the server through the launcher. You should be in the prison cell, and after a second or two
-   the window asks where you want to start. The server log says
-   `<name> is new: asking where they want to start (prison or sewer exit).`
-
-   If you are not in the cell (the server put your old place back), or no window appears, send me the server log
-   lines with `[QuestSync]` and `new player` or `intro` in them. That tells me how 1.0 starts a new character.
-
-Test A, the skip:
-
-1. Press **At the sewer exit: skip the intro**. You are moved to the sewer exit, next to the gate.
-2. Your inventory has the Amulet of Kings, an iron shortsword, an iron bow, 25 iron arrows, 5 lockpicks, 3 healing
-   potions, a torch, a leather cuirass and leather boots. The journal shows "Deliver the Amulet".
-3. After a few seconds the race menu opens (name, race, face). When you close it the class menu opens, then the
-   birthsign menu. Then: "Your character is ready. The sewer gate lets you change it before you go out."
-4. Use the sewer gate. It shows the game's own box (Edit Race, Birthsign, Class, Finished). Press **Finished**.
-5. Outside, the party's quest progress arrives. The server log says
-   `<name>: out of the sewers; catching up with the party.`
-
-Test B, the prison: repeat steps 1 to 4 above with a fresh new-game save, then press **In the prison: play the
-intro**. The intro plays as usual (the Emperor comes to the cell). Please tell me if anything looks wrong with the
-Emperor, his guards or Baurus, since other players share them. While you are inside, the page shows you as
-**new: in the intro (progress waits)**. When you leave through the sewer gate, the catch-up arrives as in test A.
-
-Afterwards, put things back:
-
-* **Server folder:** stop the server, delete the test `player_<id>.sav` in `<server folder>\saves\players\` and
-  move your real one back.
-* **Client PC:** remove the test saves from the SaveGames folder (or put your copy back).
-* **Page:** set **Offer the prison intro** back to **Fresh world**.
-
-Your normal character should see no change at all: `/qs newstart` lists it as "out of the sewers", and the page
-never shows it as **new**. The first time a character that has left the sewers joins, the server log says
-`<name> is out of the sewers: from now on, new players start at the sewer exit.` (once per server).
-
-Other things on the page and in chat:
-
-* **New players start**: **Ask** (the window), **Sewer exit** (everyone skips, the window only says so), or **Game's
-  own** (the mod does nothing, as before 0.6).
-* **Starter kit** and **Take back spare amulets** (a player who still has an Amulet of Kings after the party gave
-  one to Jauffre loses it). The kit's items are `StarterKitItems` in the server folder's `config.json`.
-* `/qs newstart` shows each player's start. Admins: `/qs newstart again <name>` shows the window to that player again
-  (if they are still in the intro), and `/qs newstart fresh` (or **Played: reset** on the page) lets the prison be
-  offered again.
-
-## New: travel to a teammate any time
-
-You can now travel to a teammate whenever you like, not only while they talk to an NPC:
-
-* `/coop goto <name>` (the start of the name is enough) takes you next to them, into their building or city too,
-  behind the black travel screen. They see "Alice is coming to you".
-* **Alt+O** (or `/coop goto` alone) goes to the last teammate you picked, else the leader, else the only other player.
-* Not while you're down, talking or fighting, and once a minute.
-* `/coop goto lock`: teammates must ask first. You see "Alice wants to come to you" and let them with **Alt+Y** or
-  `/coop accept` within 20 seconds; ignoring it says no. `/coop goto unlock` undoes it. The server remembers it.
-
-New settings on the page (**Co-op settings > Party**): **Travel to teammates any time** (on), **Seconds between trips**
-(60), **No trips during a fight** (on), and **Goto** in the Keys row (O).
-
-### Test alone (Ghost plays the teammate)
-
-All in game on the **client PC**, after joining your server. `/coop test` needs you to be an admin, which you are.
-
-1. **Page (server PC, http://localhost:9060):** the four new settings above are there with those defaults.
-2. Type `/coop goto`, then press **Alt+O**. Both say "Nobody else is playing right now."
-3. Walk into a building and type `/coop test pin`. Walk out of the building, then type `/coop test goto`. The chat
-   says "Travelling to Ghost (your pinned spot)..." and you end up back inside, on the pinned spot.
-4. Type `/coop test goto` again at once: "You can travel again in N s."
-5. Start a fight (a rat, a mud crab), and while it lasts type `/coop test goto`: "You can't travel during a fight."
-6. Type `/coop test askme`: the middle of the screen says "Ghost wants to come to you: Alt+Y or /coop accept to let
-   them." Press **Alt+Y**: "Test: you let Ghost come." Then `/coop test askme` again and do nothing for 20 seconds:
-   "Test: you didn't answer Ghost (that's a no)."
-7. Type `/coop goto lock`, then `/coop test status`: the end says "Goto: locked (others ask)". Restart the server
-   (**server PC**), join again, and `/coop test status` still says locked. Type `/coop goto unlock`.
-
-### Test with a friend
-
-1. Your friend types `/coop goto <the start of your name>`: they arrive next to you and you see "<friend> is coming to
-   you". Try it with you inside a building and them outside, and with you in a city and them in the wilds.
-2. A minute later your friend presses **Alt+O**: same trip, no name needed.
-3. You type `/coop goto lock`. Your friend presses **Alt+O**: you see "<friend> wants to come to you". Press
-   **Alt+Y**: they travel. Then again, but ignore it: after 20 seconds they see "<you> didn't answer."
-4. While you talk to an NPC with nobody asking to come, **Alt+Y** on your friend's side still takes them to your
-   conversation, as before.
-
-If something goes wrong, send me the **server log** lines with `[QuestSync]` and `goto`, `travels to` or `asks to`
-in them, and `UE4SS.log` from the **client PC** if a trip into a building or city didn't happen.
-
-This is the full test plan for 0.5.4. New since 0.5.3: `/coop calm near` calms every NPC fighting within 15 m of
-you, not only the closest one (Test 3, step 7). New in 0.5.3: `/coop calm`, `/coop calm near` and `/coop calm <name>` work
-in dungeons and with a name typed with or without its trailing dot (Test 3, step 7). New in 0.5.2: the server
-learns the game's text from the players' games (Test 0, steps B and C). What changed in each version is in
-[CHANGELOG.md](../CHANGELOG.md); the keys, commands and settings are in [docs/USING.md](../docs/USING.md).
+The tests are in the order that needs the fewest restarts. Parts 1 to 5 you can do alone. Part 6 needs your friend.
+Part 7 is for later, when you move the server to OblivionMP 1.1.0.
 
 Every file below says where it is: **Server** (the computer that runs `server.exe`) or **PC** (the computer you play
-on). When you host and play on the same computer, both are on it, but they are still different folders.
+on). You host and play on the same computer, but they are still different folders.
 
 ## Where things are
 
 | What | Where |
 | --- | --- |
-| Server folder | **Server:** the folder with `server.exe`, for example `C:\Users\<you>\Desktop\oblivion-server-win64-1.0.1\`. Below it's written `<server folder>`. |
+| Server folder | **Server:** `C:\Users\Nicolas\Desktop\oblivion-server-win64-1.0.1\` (below: `<server folder>`) |
 | The mod on the server | **Server:** `<server folder>\mods\CoopQuestSync\` (`manifest.json`, `client\`, `server\`). Replaced on every update. |
-| Shared progress and settings | **Server:** `<server folder>\coop-quest-sync-state.json`. Keep it across updates. |
-| The game's text for the server | **Server:** `<server folder>\coop-quest-sync-strings.json` (yours, by hand) and `<server folder>\coop-quest-sync-strings.<language>.json` (learned from the players' games). Never share them, never put them in a zip. |
+| Shared progress and settings | **Server:** `<server folder>\coop-quest-sync-state.json`. Keep it. |
+| The server's game text | **Server:** `<server folder>\coop-quest-sync-strings.json` (your hand-made one) and `<server folder>\coop-quest-sync-strings.<language>.json` (learned from the players). Never share them or put them in a zip. |
+| Players' saves on the server | **Server:** `<server folder>\saves\players\` (`player_<ReadyM id>.sav`) |
 | Optional settings file | **Server:** `<server folder>\mods\CoopQuestSync\server\config.json` |
-| ReadyM admin list | **Server:** `<server folder>\data\web.db` (read only, by the mod) |
 | Server log | **Server:** the server console window, the newest log file in `<server folder>`, or the admin panel's **Terminal** tab (http://localhost:9050). The mod's lines start with `[QuestSync]`. |
-| The add-on that runs | **PC:** `%APPDATA%\ReadyM.Launcher\Oblivion\Mods\CoopQuestSyncUI\` (paste it into the Explorer address bar). The copy in the server's `client\addon\` folder is only what gets installed. |
-| UE4SS.log | **PC:** `C:\Program Files (x86)\Steam\steamapps\common\Oblivion Remastered\OblivionRemastered\Binaries\Win64\UE4SS.log` (or Steam, right-click the game, **Manage**, **Browse local files**). A new one each game start: copy it before you start the game again. |
+| Co-op web page | **Server:** http://localhost:9060/ |
+| The add-on that runs | **PC:** `%APPDATA%\ReadyM.Launcher\Oblivion\Mods\CoopQuestSyncUI\` (paste it into the Explorer address bar). The copy in the server's `client\addon\` is only what gets installed. |
+| UE4SS.log | **PC:** `C:\Program Files (x86)\Steam\steamapps\common\Oblivion Remastered\OblivionRemastered\Binaries\Win64\UE4SS.log`. A new one each game start: copy it before you start the game again. |
+| Local saves | **PC:** `%USERPROFILE%\Documents\My Games\Oblivion Remastered\Saved\SaveGames\` |
 | Plugins.txt | **PC:** `C:\Program Files (x86)\Steam\steamapps\common\Oblivion Remastered\OblivionRemastered\Content\Dev\ObvData\Data\Plugins.txt` |
 
-## Install or update
+## Install 0.6.3
 
-1. **Server:** stop the server. Delete `<server folder>\mods\CoopQuestSync\` and copy in the `CoopQuestSync` folder
-   from the zip, so you get `<server folder>\mods\CoopQuestSync\manifest.json`. Don't touch
+1. **Server:** stop the server. Delete `<server folder>\mods\CoopQuestSync\` and copy in the `CoopQuestSync`
+   folder from the zip, so you get `<server folder>\mods\CoopQuestSync\manifest.json`. Don't touch
    `<server folder>\coop-quest-sync-state.json` or `<server folder>\coop-quest-sync-strings.json`.
-2. **PC:** the end of `Plugins.txt` must read:
+2. **PC:** nothing to copy. The add-on is the same as in 0.5.4 and 0.6.2, so no "restart the game" note should
+   appear. If `off`, `lite` or `off.txt` is in `%APPDATA%\ReadyM.Launcher\Oblivion\Mods\CoopQuestSyncUI\`, delete
+   it. The end of `Plugins.txt` still reads `CoopQuestSync.esp` then `CoopQuestSyncDialogue.esp`.
+3. **Server:** start the server. The log's mod load order shows **`CoopQuestSync v0.6.3`** (your last test still
+   ran 0.5.3, which is why the fade was missing). Also `The game's text: <server folder>\coop-quest-sync-strings.json`
+   and `Quest admin page: http://localhost:9060/`.
+4. **Server:** on http://localhost:9060/, **Co-op settings** has both **Party > Travel to teammates any time** and
+   **New players > New players start**. If either is missing, the old folder is still in place.
 
-   ```
-   CoopQuestSync.esp
-   CoopQuestSyncDialogue.esp
-   ```
+## Part 1: the fixes from your 2026-11-12 test
 
-   Nothing to copy: the launcher puts both plugins in the game's `Data` folder when you join and takes them out
-   when you leave.
-3. **PC:** if `off` or `lite` (or `off.txt`) is in `%APPDATA%\ReadyM.Launcher\Oblivion\Mods\CoopQuestSyncUI\`,
-   delete it.
-4. **Server:** start the server. Its log should show:
-   * `Loaded 287 quests / 2696 stages from the token map`
-   * `Game data: 11019 dialogue lines, ... names, 24730 text entries` (0 is fine: see Test 0)
-   * `Quest admin page: http://localhost:9060/`
+All in game on the **PC**, joined to your server.
 
-## Test 0: the server's own text (names on the web page and in chat)
+**1.1 Black screen inside the dungeon (Alt+Y).** Go into a building or dungeon, stand still a few seconds,
+`/coop test pin`, walk outside, close the chat, then `/coop test talk` and press **Alt+Y**. The screen stays black
+from the load until you stand on the pinned spot: no visible jump once inside.
 
-The server shows quest and NPC names on its web page and in chat. It gets them, in this order:
+**1.2 Alt+G.** In a shop, stand still a few seconds, then die (console: `player.modav health -1000`). Press
+**Alt+G**. Expected: black screen, OblivionMP's reload (its loading screen), probably a second load into the shop,
+then you stand inside the shop a few steps from where you died. Not at your local save's spot any more.
 
-1. **The host's file**, `<server folder>\coop-quest-sync-strings.json` (the one you made by hand, in the server's
-   `Language`, English by default).
-2. **From the game on the server computer.** This needs Oodle's `oo2core_9_win64.dll`, which the Steam version doesn't
-   include, so on your setup it fails (your UE4SS.log of 2026-11-07 says `there's no oo2core_9_win64.dll on this
-   computer`). The mod never downloads it.
-3. **New: from the players' own games.** Each player's game says which language it runs in. For each language the
-   server lacks, it asks one player of that language for the text, 200 keys at a time; their add-on looks them up in
-   the running game. The server keeps it in `<server folder>\coop-quest-sync-strings.<language>.json` (for example
-   `coop-quest-sync-strings.fr.json`), so each language is only learned once. Chat lines such as "Alice advanced ..."
-   then reach each player in their own game's language. Nothing to do by hand, and nothing is downloaded.
+**1.3 Revive.** Die again in the shop, then `/coop test revive`: same as 1.2, with "Ghost revived you...".
 
-**A. The copy you put in by hand is kept.**
+**1.4 The endless load.** After 1.2 or 1.3, walk out of the shop and into another house. Last time this load never
+ended. If it hangs again, try once with OblivionMP's own **R** instead of Alt+G (die, R, enter a house). If R alone
+also hangs, it's OblivionMP's bug and I'll write it up for ReadyM.
 
-1. **Server:** check that `<server folder>\coop-quest-sync-strings.json` exists. If it doesn't, put your
-   `strings.json` in `<server folder>\mods\CoopQuestSync\server\` and start the server: the log shows
-   `Copied the game's text to <server folder>\coop-quest-sync-strings.json, where updates of the mod keep it.`
-2. **Server:** the log shows `The game's text: <server folder>\coop-quest-sync-strings.json` and
-   `Game data: ... 24730 text entries`.
-3. Join (game in English). The server log shows `<you>'s game runs in en. The server has 0 of the mod's 24730 texts
-   still to learn in it.` and nothing more about learning: it already has English.
+**1.5 Calm.** Save first. In the Aleswell dungeon, get both Serethi fighting you.
 
-**B. Without the file, the server learns it from your game.**
+* `/coop calm near`: **both** stop, and the chat names both.
+* Get a guard to chase you, then `/coop calm <your name>`: the guard stops and your bounty is 0. Try it typed as
+  `dashrendar2507.`, then `dashrendar2507` (no dot), then `dash`: all three work.
+* `/coop calm` (all) already worked in the dungeon; no need to redo it.
 
-1. **Server:** stop the server. Move `<server folder>\coop-quest-sync-strings.json` to your desktop, and any
-   `strings.json` out of `<server folder>\mods\CoopQuestSync\server\`. Keep both safe.
-2. **Server:** start the server. Expected `[QuestSync]` lines, in this order:
-   * `OblivionRemastered-Windows.pak: .pak version 11, ... compression Oodle ...` (it found the game);
-   * `Couldn't read the game's text from OblivionRemastered-Windows.pak: the game's text is Oodle-compressed and
-     there's no oo2core_9_win64.dll on this computer. ...` (expected);
-   * `The server will learn the game's text from the players' games instead, in each player's language, as they
-     join (<server folder>\coop-quest-sync-strings.<language>.json).`
-   * `Game data: ... 0 text entries (no coop-quest-sync-strings.json or strings.json yet: ...)`.
-   The page opens, with names worked out from the ids. Nothing new appears next to `server.exe` or in
-   `mods\CoopQuestSync\` (nothing was downloaded).
-3. **PC:** join. Once you're in the world and caught up, the server log shows:
-   * `<you>'s game runs in en. The server has 24730 of the mod's 24730 texts still to learn in it.`
-   * `Learning the game's text in en from <you>'s game: 24730 texts, 200 at a time.`
-   * `The game's text in en: 10% (...)`, `20%`... about every 15 s;
-   * after 2 to 4 minutes: `The game's text in en is complete: ... of 24730 texts, kept in
-     <server folder>\coop-quest-sync-strings.en.json.`
-   Meanwhile **PC** UE4SS.log shows `[QuestSync] Sent the server ... of 200 game text(s) in en.` lines and the
-   add-on's `text: found ...` lines. **Play normally while it runs and tell me if the game stutters.**
-4. `/coop test status` in chat ends with `Your game's language: en (server has ... texts learned in it).`
-5. Refresh http://localhost:9060/: quests show their real names.
-6. **Server:** restart the server. The log shows `The game's text in en (from the players' games):
-   <server folder>\coop-quest-sync-strings.en.json, 24730 of 24730.`, and joining doesn't learn anything again.
+Send for Part 1: the **server log** (lines with `after the reload`, `Calm:`, `Combat:`) and **PC** `UE4SS.log`
+(lines with `rebirth`, `Back in the world`, `Travel screen`, `StopCombat`).
 
-**C. Two languages (alone is enough).**
+## Part 2: travel to a teammate any time, alone
 
-1. **PC:** switch the game to French (or any other language): in the game's settings, or in Steam, right-click the
-   game, **Properties**, **Language**. Restart the game.
-2. Join. The server log shows `<you>'s game runs in fr.` and learns French the same way, into
-   `<server folder>\coop-quest-sync-strings.fr.json`.
-3. Once it says complete: `/coop test stage <quest> <stage>` with a stage you don't have yet (see Test 3, step 5).
-   The chat reply should name the quest in French. With a second player in English, they'd see "... advanced ..." lines in English and you in French.
-4. **PC:** switch the game back to your language afterwards.
+Ghost plays the teammate. `/coop test` needs admin, which you are.
 
-**D. The text survives an update.**
+1. **Server:** on http://localhost:9060/, **Co-op settings > Party** has **Travel to teammates any time** (on),
+   **Seconds between trips** (60), **No trips during a fight** (on), and **Goto** in the Keys row (O).
+2. Type `/coop goto`, then press **Alt+O**. Both say "Nobody else is playing right now."
+3. Walk into a building, `/coop test pin`. Walk out, then `/coop test goto`: "Travelling to Ghost (your pinned
+   spot)..." and you end up inside on the pinned spot, behind the black screen.
+4. `/coop test goto` again at once: "You can travel again in N s."
+5. Start a fight (a rat, a mud crab) and while it lasts `/coop test goto`: "You can't travel during a fight."
+6. `/coop test askme`: the middle of the screen says "Ghost wants to come to you: Alt+Y or /coop accept to let
+   them." Press **Alt+Y**: "Test: you let Ghost come." Then `/coop test askme` again and do nothing for 20 s:
+   "Test: you didn't answer Ghost (that's a no)."
+7. `/coop goto lock`, then `/coop test status`: it ends with "Goto: locked (others ask)". **Server:** restart the
+   server, join again, `/coop test status` still says locked. Then `/coop goto unlock`.
+8. **Into a city.** `/coop test pin` inside a city (Chorrol, Skingrad...), leave the city, wait out the cooldown,
+   then `/coop test goto`: you arrive inside the city on the pin, behind the black screen (the add-on's `cow` route).
 
-1. **Server:** stop the server, delete `<server folder>\mods\CoopQuestSync\` and copy the zip's `CoopQuestSync`
-   folder in again. Start it: the `The game's text ...` lines show the same files, and the page still has names.
+Send if something fails: **server log** lines with `goto`, `travels to` or `asks to`, and **PC** `UE4SS.log` if a
+trip into a building or city didn't happen.
 
-**E. Players don't need the server's text.**
+## Part 3: the server learns the game's text from your game
 
-1. With the server's text files moved away (step B.1), and before the learning is done: `/coop test talk`. The
-   overlay still shows real sentences, looked up in your own game (**PC** UE4SS.log: `text: found 5 of 5 key(s)`).
+So far your server always had your hand-made file, so the learning never ran ("0 of 24730 still to learn").
 
-**Put things back:** **Server:** move your `coop-quest-sync-strings.json` back into `<server folder>` if you want the
-hand-made one. The learned `coop-quest-sync-strings.en.json` can stay; never share either.
+1. **Server:** stop the server. Move `<server folder>\coop-quest-sync-strings.json` to your desktop, and check that
+   there's no `strings.json` in `<server folder>\mods\CoopQuestSync\server\`. Keep the file safe.
+2. **Server:** start the server. Expected `[QuestSync]` lines:
+   * `Couldn't read the game's text from OblivionRemastered-Windows.pak: ... no oo2core_9_win64.dll ...` (expected;
+     the mod never downloads it);
+   * `The server will learn the game's text from the players' games instead, ...`;
+   * `Game data: ... 0 text entries ...`.
+   Nothing new appears in `<server folder>` or `<server folder>\mods\CoopQuestSync\` (nothing downloaded).
+3. **PC:** join. Once you're caught up, the server log shows `... The server has 24730 of the mod's 24730 texts
+   still to learn in it.`, `Learning the game's text in en from <you>'s game ...`, then `10%`, `20%`... and after 2
+   to 4 minutes `The game's text in en is complete: ... kept in <server folder>\coop-quest-sync-strings.en.json.`
+   **Play normally meanwhile and tell me if the game stutters.**
+4. While it's still learning: `/coop test talk`. The overlay still shows real sentences (they come from your own
+   game, not the server).
+5. `/coop test status` ends with `Your game's language: en (server has ... texts learned in it).` Refresh
+   http://localhost:9060/: quests show their real names.
+6. **Server:** restart the server. The log shows `The game's text in en (from the players' games): ...
+   coop-quest-sync-strings.en.json, 24730 of 24730.`, and joining doesn't learn again.
+7. **Optional, a second language:** **PC:** switch the game to French (Steam, right-click the game, **Properties**,
+   **Language**), restart it and join. The server learns French into `<server folder>\coop-quest-sync-strings.fr.json`.
+   When it's complete, `/coop test stage <quest> <stage>` with a stage you don't have: the chat line names the quest
+   in French. Switch the game back afterwards.
+8. **Put things back (Server):** move your `coop-quest-sync-strings.json` back into `<server folder>` if you want the
+   hand-made one first. The learned `coop-quest-sync-strings.en.json` can stay. Never share either.
 
-**If it goes wrong:** `<you>'s game didn't send the text asked for in 45 s` means the add-on didn't answer (check
-that **PC** UE4SS.log has `[CoopQuestSyncUI]` lines). Send the server log and UE4SS.log. `"LearnTextFromPlayers":
-false` in `<server folder>\mods\CoopQuestSync\server\config.json` turns learning off.
+If the log says `<you>'s game didn't send the text asked for in 45 s`, check that **PC** `UE4SS.log` has
+`[CoopQuestSyncUI]` lines, and send both logs.
 
-## Test 1: admin-only commands
+## Part 4: the 0.5 checks nobody has done yet (alone)
 
-`/qs push`, `/qs auto`, `/qs source`, `/qs reset`, `/coop calm`, `/qsprobe` and `/coop test` are for admins.
-`/qs status`, `/qs mine`, `/qs shared`, `/qs whoami`, `/coop follow`, `/coop join`, `/coop revive` and
-`/coop giveup` are for everyone. Admins are the ReadyM admin panel's admins (http://localhost:9050, **Admins**) with
-the **players.manage** permission (superusers always), read from **Server:** `<server folder>\data\web.db`, plus
-anyone added with **Make admin** on the co-op page. Players are recognised by their ReadyM id, not their nickname.
+1. **Esc after joining.** Right after the catch-up, press Esc: the pause menu opens. If a "Quest Added" window
+   appeared, it closed by itself (**PC** `UE4SS.log`: `closed the Quest Added pop-up`). Tell me if you had to close
+   one by hand.
+2. **Menus.** Talk to a merchant and open Barter: the server log shows `<you> is bartering.`, then
+   `<you> stopped bartering.`. Then pick a lock: `is picking a lock.`. (Persuasion already worked.)
+3. **Voices.** Talk to any NPC yourself for a line or two first. Then `/coop test voice`: a voice line plays and the
+   chat says which. Then `/coop test talk`: Ghost's lines come with their voices. Alt+U stops the voice;
+   `/coop test talk ask` (the banner) never plays one. Silent? Send **PC** `UE4SS.log` (lines with `voice`).
+4. **Stage effects.** `/coop test effects MS93` lists stages with effects (`20: teleport/items`). Pick a quest you
+   haven't started, `/coop test stage <quest> <stage>` on a teleport stage: you get it as if live. Then on the page
+   turn **Live > Teleport** off and try another teleport stage: you get the stage but stay put. Turn it back on.
+5. **Not an admin.** `/coop test asghost on`: `/qs auto off` and `/coop test status` are refused with "Only server
+   admins can use ...", `/qs whoami` and `/coop follow` still work, and the page shows **testing as Ghost (not
+   admin)**. `/coop test asghost off` gives your rights back.
 
-1. **Server:** start the server. Its log shows `ReadyM panel admins: read Admins(...)` (it found the list) or
-   `ReadyM panel admins can't be used: ...` (and why). Send me that line.
-2. Join, and type `/qs whoami`: your ReadyM id and "You are an admin (listed in the ReadyM admin panel)".
-3. `/qs auto off`, then `/qs auto on`: both work.
-4. On http://localhost:9060/, your player shows **admin (ReadyM panel)** in green, and under
-   **Co-op settings > Commands**, **ReadyM panel admins** says **Working**.
-5. `/coop test asghost on`: the server now treats you like Ghost, who isn't an admin (only you, until you turn it
-   off or the server restarts).
-   * `/qs auto off`, `/qs reset` and `/coop test status` are refused with "Only server admins can use ...".
-   * `/qs status`, `/qs whoami` and `/coop follow` still work. `/qs whoami` says you are testing as Ghost.
-   * The page shows your player as **testing as Ghost (not admin)**.
-   * `/coop test asghost off` gives your rights back, and `/qs auto on` works again.
-6. With a second player who isn't an admin: their `/qs reset` is refused, and **Make admin** next to them on the
-   page lets them in.
+## Part 5: where new players start (alone, last)
 
-## Test 2: you alone
+This one needs a character still in the intro, so it hides your real one for a while. Do it last.
 
-1. **Add-on and crashes.** Join once. If the add-on changed, a note in the top left corner asks you to restart the
-   game: quit. Start again, and load and join a few times. The note should be gone, and **PC** UE4SS.log should say
-   `hooked HUD notifications` before `coop.lua loaded`. If the game crashes, send UE4SS.log copied right after the
-   crash.
-2. Join. The server log shows `plugin found`, then `restore finished` or `nothing to restore`, then
-   `caught up with the party`.
-3. **Esc after the catch-up.** Right after the catch-up, press Esc: the pause menu should open. If a "Quest Added"
-   window flashed up, **PC** UE4SS.log says `closed the Quest Added pop-up`. If you had to close one by hand, or Esc
-   does nothing, send UE4SS.log.
-4. On http://localhost:9060/, **Co-op settings** shows the switches. Click a quest you have progress in: stages with
-   effects show tags such as "Teleport" or "Items".
-5. Talk to any NPC. The page shows "talking" next to your name, and the server log
-   `<you> is talking to <NPC>; 0 witness(es)`.
-6. Talk to a merchant and open Barter. The server log shows `<you> is bartering.`, then `<you> stopped bartering.`.
-   Try persuasion the same way, and picking a lock (`is picking a lock.`). Opening a chest shows nothing.
-7. **Back where you left.** Walk somewhere outdoors, away from where your local save starts you, and quit. Join
-   again: you should be moved back there ("Back where you left."). Then go into a house, stand in a corner and quit
-   from inside: next time you get a loading screen into the house, then land in that corner ("Back inside.").
-   From the moment you're in the world until you stand in your spot, the screen stays black with
-   "Taking you back to where you left...", with no glimpse of the game between the fades (**PC** UE4SS.log:
-   `ran coc ...`, then `world back after the move`). `/coop test status` shows the spot the server has.
-   Without rejoining: in a house, stand still 3 s, `/coop test pin`, walk out, **close the chat**, then
-   `/coop test back` (a load with the chat open leaves OblivionMP's chat stuck).
+1. **Server:** stop the server. In `<server folder>\saves\players\`, move `player_<your ReadyM id>.sav` (your id
+   starts with `7198b060`) to your desktop. That's your real character: keep it safe.
+2. **Server:** start the server. On http://localhost:9060/, **Co-op settings > New players**: set **Offer the prison
+   intro** to **Always** (your old character has left the sewers, so **Fresh world** would only offer the sewer exit).
+3. **PC:** copy `%USERPROFILE%\Documents\My Games\Oblivion Remastered\Saved\SaveGames\` somewhere safe. Start
+   Oblivion Remastered on its own (not through the launcher), **New Game**, wait until you're in the prison cell, save,
+   quit.
+4. **PC:** join through the launcher. You're in the cell, and after a second or two a window asks where you want to
+   start. Server log: `<name> is new: asking where they want to start (prison or sewer exit).`
+   If you're not in the cell, or no window appears, stop here and send the server log lines with `new player` or
+   `intro`: that tells me how 1.0 starts a new character.
 
-## Test 3: alone, with a pretend teammate
+**5A, the skip.** Press **At the sewer exit: skip the intro**.
 
-The server can play a made-up teammate called "Ghost":
+1. You're moved next to the sewer gate. Your inventory has the Amulet of Kings, an iron shortsword, an iron bow, 25
+   iron arrows, 5 lockpicks, 3 healing potions, a torch, a leather cuirass and leather boots. The journal shows
+   "Deliver the Amulet".
+2. The race menu opens, then class, then birthsign. Then: "Your character is ready. The sewer gate lets you change
+   it before you go out."
+3. Use the sewer gate: the game's own box (Edit Race, Birthsign, Class, Finished). Press **Finished**.
+4. Outside, the party's progress arrives. Server log: `<name>: out of the sewers; catching up with the party.`
 
-1. `/coop test status`: your phase, area, and which effect switches apply right now.
-2. `/coop test talk`: Ghost "talks" to an NPC for about 40 s. You see the overlay with real lines and can't move
-   until it ends. After the second line it says "Ghost is bartering..." for a few seconds, later
-   "Ghost is persuading...". Alt+U closes the overlay and frees you; Alt+U again brings it back.
-   `/coop test talk ask`: a banner at the top ("Ghost talks with ... · Alt+U to listen in") until it ends; Alt+U
-   opens the overlay. `/coop test stop` ends it early. With "Freeze watchers" set to "Nobody" on the page: overlay,
-   no freeze.
-3. **Voices.** Talk to any NPC yourself for a line or two first. Then `/coop test voice`: a random voice line plays,
-   and the chat says which. `/coop test talk`: Ghost's lines come with their voices, each as its text shows. Alt+U
-   stops the voice; the banner (`/coop test talk ask`) never plays one. Silent? Send **PC** UE4SS.log (lines with
-   `voice`).
-4. **Travel to a conversation.** `/coop test pin` somewhere, walk away (out of the building too), then
-   `/coop test talk ask` and press Alt+Y: you're taken to the pinned spot, inside the building first if it was in
-   one, behind the black travel screen. Again with `/coop test talk`: on arrival you stand still if "Freeze
-   watchers" is "Same area". If you can, pin a spot inside a city and travel there from outside (the `cow` route).
-   Send the server log and UE4SS.log (lines with `travel`, `coc`, `cow`).
-5. **Stage effects.** `/coop test effects MS93` lists the stages with effects, for example `20: teleport/items`.
-   `/coop test stage <quest> <stage>`: Ghost "reached" it, and you get it as if live; the chat line says which
-   effects you should get. Turn Live Teleport off on the page and try another teleport stage: you get the stage but
-   stay put.
-6. **Death.** Console: `player.modav health -10000`. "You are down...". Then `/coop test revive` (back where you
-   fell), or Alt+G, or wait 60 s (back where you last stood on solid ground). Jump off something high: you come
-   back at the top.
-7. **Calm.** Save first. Do each of these once in a town and once inside a dungeon or house (that's what failed in
-   0.5.2: NPCs in dungeons have no area on the server, so calm skipped them). Calming those NPCs once crashed the
-   game on 2026-11-07, which we think was a timing issue that's fixed since: if the game crashes, say which command
-   it was and send UE4SS.log.
-   * Hit an NPC until they fight back, `/coop calm near`: they stop. Then get two NPCs fighting you at once (the two
-     Serethi in the Aleswell dungeon will do), `/coop calm near`: both stop, and the chat names both.
-   * Fight a few creatures, `/coop calm`: they stop for a moment (hostile ones start again, which is expected).
-   * Get a guard to chase you, `/coop calm <your name>`: the guard stops and your bounty is 0. Type your name the way
-     the player list shows it, then again without the dot at the end if it has one (`dashrendar2507` for
-     `dashrendar2507.`), then just its start (`dash`): all three work.
+**5B, the prison.** **Server:** delete the test `player_<id>.sav` in `<server folder>\saves\players\`. Then repeat
+steps 3 and 4 above with a fresh new-game save, and press **In the prison: play the intro**. The intro plays as
+usual. Tell me if anything looks wrong with the Emperor, his guards or Baurus. While you're inside, the page shows you
+as **new: in the intro (progress waits)**. Leaving through the sewer gate brings the catch-up, as in 5A.
 
-   Send the server log (**Server**, see the table at the top; lines with `Combat:` and `Calm:`, including "have no
-   area on the server ... taken by distance") and UE4SS.log (**PC**, `C:\Program Files (x86)\Steam\steamapps\common\Oblivion Remastered\OblivionRemastered\Binaries\Win64\UE4SS.log`;
-   lines with `StopCombat`, `scaonactor`).
+**Put things back:**
 
-## Test 4: two players (when your friend can join)
+* **Server:** stop the server, delete the test `player_<id>.sav` in `<server folder>\saves\players\`, and move your
+  real one back.
+* **PC:** remove the test saves from `%USERPROFILE%\Documents\My Games\Oblivion Remastered\Saved\SaveGames\` (or put
+  your copy back).
+* **Server:** on the page, set **Offer the prison intro** back to **Fresh world**.
+* Join with your real character: nothing new happens, and `/qs newstart` lists it as "out of the sewers".
 
-Stand next to each other:
+## Part 6: two players (when your friend can join)
 
-1. **Conversation.** One of you talks to an NPC. The other sees the overlay with the NPC's name and topics, hears
-   the voice, can't move until it ends, and sees a "Talking" tag over the talker. The talker opens Barter: the
-   overlay says "... is bartering..." and the tag reads "Bartering". Then with the watcher in another building: the
-   overlay shows but they can move; Alt+Y takes them to the talker.
-2. **Shared progress.** One of you advances a quest. The other gets it within a few seconds, with "X advanced ...".
-   A stage reward goes to both.
-3. **Stage effects.** When one of you reaches a "Teleport" stage, the other moves too. With Live Teleport off, the
-   other gets the stage but stays put.
-4. **Death.** One of you goes down; the other gets a chat line, stands next to them and presses Alt+H. Next time,
-   wait 60 s or Alt+G: they come back next to the other player.
-5. **Walking around during a conversation** (decides the defaults, take notes). "Freeze watchers": "Nobody". One
-   talks for a minute while the other walks and fights nearby. Repeat with each of you entering the area first. Do
-   the NPCs near the walker move and fight normally? Does anything jump into place when the talk ends?
-6. **Fights** (decides what to build next). The one who did *not* enter the area first attacks a townsperson or a
-   guard. Does the NPC fight both of you or only the attacker? Is the other player "in combat" (music, can't wait)?
-   What does the server log say (`Combat: ...`)? Then `/coop calm` and the page's **Calm** button.
-7. **Leader only.** "Progress counts from": "Leader only", leader = you. Your friend's progress isn't shared; yours
-   is.
-8. **Admins.** As in Test 1, step 6.
+Your friend installs nothing by hand: the launcher gives them the mod when they join. The end of their **PC**
+`Plugins.txt` must read `CoopQuestSync.esp` then `CoopQuestSyncDialogue.esp`, and their game needs one restart after
+the first join (the add-on installs itself, a note says so).
+
+1. **Conversation.** Standing together, one talks to an NPC. The other sees the overlay with the NPC's name and
+   lines, hears the voice, can't move until it ends, and sees a "Talking" tag over the talker. The talker opens
+   Barter: "... is bartering..." on the overlay and "Bartering" on the tag. Then with the watcher in another
+   building: overlay but free to move; **Alt+Y** takes them to the talker behind the black screen.
+2. **Shared progress.** One advances a quest. The other gets it within seconds, with "X advanced ...". A stage reward
+   reaches both.
+3. **Stage effects.** One reaches a "Teleport" stage: the other moves too. With **Live > Teleport** off, the other
+   gets the stage but stays put.
+4. **Death.** One goes down; the other gets a chat line, stands next to them and presses **Alt+H**: they get up next
+   to the reviver (after OblivionMP's reload). Next time, **Alt+G** or wait 60 s: they come back next to the other
+   player, even in another building.
+5. **Goto.** Your friend types `/coop goto <start of your name>`: they arrive next to you, and you see "<friend> is
+   coming to you". Try with you inside a building and them outside, and with you in a city and them in the wilds. A
+   minute later they press **Alt+O**: same trip, no name needed.
+6. **Goto lock.** You type `/coop goto lock`. Your friend presses **Alt+O**: you see "<friend> wants to come to you".
+   **Alt+Y**: they travel. Again, but ignore it: after 20 s they see "<you> didn't answer." While you talk to an NPC
+   with nobody asking, **Alt+Y** on their side still takes them to your conversation.
+7. **Walking during a conversation** (decides defaults, take notes). Page: **Freeze watchers** = **Nobody**. One talks
+   for a minute while the other walks and fights nearby; repeat with each of you entering the area first. Do the NPCs
+   near the walker move and fight normally? Does anything jump into place when the talk ends?
+8. **Fights** (decides what to build next). The one who did *not* enter the area first attacks a townsperson or a
+   guard. Does the NPC fight both of you or only the attacker? Is the other in combat (music, can't wait)? Then
+   `/coop calm near` and the page's **Calm** button.
+9. **Leader only.** Page: **Progress counts from** = **Leader only**, leader = you. Your friend's progress isn't
+   shared; yours is.
+10. **Admins.** Your friend's `/qs reset` is refused; **Make admin** next to them on the page lets them in.
+11. **Two languages, if your friend plays in another language:** their "X advanced ..." chat lines come in their
+    language, and the server learns it the first time (Part 3, step 3, with their language).
+12. **Sleep and wait.** The one who entered the area second waits an hour (T): does the clock snap back? Then sleeps
+    in a bed with a level ready: does the level-up still show?
+13. **A new player and goto.** If your friend starts a new character (Part 5), `/coop goto` before they leave the
+    sewers says "Finish the intro first: go out through the sewer gate."
+
+## Part 7: later, on OblivionMP 1.1.0
+
+Not now: 0.6.3 is built for 1.0 and **won't load on a 1.1.0 server**, and a 1.1 build won't load on 1.0.1. The move
+to SDK 1.1.0 is ready in its own pull request. When you upgrade the server, ask for a 0.6.3 build for 1.1 (the
+earlier `0.6.1-sdk1.1` zip doesn't have the 0.5.4 and 0.6.2 fixes).
+
+1. **Server:** set up the 1.1.0 server as ReadyM describes: copy `saves`, `data`, `branding` and `config.json` from
+   `<server folder>` to the new server folder, plus `coop-quest-sync-state.json` and
+   `coop-quest-sync-strings*.json`. Copy the 1.1 build's `CoopQuestSync` folder into the new server's `mods` folder.
+   The log's mod load order shows `CoopQuestSync` with `OblivionMP.SDK v1.1.0`.
+2. **The game starts straight in the multiplayer world** (no main menu). Check the add-on still works after the
+   loading screen (overlay, Alt keys), and that the join catch-up is still quiet.
+3. **OblivionMP 1.1 now shares the game's own scripts**: dialogue result scripts, activators, triggers and message
+   boxes are replayed on everyone's game. With our quest sync on top, things may happen twice. Watch for:
+   * a quest pop-up or journal entry twice, or for a player who wasn't in the conversation;
+   * items or gold given twice, NPCs moving or attacking twice, a stage effect although its switch is off;
+   * the new-player window (Part 5) appearing on the other player's screen.
+   Note the quest and stage and whether the other player was nearby. If it happens, the mod can turn OblivionMP's
+   replay off for dialogue results and leave quests to our sync.
+4. **New players on 1.1** have no local save to start from, so redo Part 5 there: what does a brand-new player get?
+5. Then a quick pass of Parts 1, 2 and 6 on 1.1.
+
+## Already done (no need to redo)
+
+From your tests on 2026-11-07 and 2026-11-12:
+
+* Admin commands: the ReadyM panel's admin list is read, `/qs whoami` and `/qs auto` work.
+* The server uses your hand-made text file.
+* Joining: silent restore and catch-up; back where you left, outdoors and inside buildings, behind the black screen.
+* Conversation overlay with Ghost, freeze, Alt+U, persuasion detection.
+* Alt+Y into a dungeon works (only the last fade was missing: Part 1.1).
+* `/coop calm` (all) inside a dungeon, with no crash.
+* Respawn alone after 60 s, back on your last safe spot.
+* The add-on no longer crashes on loads.
+
+## Things to watch while testing
+
+* On 2026-11-12 the server once logged `the plugin never answered the handshake. Syncing without restoring.` after a
+  rejoin. If you see it, note what you did just before (a reload, R, a rejoin) and send the server log.
+* The crash when quitting the game is OblivionMP's (CEF shutdown), not the mod's.
+* The co-op keys also reach the game (Alt+O also presses O). If one clashes, pick another letter under **Keys** on
+  the page.
 
 ## What to send me
 
 * **Server:** the server log (`[QuestSync]` lines), from start-up to the problem.
-* **PC:** UE4SS.log, copied before you start the game again.
-* For the overlay or the travel screen: a screenshot.
-* **PC:** your `Plugins.txt`, if quests from the DLCs or Knights don't sync.
-* Never send `coop-quest-sync-strings*.json` or `strings.json` anywhere public.
-
-## Known limits
-
-The full list is in [docs/KNOWN-ISSUES.md](../docs/KNOWN-ISSUES.md). The ones that matter for testing:
-
-* The server can't read its text from the game's files on a standard Steam install; it learns it from the players'
-  games instead (Test 0, step B). The overlay doesn't need it.
-* The overlay runs a few seconds behind the talker (the game reports a line when it ends). The voice plays with the
-  text, from nowhere (not from the NPC).
-* Going back into a building, travelling into another one or world space, and `/coop calm` all need the add-on
-  running on the **PC**. Without it you come back outside, by the door.
-* You can still turn the camera while frozen.
-* Menus are recognised by the original game's menu numbers. Tell me which menu never shows "is bartering" (or the
-  like).
-* Respawning next to someone only works in the same area; otherwise you come back where you last stood on solid
-  ground, at least 6 s before you died.
-* The co-op keys also reach the game (Alt+U also presses U). Pick other letters under **Keys** on the page if one
-  clashes. K is OblivionMP's chat.
-
-## Settings file
-
-**Server:** `<server folder>\mods\CoopQuestSync\server\config.json`, all optional. Every setting is listed in
-[docs/USING.md](../docs/USING.md#configjson-server-host-optional). The ones used in these tests:
-
-```json
-{
-  "WebBind": "127.0.0.1", "WebPassword": "", "WebPort": 9060,
-  "GameFolder": "", "Language": "en", "StringsFile": "", "LearnTextFromPlayers": true,
-  "PanelDatabase": "data/web.db", "PanelPermission": "players.manage"
-}
-```
-
-`GameFolder` empty means "find the game through Steam". `StringsFile` empty means
-`<server folder>\coop-quest-sync-strings.json`. `config.json` is inside the mod's folder, so copy it back after an
-update.
+* **PC:** `UE4SS.log`, copied before you start the game again.
+* A screenshot for anything on screen (overlay, black screen, window).
+* Say which Part and step. Never send `coop-quest-sync-strings*.json` or `strings.json` anywhere public.
