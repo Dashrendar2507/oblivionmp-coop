@@ -29,7 +29,7 @@ public sealed partial class CombatService(IEntities entities, IServerEvents even
     CoopRpc rpc, ILogger logger)
 {
     private const float ScanSeconds = 1f;
-    /// <summary>"/coop calm near": the closest NPC within this distance (cm).</summary>
+    /// <summary>"/coop calm near": the NPCs fighting within this distance (cm), and the closest one.</summary>
     private const float NearRange = 1500f;
     /// <summary>
     /// NPCs the server can't place in an area (AreaId.Invalid, as in dungeons, 2026-11-07 and 11-12) count as being in a
@@ -223,29 +223,39 @@ public sealed partial class CombatService(IEntities entities, IServerEvents even
     {
         if (!entities.TryLookup(sender, out MainCharacter me) || !sync.Players.TryGetValue(sender, out var view) || view.Area is not { } area)
             return "The server doesn't know where you are yet.";
-        Npc? best = null;
-        var bestDistance = NearRange;
+        // Every NPC fighting within 15 m, plus the closest one even if the server doesn't see it fighting. Calming only
+        // the closest wasn't enough (2026-11-12): with two attackers, the other one kept fighting and the calmed one
+        // joined back in to help.
+        Npc? closest = null;
+        var closestDistance = NearRange;
+        var picked = new List<Npc>();
         foreach (var npc in entities.Query<Npc>())
         {
             // In the player's area, or with no area at all (dungeon NPCs often have none on the server): the distance decides.
             if (npc.IsDead || !(npc.Cell.AreaId.Equals(area) || npc.Cell.AreaId.Equals(AreaId.Invalid)))
                 continue;
             var d = Vector3.Distance(npc.Position, me.Position);
-            if (d < bestDistance)
+            if (d > NearRange)
+                continue;
+            if (Fighting(npc))
+                picked.Add(npc);
+            if (d < closestDistance)
             {
-                best = npc;
-                bestDistance = d;
+                closest = npc;
+                closestDistance = d;
             }
         }
-        if (best is not { } target)
+        if (closest is { } c && !picked.Any(n => n.RefId == c.RefId))
+            picked.Add(c);
+        if (picked.Count == 0)
             return "No NPC within 15 m of you.";
-        uint refId = target.RefId;
-        var name = data.NpcName(target.BaseId.FormId) ?? $"the NPC {refId:X8}";
+        var refs = string.Join(' ', picked.Take(MaxRefs).Select(n => n.RefId.ToString("X8")));
         foreach (var (id, v) in sync.Players)
             if (v.Area is { } a && a.Equals(area))
-                rpc.SendStopCombat(id, refId.ToString("X8"));
-        logger.LogInformation("[QuestSync] Calm: {Npc} ({Ref:X8}) near {Player}.", name, refId, sync.Nickname(sender));
-        return $"Calmed {name}.";
+                rpc.SendStopCombat(id, refs);
+        var names = picked.Select(n => data.NpcName(n.BaseId.FormId) ?? $"the NPC {n.RefId:X8}").ToList();
+        logger.LogInformation("[QuestSync] Calm: {Npcs} ({Refs}) near {Player}.", string.Join(", ", names), refs, sync.Nickname(sender));
+        return $"Calmed {string.Join(", ", names)}.";
     }
 
     /// <summary>Writes a bounty of 0 on the player's character; the player's game also runs player.SetCrimeGold 0.</summary>

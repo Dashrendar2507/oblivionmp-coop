@@ -1,6 +1,7 @@
-# Co-op Quest Sync 0.5.3: how to test
+# Co-op Quest Sync 0.5.4: how to test
 
-This is the full test plan for 0.5.3. New since 0.5.2: `/coop calm`, `/coop calm near` and `/coop calm <name>` work
+This is the full test plan for 0.5.4. New since 0.5.3: `/coop calm near` calms every NPC fighting within 15 m of
+you, not only the closest one (Test 3, step 7). New in 0.5.3: `/coop calm`, `/coop calm near` and `/coop calm <name>` work
 in dungeons and with a name typed with or without its trailing dot (Test 3, step 7). New in 0.5.2: the server
 learns the game's text from the players' games (Test 0, steps B and C). What changed in each version is in
 [CHANGELOG.md](../CHANGELOG.md); the keys, commands and settings are in [docs/USING.md](../docs/USING.md).
@@ -202,7 +203,8 @@ The server can play a made-up teammate called "Ghost":
    0.5.2: NPCs in dungeons have no area on the server, so calm skipped them). Calming those NPCs once crashed the
    game on 2026-11-07, which we think was a timing issue that's fixed since: if the game crashes, say which command
    it was and send UE4SS.log.
-   * Hit an NPC until they fight back, `/coop calm near`: they stop.
+   * Hit an NPC until they fight back, `/coop calm near`: they stop. Then get two NPCs fighting you at once (the two
+     Serethi in the Aleswell dungeon will do), `/coop calm near`: both stop, and the chat names both.
    * Fight a few creatures, `/coop calm`: they stop for a moment (hostile ones start again, which is expected).
    * Get a guard to chase you, `/coop calm <your name>`: the guard stops and your bounty is 0. Type your name the way
      the player list shows it, then again without the dot at the end if it has one (`dashrendar2507` for

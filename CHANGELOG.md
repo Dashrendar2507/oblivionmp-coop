@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.4 (public test)
+
+* **`/coop calm near` calms every NPC fighting within 15 m of you**, plus the closest one. It used to calm only the
+  closest: with two attackers, the other kept fighting and the calmed one joined back in.
+
 ## 0.5.3 (public test)
 
 * **`/coop calm` works in dungeons.** OblivionMP gives most NPCs inside dungeons no area on the server, so `/coop calm`,

@@ -5,7 +5,7 @@
 progress is shared live, players who join later catch up silently, and conversations, deaths and rewards are
 handled with a party in mind.
 
-> **Status: public test (0.5.3).** It works, but it is young and has only been tested by a handful of people.
+> **Status: public test (0.5.4).** It works, but it is young and has only been tested by a handful of people.
 > Expect rough edges, back up your saves, and please [report what you find](CONTRIBUTING.md). Every report helps.
 
 ## Disclaimer - use of AI
