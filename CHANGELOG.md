@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.5.3 (public test)
+
+* **`/coop calm` works in dungeons.** OblivionMP gives most NPCs inside dungeons no area on the server, so `/coop calm`,
+  `/coop calm near` and `/coop calm <name>` skipped them and only `/coop calm all` stopped the fight. Those NPCs now
+  count when they are within about 40 m of a player in that area (`near` keeps its 15 m). The log says how many were
+  taken this way.
+* **`/coop calm <name>` finds the player** without minding case or the dot at the end of a ReadyM name
+  (`dashrendar2507` finds `dashrendar2507.`), and with just the start of a name when only one player matches.
+
 ## 0.5.2 (public test)
 
 * **The server learns the game's text from the players' games**, so nobody makes a file by hand. Each player's

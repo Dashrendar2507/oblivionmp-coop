@@ -110,7 +110,7 @@ reaches the stage always gets everything. These switches decide what everyone el
 | `/qs whoami` | Your ReadyM id, and whether the server counts you as an admin. |
 | `/coop follow`, `/coop join`, `/coop revive`, `/coop giveup` | Same as the keys. |
 | `/coop calm` | Stop the fights in your area: each NPC fighting there stops, and guards stop chasing the players there. For a fight that went wrong, such as a quest giver turned hostile. |
-| `/coop calm <name>` | The same in that player's area, and their bounty goes to 0. |
+| `/coop calm <name>` | The same in that player's area, and their bounty goes to 0. Case and a final dot don't matter, and the start of a name is enough when only one player matches. |
 | `/coop calm all` | Every area with a player in it. |
 | `/coop calm near` | The NPC closest to you (within 15 m), fighting or not. |
 

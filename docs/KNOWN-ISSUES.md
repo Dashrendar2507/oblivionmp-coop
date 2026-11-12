@@ -71,7 +71,9 @@ names worked out from the game's ids.
   in one player's game (the area's master), and the server can't order an NPC to attack a given player. The server
   log now says who fights where (`Combat:` lines), to find out what OblivionMP already shares.
 * **`/coop calm` stops fights, not grudges.** An NPC that is still hostile (an enemy faction, a low disposition) can
-  start again. Guards also come back while you still have a bounty: calm that player by name to clear it.
+  start again. Guards also come back while you still have a bounty: calm that player by name to clear it. Inside
+  dungeons the server doesn't know which area an NPC is in, so calm takes the fighting NPCs within about 40 m of the
+  players there instead: a fight further away needs `/coop calm all`.
 * **Followers and companions** aren't shared or synced (not possible with OblivionMP's SDK 1.0).
 * **Respawning next to someone only works in the same area** (both outside, or the same interior). Otherwise you
   come back where you last stood on solid ground.

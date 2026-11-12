@@ -31,6 +31,11 @@ public sealed partial class CombatService(IEntities entities, IServerEvents even
     private const float ScanSeconds = 1f;
     /// <summary>"/coop calm near": the closest NPC within this distance (cm).</summary>
     private const float NearRange = 1500f;
+    /// <summary>
+    /// NPCs the server can't place in an area (AreaId.Invalid, as in dungeons, 2026-11-07 and 11-12) count as being in a
+    /// player's area when they are this close to that player (cm).
+    /// </summary>
+    private const float UnplacedRange = 4000f;
     /// <summary>At most this many NPCs per message to one game (the add-on runs one command per NPC).</summary>
     private const int MaxRefs = 64;
 
@@ -136,32 +141,63 @@ public sealed partial class CombatService(IEntities entities, IServerEvents even
         }
         if (target.Equals("near", StringComparison.OrdinalIgnoreCase))
             return sender is { } me ? CalmNearest(me) : "Only a player can calm the NPC near them.";
-        foreach (var (id, view) in sync.Players)
-            if (sync.Nickname(id).Equals(target, StringComparison.OrdinalIgnoreCase))
-                return view.Area is { } area ? CalmAreas([area], id) : $"The server doesn't know where {sync.Nickname(id)} is yet.";
+        if (FindPlayer(target) is { } found)
+            return sync.Players.TryGetValue(found, out var view) && view.Area is { } area
+                ? CalmAreas([area], found)
+                : $"The server doesn't know where {sync.Nickname(found)} is yet.";
         return $"No player called {target}. Use a name, \"all\", \"near\", or nothing for your area.";
+    }
+
+    /// <summary>
+    /// The player a typed name means: the same name ignoring case and a trailing dot or other mark (ReadyM names can
+    /// end in one: "dashrendar2507."), else the only player whose name starts with it.
+    /// </summary>
+    private PlayerId? FindPlayer(string typed)
+    {
+        static string Plain(string n) => n.Trim().TrimEnd('.', ',', '!', '?', ';', ':').ToLowerInvariant();
+        var want = Plain(typed);
+        if (want.Length == 0)
+            return null;
+        var players = sync.Players.Keys.Select(id => (Id: id, Name: Plain(sync.Nickname(id)))).ToList();
+        foreach (var (id, name) in players)
+            if (name == want)
+                return id;
+        var starts = players.Where(p => p.Name.StartsWith(want, StringComparison.Ordinal)).ToList();
+        return starts.Count == 1 ? starts[0].Id : null;
+    }
+
+    /// <summary>Whether <paramref name="npc"/> is in one of <paramref name="areas"/>, or unplaced but close to a player there.</summary>
+    private bool InAreas(Npc npc, IReadOnlyCollection<AreaId> areas, List<Vector3> playersThere)
+    {
+        if (areas.Contains(npc.Cell.AreaId))
+            return true;
+        if (!npc.Cell.AreaId.Equals(AreaId.Invalid))
+            return false;
+        var at = npc.Position;
+        return playersThere.Any(p => Vector3.Distance(p, at) <= UnplacedRange);
     }
 
     /// <summary>Stops the fights in these areas in every game there, and the guards' chase of the players there.</summary>
     private string CalmAreas(IReadOnlyCollection<AreaId> areas, PlayerId? clearBountyOf)
     {
         var refs = new List<uint>();
-        // NPCs the server can't place (AreaId.Invalid) are left alone: on 2026-11-07 running StopCombat on such NPCs
-        // crashed the game inside OblivionMP, while OblivionMP was also logging "Multiple entities mapped to the same
-        // game object" for that dungeon.
-        var skipped = 0;
+        var players = sync.Players.Where(p => p.Value.Area is { } a && areas.Contains(a)).Select(p => p.Key).ToList();
+        var positions = players.Select(id => entities.TryLookup(id, out MainCharacter m) ? m.Position : (Vector3?)null)
+            .OfType<Vector3>().ToList();
+        // NPCs in dungeons often have no area on the server (AreaId.Invalid): those close to a player there count too.
+        // (They were left out after a crash on 2026-11-07, but that crash came from running a console command just as
+        // a menu closed, which the add-on no longer does; on 2026-11-12 leaving them out meant /coop calm did nothing.)
+        var unplaced = 0;
         foreach (var npc in entities.Query<Npc>())
         {
-            if (!Fighting(npc))
+            if (!Fighting(npc) || !InAreas(npc, areas, positions))
                 continue;
-            if (areas.Contains(npc.Cell.AreaId))
-                refs.Add(npc.RefId);
-            else if (npc.Cell.AreaId.Equals(AreaId.Invalid))
-                skipped++;
+            refs.Add(npc.RefId);
+            if (npc.Cell.AreaId.Equals(AreaId.Invalid))
+                unplaced++;
         }
-        if (skipped > 0)
-            logger.LogInformation("[QuestSync] Calm: left {Count} fighting NPC(s) alone that the server can't place in an area (StopCombat on those crashed the game).", skipped);
-        var players = sync.Players.Where(p => p.Value.Area is { } a && areas.Contains(a)).Select(p => p.Key).ToList();
+        if (unplaced > 0)
+            logger.LogInformation("[QuestSync] Calm: {Count} of them have no area on the server (a dungeon); taken by distance to the players there.", unplaced);
         foreach (var id in players)
         {
             if (refs.Count > 0)
@@ -191,7 +227,8 @@ public sealed partial class CombatService(IEntities entities, IServerEvents even
         var bestDistance = NearRange;
         foreach (var npc in entities.Query<Npc>())
         {
-            if (npc.IsDead || !npc.Cell.AreaId.Equals(area))
+            // In the player's area, or with no area at all (dungeon NPCs often have none on the server): the distance decides.
+            if (npc.IsDead || !(npc.Cell.AreaId.Equals(area) || npc.Cell.AreaId.Equals(AreaId.Invalid)))
                 continue;
             var d = Vector3.Distance(npc.Position, me.Position);
             if (d < bestDistance)

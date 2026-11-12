@@ -1,7 +1,8 @@
-# Co-op Quest Sync 0.5.2: how to test
+# Co-op Quest Sync 0.5.3: how to test
 
-This is the full test plan for 0.5.2. New since 0.5.1: the server learns the game's text from the players' games
-(Test 0, steps B and C). What changed in each version is in
+This is the full test plan for 0.5.3. New since 0.5.2: `/coop calm`, `/coop calm near` and `/coop calm <name>` work
+in dungeons and with a name typed with or without its trailing dot (Test 3, step 7). New in 0.5.2: the server
+learns the game's text from the players' games (Test 0, steps B and C). What changed in each version is in
 [CHANGELOG.md](../CHANGELOG.md); the keys, commands and settings are in [docs/USING.md](../docs/USING.md).
 
 Every file below says where it is: **Server** (the computer that runs `server.exe`) or **PC** (the computer you play
@@ -197,10 +198,17 @@ The server can play a made-up teammate called "Ghost":
 6. **Death.** Console: `player.modav health -10000`. "You are down...". Then `/coop test revive` (back where you
    fell), or Alt+G, or wait 60 s (back where you last stood on solid ground). Jump off something high: you come
    back at the top.
-7. **Calm.** Save first. Hit a townsperson until they fight back, `/coop calm near`: they stop. Get a guard to chase
-   you, `/coop calm <your name>`: the guard stops and your bounty is 0. Fight a few creatures, `/coop calm`: they
-   stop for a moment (hostile ones start again, which is expected). Send the server log (`Combat:`, `Calm:`) and
-   UE4SS.log (`StopCombat`, `scaonactor`).
+7. **Calm.** Save first. Do each of these once in a town and once inside a dungeon or house (that's what failed in
+   0.5.2: NPCs in dungeons have no area on the server, so only `/coop calm all` found them):
+   * Hit an NPC until they fight back, `/coop calm near`: they stop.
+   * Fight a few creatures, `/coop calm`: they stop for a moment (hostile ones start again, which is expected).
+   * Get a guard to chase you, `/coop calm <your name>`: the guard stops and your bounty is 0. Type your name the way
+     the player list shows it, then again without the dot at the end if it has one (`dashrendar2507` for
+     `dashrendar2507.`), then just its start (`dash`): all three work.
+
+   Send the server log (**Server**, see the table at the top; lines with `Combat:` and `Calm:`, including "have no
+   area on the server ... taken by distance") and UE4SS.log (**PC**, `C:\Program Files (x86)\Steam\steamapps\common\Oblivion Remastered\OblivionRemastered\Binaries\Win64\UE4SS.log`;
+   lines with `StopCombat`, `scaonactor`).
 
 ## Test 4: two players (when your friend can join)
 
