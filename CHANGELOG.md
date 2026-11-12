@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+* **Revive and respawn bring you back to the party.** OblivionMP brings a dead player back with its "rebirth", which
+  reloads the player's own save, so Alt+G put you wherever your save was (2026-11-12), and the server's move right
+  after it was lost during the load. Now the travel screen goes up before getting back up, the client tells the
+  server when the reload is over, and the server then takes you next to whoever revived you, next to the leader
+  (any area now, into buildings and cities through the add-on), or back to your last safe spot. Nothing moves you
+  while the reload is still running.
+* **Every move through a load is behind the black screen**, not only a join's or a trip to a teammate's: the test
+  join with Ghost (Alt+Y during `/coop test talk`), `/coop test back` and `/coop test goto` showed the new place and
+  then the jump.
 * **Travel to a teammate any time**, not only to a conversation: `/coop goto <name>` (the start of a name is
   enough) takes you next to them, into their building or world space too, behind the black travel screen. The new
   goto key, **Alt+O**, goes to the last teammate you picked, else the leader, else the only other player. Not while

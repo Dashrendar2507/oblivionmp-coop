@@ -25,10 +25,11 @@ under **Keys** on the web page; every player's game switches within a few second
   repair or spell screen, or pick a lock. Press **Alt+U** to leave or come back, and **Alt+Y** to travel to the
   talker, so the party can gather for a quest without missing what's said.
 * **Death.** You go down instead of dying ("You are down..."). A teammate next to you presses **Alt+H** to bring you
-  back where you fell. After 60 seconds, or when you press **Alt+G**, you respawn next to the party leader (or the
-  first other player by name, if the leader is the one down). If nobody is in your area, you come back where you
-  last stood on solid ground a few seconds before you died, so a fall doesn't kill you twice. Don't press **R** while
-  down: that's OblivionMP's own "rebirth", which reloads your save.
+  back next to them. After 60 seconds, or when you press **Alt+G**, you respawn next to the party leader (or the
+  first other player by name, if the leader is the one down), wherever they are. If nobody else is playing, you come
+  back where you last stood on solid ground a few seconds before you died, so a fall doesn't kill you twice. Getting
+  back up uses OblivionMP's "rebirth", which reloads your own save first: the screen stays black through that load
+  and the trip back. Don't press **R** while down: that's the same rebirth without the trip back.
 * **Back where you left.** When you join, the server puts you back where you were when you left, inside buildings
   too. The screen goes black with "Taking you back to where you left..." until you stand in your spot, so you don't
   see the jumps. Travelling to a teammate (Alt+Y) through a load does the same.

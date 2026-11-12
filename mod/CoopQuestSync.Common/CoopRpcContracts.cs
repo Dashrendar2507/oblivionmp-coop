@@ -91,4 +91,10 @@ public static partial class CoopRpcContracts
     /// or accept the request of a teammate who asked to come.
     /// </summary>
     [ClientToServer] public static partial void TravelToFriend();
+
+    /// <summary>
+    /// After a revive or respawn: OblivionMP's rebirth reloaded the player's save and the player is back in the
+    /// world, so the server can take them to the party.
+    /// </summary>
+    [ClientToServer] public static partial void RebirthLoaded();
 }

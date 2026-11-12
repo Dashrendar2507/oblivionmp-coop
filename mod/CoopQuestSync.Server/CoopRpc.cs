@@ -17,6 +17,7 @@ public sealed partial class CoopRpc
     public event Action<PlayerId>? FollowToggled;
     public event Action<PlayerId>? JoinRequested;
     public event Action<PlayerId>? GotoRequested;
+    public event Action<PlayerId>? RebornLoaded;
 
     /// <summary>
     /// Asked first when the join key comes in: true when it was taken (a teammate asked to come, and this accepts), so
@@ -32,6 +33,8 @@ public sealed partial class CoopRpc
     }
 
     partial void OnTravelToFriend(RpcContext context) => GotoRequested?.Invoke(context.Sender);
+
+    partial void OnRebirthLoaded(RpcContext context) => RebornLoaded?.Invoke(context.Sender);
 
     partial void OnToggleFollow(RpcContext context) => FollowToggled?.Invoke(context.Sender);
 

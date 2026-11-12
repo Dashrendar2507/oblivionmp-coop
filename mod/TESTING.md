@@ -319,9 +319,10 @@ the zip.
   log won't show `is bartering`. Tell me which menu stayed silent.
 * **The NPC's name** comes from the line's own conditions when it names its speaker, otherwise from the NPC closest
   to the talker.
-* **Respawning next to someone** only works when they are in the same area (the same interior, or both outside). If
-  not, you come back where you last stood on solid ground, at least 6 s before you died, so a fall or a drop out of
-  the map doesn't kill you again. If you hadn't been in that area that long, you come back where you entered it.
+* **Respawning** takes you next to the leader (or the first other player) wherever they are. With nobody else on,
+  you come back where you last stood on solid ground, at least 6 s before you died, so a fall or a drop out of the
+  map doesn't kill you again. If you hadn't been in that area that long, you come back where you entered it.
+  Getting back up is OblivionMP's rebirth, which reloads your local save first; the trip back comes after it.
   A teammate's revive (Alt+H) brings you back where you fell; use Alt+G if your body is somewhere unreachable.
 * **Stage scripts that say "player"** still act on each player's own game. The switches decide whether that happens
   for the players who didn't reach the stage themselves.

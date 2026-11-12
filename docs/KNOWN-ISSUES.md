@@ -67,8 +67,9 @@ still works. Only English has been tried.
 * **`/coop calm` stops fights, not grudges.** An NPC that is still hostile (an enemy faction, a low disposition) can
   start again. Guards also come back while you still have a bounty: calm that player by name to clear it.
 * **Followers and companions** aren't shared or synced (not possible with OblivionMP's SDK 1.0).
-* **Respawning next to someone only works in the same area** (both outside, or the same interior). Otherwise you
-  come back where you last stood on solid ground.
+* **Getting back up reloads your save.** OblivionMP brings a dead player back with its "rebirth", which loads your
+  last local save. The mod then takes you back to the party (through the add-on's `coc`/`cow` when that's another
+  building or city), so it takes a load or two, behind a black screen.
 * **The co-op keys also reach the game.** Alt+U also presses U in the game, and so on. If that's a problem, pick
   other letters on the web page.
 
