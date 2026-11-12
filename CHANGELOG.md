@@ -15,6 +15,22 @@
   teammate until they're out.
 * The plugin generator's script compiler knows `MessageBox` with buttons, `GetButtonPressed`, `MoveTo` and
   `AddTopic`, checked byte for byte against the game's own scripts.
+* **Revive and respawn bring you back to the party.** OblivionMP brings a dead player back with its "rebirth", which
+  reloads the player's own save, so Alt+G put you wherever your save was (2026-11-12), and the server's move right
+  after it was lost during the load. Now the travel screen goes up before getting back up, the client tells the
+  server when the reload is over, and the server then takes you next to whoever revived you, next to the leader
+  (any area now, into buildings and cities through the add-on), or back to your last safe spot. Nothing moves you
+  while the reload is still running.
+* **Every move through a load is behind the black screen**, not only a join's or a trip to a teammate's: the test
+  join with Ghost (Alt+Y during `/coop test talk`), `/coop test back` and `/coop test goto` showed the new place and
+  then the jump.
+* **Travel to a teammate any time**, not only to a conversation: `/coop goto <name>` (the start of a name is
+  enough) takes you next to them, into their building or world space too, behind the black travel screen. The new
+  goto key, **Alt+O**, goes to the last teammate you picked, else the leader, else the only other player. Not while
+  down, talking or (setting) fighting, and once per cooldown (60 s). The teammate sees "Alice is coming to you".
+  `/coop goto lock` makes teammates ask first: you see "Alice wants to come to you" and let them with Alt+Y or
+  `/coop accept` within 20 s. Kept in the state file. Settings "Travel to teammates any time", "Seconds between
+  trips", "No trips during a fight", and the Goto key.
 
 * **The game's text survives updates**: the server keeps it as `coop-quest-sync-strings.json` in its own folder,
   next to `coop-quest-sync-state.json`, instead of `strings.json` inside the mod's folder (an update wiped it and

@@ -41,12 +41,14 @@ body:
         - label: Revive (Alt+H) and respawn (Alt+G)
         - label: Back where you left (outside and inside buildings)
         - label: Web admin page (source player, give a stage, reset a quest)
+        - label: Travel to a teammate (/coop goto, Alt+O) or to a conversation (Alt+Y)
+        - label: "Sleeping, waiting and fast travel: the clock stayed and level-up worked (say who slept, below)"
 
   - type: textarea
     id: notes
     attributes:
       label: How did it go?
-      description: What felt good, what felt wrong or awkward, which quests you played, anything that surprised you.
+      description: What felt good, what felt wrong or awkward, which quests you played, anything that surprised you. If you tried something from the "Please test these" list in CONTRIBUTING.md, say what happened.
     validations:
       required: true
 

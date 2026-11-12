@@ -67,6 +67,13 @@ public sealed partial class TravelScreen(CefHost cef, IPlayers players, IInput i
         _up = 0;
     }
 
+    /// <summary>A load took the page (the rebirth's reload): make it again, black at once, if the screen is wanted.</summary>
+    public void Refresh()
+    {
+        if (_text is not null)
+            _fresh = true;
+    }
+
     private void Update()
     {
         var dt = Time.DeltaTime;

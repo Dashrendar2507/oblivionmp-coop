@@ -82,6 +82,15 @@ public sealed class CoopSettings
     /// <summary>A black screen with one line while the game moves a player (back on join, or to a teammate).</summary>
     public bool TravelScreen { get; set; } = true;
 
+    /// <summary>Players can travel to a teammate whenever they like: /coop goto &lt;name&gt; or the goto key.</summary>
+    public bool TeleportAnytime { get; set; } = true;
+
+    /// <summary>Seconds a player waits between two trips with /coop goto (0: no wait).</summary>
+    public int TeleportCooldown { get; set; } = 60;
+
+    /// <summary>No /coop goto while the traveller is fighting.</summary>
+    public bool TeleportNotInCombat { get; set; } = true;
+
     /// <summary>The co-op keys: Alt + these. Letters (or key names such as F6) the game doesn't use; K is the chat.</summary>
     public string KeyFollow { get; set; } = "U";
 
@@ -91,8 +100,10 @@ public sealed class CoopSettings
 
     public string KeyRespawn { get; set; } = "G";
 
+    public string KeyGoto { get; set; } = "O";
+
     /// <summary>"Alt+U", for messages.</summary>
-    public string Key(string action) => "Alt+" + action switch { "follow" => KeyFollow, "join" => KeyJoin, "revive" => KeyRevive, _ => KeyRespawn };
+    public string Key(string action) => "Alt+" + action switch { "follow" => KeyFollow, "join" => KeyJoin, "revive" => KeyRevive, "goto" => KeyGoto, _ => KeyRespawn };
 
     /// <summary>Tags over players' heads: "Talking", "Down".</summary>
     public bool StatusTags { get; set; } = true;
@@ -179,6 +190,8 @@ public sealed class CoopSettings
         KeyJoin = CleanKey(KeyJoin, "Y");
         KeyRevive = CleanKey(KeyRevive, "H");
         KeyRespawn = CleanKey(KeyRespawn, "G");
+        KeyGoto = CleanKey(KeyGoto, "O");
+        TeleportCooldown = Math.Clamp(TeleportCooldown, 0, 3600);
         DifficultyDealt ??= "Unset";
         DifficultyTaken ??= "Unset";
         CommandAccess = CommandAccess is "everyone" ? "everyone" : "admins";

@@ -77,6 +77,12 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
     /// </summary>
     public bool SewersLeft { get; set; }
 
+    /// <summary>
+    /// Players (by nickname) who typed /coop goto lock: others must ask them before travelling to them. See
+    /// <see cref="TeleportService"/>.
+    /// </summary>
+    public SortedSet<string> GotoLocked { get; } = new(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>Saves the state file on the next pass.</summary>
     public void MarkDirty() => _dirty = true;
 
@@ -790,6 +796,7 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
         public Dictionary<string, ReturnSpot>? Returns { get; set; }
         public Dictionary<string, ReturnSpot>? Outdoors { get; set; }
         public bool? SewersLeft { get; set; }
+        public string[]? GotoLocked { get; set; }
     }
 
     private void LoadState()
@@ -815,6 +822,8 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
                 Returns[player] = spot;
             foreach (var (player, spot) in state.Outdoors ?? new())
                 Outdoors[player] = spot;
+            foreach (var player in state.GotoLocked ?? [])
+                GotoLocked.Add(player);
             if (state.AutoSync is { } auto)
                 AutoSync = auto;
             SewersLeft = state.SewersLeft ?? false;
@@ -848,6 +857,7 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
                 Returns = Returns,
                 Outdoors = Outdoors,
                 SewersLeft = SewersLeft,
+                GotoLocked = GotoLocked.ToArray(),
             };
             var tmp = StatePath + ".tmp";
             File.WriteAllText(tmp, JsonSerializer.Serialize(state, new JsonSerializerOptions { WriteIndented = true }));

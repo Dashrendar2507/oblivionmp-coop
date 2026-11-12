@@ -300,7 +300,10 @@ function renderSettings() {
     ${srow("Seconds before respawning", "", num("reviveSeconds", st.reviveSeconds))}
     ${srow("Put players back where they left", "When they join. Outdoors: the same spot. Inside a building: back inside (needs the add-on).", chk("returnOnJoin", st.returnOnJoin))}
     ${srow("Black screen while travelling", "Hides the jumps while a player is put back where they left, or travels to a teammate.", chk("travelScreen", st.travelScreen))}
-    ${srow("Keys", "Alt + a letter the game doesn't use (K is the chat). Follow: listen in or leave a conversation. Join: travel to the talker.", `Follow ${txt("keyFollow", st.keyFollow)} Join ${txt("keyJoin", st.keyJoin)} Revive ${txt("keyRevive", st.keyRevive)} Respawn ${txt("keyRespawn", st.keyRespawn)}`)}
+    ${srow("Travel to teammates any time", "/coop goto <name> or the goto key, into their building or city too (needs the add-on). A player can type /coop goto lock so others must ask first.", chk("teleportAnytime", st.teleportAnytime))}
+    ${srow("Seconds between trips", "Per player, for /coop goto and the goto key. 0: no wait.", num("teleportCooldown", st.teleportCooldown))}
+    ${srow("No trips during a fight", "The traveller can't use /coop goto while in combat.", chk("teleportNotInCombat", st.teleportNotInCombat))}
+    ${srow("Keys", "Alt + a letter the game doesn't use (K is the chat). Follow: listen in or leave a conversation. Join: travel to the talker, or let in a teammate who asked. Goto: travel to a teammate.", `Follow ${txt("keyFollow", st.keyFollow)} Join ${txt("keyJoin", st.keyJoin)} Revive ${txt("keyRevive", st.keyRevive)} Respawn ${txt("keyRespawn", st.keyRespawn)} Goto ${txt("keyGoto", st.keyGoto)}`)}
     ${srow("Revive distance (cm)", "400 is about four metres.", num("reviveRange", st.reviveRange))}
     ${srow("Tags over heads", "Talking, bartering, picking a lock, down.", chk("statusTags", st.statusTags))}
     ${srow("Level of spawns and loot", "", sel("scaling", choices.scaling, st.scaling))}

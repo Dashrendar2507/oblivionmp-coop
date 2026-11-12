@@ -2,6 +2,24 @@
 
 Thanks for testing Co-op Quest Sync! This is a public test, so every report helps, including "it just worked".
 
+## Please test these
+
+Some things we couldn't test ourselves yet, mostly because they need two or more players. If you try one, a
+**Test report** saying what happened helps a lot, even when it simply worked.
+
+* **Sleeping and waiting.** OblivionMP gives each area's clock (the time of day) to one player's game, the area's
+  host. With two or more players in the same area, have the player who **isn't** the host wait a few hours, then
+  sleep in a bed. Does the clock stay moved forward, or snap back after a moment? Did the other players' sky and
+  time change too? If you had enough skill increases, did the **level-up** screen appear when you woke up? We don't
+  know which player is the host, so try it once from each side and tell us who did what.
+* **Fast travel.** Same question: after one player fast travels, does the time of day stay where the trip left it?
+* **Travel to a teammate** (`/coop goto <name>`, **Alt+O**), and to a conversation (**Alt+Y**): into a building,
+  into a city, into the Shivering Isles. Did you arrive next to them, or somewhere odd (in a wall, at the door)?
+* **Followers.** Recruit a follower (a quest companion or a hired one). Does it follow the player who recruited it,
+  or another player?
+* **Fights.** When one player starts a fight, do the NPCs attack the other players too? Does a teammate who walks in
+  see the fight the same way?
+
 ## Before you report
 
 1. Check [docs/KNOWN-ISSUES.md](docs/KNOWN-ISSUES.md). If your problem is there, only report it if you have
