@@ -199,7 +199,9 @@ The server can play a made-up teammate called "Ghost":
    fell), or Alt+G, or wait 60 s (back where you last stood on solid ground). Jump off something high: you come
    back at the top.
 7. **Calm.** Save first. Do each of these once in a town and once inside a dungeon or house (that's what failed in
-   0.5.2: NPCs in dungeons have no area on the server, so only `/coop calm all` found them):
+   0.5.2: NPCs in dungeons have no area on the server, so calm skipped them). Calming those NPCs once crashed the
+   game on 2026-11-07, which we think was a timing issue that's fixed since: if the game crashes, say which command
+   it was and send UE4SS.log.
    * Hit an NPC until they fight back, `/coop calm near`: they stop.
    * Fight a few creatures, `/coop calm`: they stop for a moment (hostile ones start again, which is expected).
    * Get a guard to chase you, `/coop calm <your name>`: the guard stops and your bounty is 0. Type your name the way
