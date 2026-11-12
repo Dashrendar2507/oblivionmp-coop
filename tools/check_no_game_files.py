@@ -9,7 +9,7 @@ Bethesda. Server hosts make strings.json from their own copy of the game (docs/I
 import fnmatch, os, subprocess, sys, zipfile
 
 BLOCKED = [
-    "strings.json", "*strings.json", "*.locres", "*.esm", "*.bsa", "*.pak", "*.utoc", "*.ucas",
+    "strings.json", "*strings.json", "coop-quest-sync-strings*.json", "*.locres", "*.esm", "*.bsa", "*.pak", "*.utoc", "*.ucas",
     "dlc*.esp", "knights.esp", "altar*.esp", "tamrielleveledregion.esp",
 ]
 

@@ -34,7 +34,7 @@ public static class GameText
     }
 
     /// <summary>The text keys the mod's tables use (LOC_...): the rest of the game's text isn't kept.</summary>
-    private static HashSet<string> UsedKeys()
+    public static HashSet<string> UsedKeys()
     {
         var keys = new HashSet<string>(StringComparer.Ordinal);
         void Walk(JsonElement e)

@@ -130,7 +130,7 @@ public sealed partial class TestCommands(IChat chat, IEntities entities, QuestTo
                 sync.PushOne(me, stage);
                 var on = effects.Where(e => sync.Settings.Allowed("live", e)).ToList();
                 var off = effects.Except(on).ToList();
-                Reply(sender, $"{Ghost} advanced {data.QuestName(quest)} to stage {stageNo}."
+                Reply(sender, $"{Ghost} advanced {data.QuestName(quest, sync.LanguageOf(sender))} to stage {stageNo}."
                     + (effects.Count == 0 ? " This stage has no effects on the player."
                         : $" Effects you should get: {(on.Count > 0 ? string.Join(", ", on) : "none")}. Switched off: {(off.Count > 0 ? string.Join(", ", off) : "none")}."));
                 break;
@@ -203,6 +203,7 @@ public sealed partial class TestCommands(IChat chat, IEntities entities, QuestTo
                 Reply(sender, $"Phase {view.Phase}{(view.CatchingUp ? " (catching up)" : "")}, area {(view.Area is { } area ? GameData.AreaKey(area) : "unknown")}, "
                     + $"talking {view.InDialogue}, menu {talks.Activity(sender) ?? "none"}, in combat {view.InCombat}, frozen {view.WantFrozen}. "
                     + $"Effect switches now ({phase}): {string.Join(", ", allowed)}. Dialogue text loaded: {(data.HasText ? "yes" : "no")}. "
+                    + $"Your game's language: {view.Language ?? "not known yet"}{(view.Language is { } lang ? $" (server has {data.Learned(lang).Found} texts learned in it)" : "")}. "
                     + returns.Describe(sender) + " " + teleport.Describe(sender) + " " + combat.Describe());
                 break;
             }

@@ -154,7 +154,12 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
         public int Intro;
         /// <summary>Shared stages wait until the player is out of the sewers: replaying MQ02 would stop their intro.</summary>
         public bool IntroHeld;
+        /// <summary>The language the player's game runs in ("fr"), from their client; null until it says.</summary>
+        public string? Language;
     }
+
+    /// <summary>The language <paramref name="id"/>'s game runs in, or null (then the page's text is used).</summary>
+    public string? LanguageOf(PlayerId id) => _players.TryGetValue(id, out var view) ? view.Language : null;
 
     private readonly record struct Snapshot(uint? ModIndex, HashSet<QuestStage> Stages, int Busy, int Ack,
         Dictionary<uint, int> Items, List<(uint FormId, int Count)> Legacy, Dictionary<uint, int> Own);
@@ -465,11 +470,15 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
     /// <summary>"Alice advanced Quest: journal text" in the other players' chat.</summary>
     private void Announce(PlayerId from, QuestStage stage)
     {
-        var text = data.StageText(stage);
-        var line = $"{Nickname(from)} advanced {data.QuestName(stage.Quest)}" + (text is null ? $" (stage {stage.Stage})." : $": {text}");
-        foreach (var (id, _) in _players)
-            if (id != from)
-                chat.SendTo(id, line, ChatLineKind.System);
+        foreach (var (id, view) in _players)
+        {
+            if (id == from)
+                continue;
+            // In each player's own language, where the server has the text in it.
+            var text = data.StageText(stage, view.Language);
+            var line = $"{Nickname(from)} advanced {data.QuestName(stage.Quest, view.Language)}" + (text is null ? $" (stage {stage.Stage})." : $": {text}");
+            chat.SendTo(id, line, ChatLineKind.System);
+        }
     }
 
     /// <summary>

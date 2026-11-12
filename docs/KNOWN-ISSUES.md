@@ -22,12 +22,18 @@ commands.
 
 ### The game's text comes from the players' own games
 
-Each player's add-on looks the overlay's text up in the running game. The server reads the text from the game's
-files only when the game is installed on the server computer; on a dedicated host the web page shows names worked
-out from the game's ids. The remaster's text is Oodle-compressed, so reading the files also needs
-`oo2core_9_win64.dll` on that computer (the mod never downloads it);
-the log says so, and the FModel route in [INSTALL.md](INSTALL.md#real-names-and-lines-on-the-page-and-the-overlay)
-still works. Only English has been tried.
+Each player's add-on looks the overlay's text up in the running game, so the overlay always has words. The server
+can't read the game's files on a standard install (the remaster's text is Oodle-compressed and the game ships no
+`oo2core_9_win64.dll`; the mod never downloads anything), so it learns the text from the players' games instead:
+a few minutes in the background, the first time a player of each language joins. Until then the web page shows
+names worked out from the game's ids.
+
+* Any player of a language can teach the server that language's text, so a player with a modded or tampered game
+  could put odd names on the page and in chat. Only keys the server asked for are taken, the first answer wins, and a
+  host's own file always comes first. Delete `coop-quest-sync-strings.<language>.json` to learn it again, or set
+  `"LearnTextFromPlayers": false`.
+* The web page shows one language (`"Language"` in config.json, English by default, or the first one learned).
+* Only English has been tried so far.
 
 ## Quests
 
@@ -58,8 +64,8 @@ still works. Only English has been tried.
 ## Conversations
 
 * **The overlay runs a few seconds behind.** The game reports a line when it ends, so watchers read it after the
-  talker heard it. The voice plays with the text, from nowhere (not from the NPC), and can't yet be cut short when
-  you leave the conversation: the current line finishes.
+  talker heard it. The voice plays with the text, from nowhere (not from the NPC). It
+  should stop when you leave the conversation (Alt+U); tell us if a line keeps playing.
 * **You can still turn the camera while frozen.** The freeze stops walking and fighting, not looking around.
 * **Menus might not be recognised.** Barter, persuasion, training and so on are detected by the original game's
   menu numbers. If the overlay never says "is bartering" (or another menu), tell us which one.
@@ -79,7 +85,9 @@ still works. Only English has been tried.
   in one player's game (the area's master), and the server can't order an NPC to attack a given player. The server
   log now says who fights where (`Combat:` lines), to find out what OblivionMP already shares.
 * **`/coop calm` stops fights, not grudges.** An NPC that is still hostile (an enemy faction, a low disposition) can
-  start again. Guards also come back while you still have a bounty: calm that player by name to clear it.
+  start again. Guards also come back while you still have a bounty: calm that player by name to clear it. Inside
+  dungeons the server doesn't know which area an NPC is in, so calm takes the fighting NPCs within about 40 m of the
+  players there instead: a fight further away needs `/coop calm all`.
 * **Followers and companions** aren't shared or synced (not possible with OblivionMP's SDK 1.0).
 * **Getting back up reloads your save.** OblivionMP brings a dead player back with its "rebirth", which loads your
   last local save. The mod then takes you back to the party (through the add-on's `coc`/`cow` when that's another

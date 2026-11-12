@@ -1,6 +1,35 @@
 # Changelog
 
-## Unreleased
+## 0.5.4 (public test)
+
+* **`/coop calm near` calms every NPC fighting within 15 m of you**, plus the closest one. It used to calm only the
+  closest: with two attackers, the other kept fighting and the calmed one joined back in.
+
+## 0.5.3 (public test)
+
+* **`/coop calm` works in dungeons.** OblivionMP gives most NPCs inside dungeons no area on the server, so `/coop calm`,
+  `/coop calm near` and `/coop calm <name>` skipped them and only `/coop calm all` stopped the fight. Those NPCs now
+  count when they are within about 40 m of a player in that area (`near` keeps its 15 m). The log says how many were
+  taken this way.
+* **`/coop calm <name>` finds the player** without minding case or the dot at the end of a ReadyM name
+  (`dashrendar2507` finds `dashrendar2507.`), and with just the start of a name when only one player matches.
+
+## 0.5.2 (public test)
+
+* **The server learns the game's text from the players' games**, so nobody makes a file by hand. Each player's
+  client says which language its game runs in; for each language the server lacks, it asks one player of that
+  language for the text, 200 keys at a time, in the background once they're in the world, and their add-on looks it
+  up in the running game. Kept as `coop-quest-sync-strings.<language>.json` next to the state file. "X advanced ..."
+  chat lines now reach each player in their own game's language. `/coop test status` shows your game's language.
+  A host's own `coop-quest-sync-strings.json` still comes first. config.json: `LearnTextFromPlayers` (on). No add-on
+  change, so no game restart.
+
+* **Docs**: the README, install guide and known issues say why the server can't read the game's text from its files
+  on a standard Steam install (no `oo2core_9_win64.dll`, and the mod never downloads one) and list every log line
+  about it. `mod/TESTING.md` is rewritten, with a test for the server's text and the PC or server location of every
+  file.
+
+## 0.5.1 (public test)
 
 * **New players choose where to start**: a player who has never left the sewers gets the game's own message box on
   their first join: "In the prison: play the intro" or "At the sewer exit: skip the intro". The prison is only

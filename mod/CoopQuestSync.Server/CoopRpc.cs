@@ -18,6 +18,12 @@ public sealed partial class CoopRpc
     public event Action<PlayerId>? JoinRequested;
     public event Action<PlayerId>? GotoRequested;
     public event Action<PlayerId>? RebornLoaded;
+    public event Action<PlayerId, string>? TextLanguageReported;
+    public event Action<PlayerId, string>? TextFoundReceived;
+
+    partial void OnTextLanguage(RpcContext context, string language) => TextLanguageReported?.Invoke(context.Sender, language);
+
+    partial void OnTextFound(RpcContext context, string json) => TextFoundReceived?.Invoke(context.Sender, json);
 
     /// <summary>
     /// Asked first when the join key comes in: true when it was taken (a teammate asked to come, and this accepts), so

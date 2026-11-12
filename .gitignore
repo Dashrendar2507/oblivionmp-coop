@@ -10,3 +10,4 @@ __pycache__/
 strings.json
 *.locres
 coop-quest-sync-strings.json
+coop-quest-sync-strings.*.json
