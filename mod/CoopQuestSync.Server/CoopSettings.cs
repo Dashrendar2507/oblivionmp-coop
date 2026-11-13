@@ -132,7 +132,15 @@ public sealed class CoopSettings
     /// </summary>
     public string PrisonStart { get; set; } = "fresh";
 
-    /// <summary>Players who skip the intro get some gear (config.json StarterKitItems), like what the prison gives.</summary>
+    /// <summary>
+    /// A brand-new character (no save on this server yet) is set up on their first join: their bag is emptied, they get
+    /// the starter kit (if <see cref="StarterKit"/>), and the race, class and birthsign menus open. OblivionMP 1.1 starts
+    /// everyone as the same preset character; this lets them make their own. The quest stages that preset already has
+    /// stay out of the party's shared progress.
+    /// </summary>
+    public bool NewCharacterSetup { get; set; } = true;
+
+    /// <summary>New characters (and, with the custom start, players who skip the intro) get some gear (config.json StarterKitItems), like what the prison gives.</summary>
     public bool StarterKit { get; set; } = true;
 
     /// <summary>

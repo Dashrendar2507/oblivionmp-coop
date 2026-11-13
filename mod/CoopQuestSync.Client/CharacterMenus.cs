@@ -7,10 +7,10 @@ using ReadyM.SDK.Attributes;
 namespace CoopQuestSync.Client;
 
 /// <summary>
-/// A new player who skipped the intro makes their character at the sewer exit: the race menu (name, race, face), then
-/// the class, then the birthsign, one after the other, the way the intro would have shown them. Each opens once the
-/// game is back in play (the move to the sewers is a load), and the next once the last one has closed. The sewer gate
-/// then offers to change any of them again before going out, as in the game.
+/// A new character is made: the race menu (name, race, face), then the class, then the birthsign, one after the other,
+/// the way the intro would have shown them. The server asks for it on a brand-new character's first join (OblivionMP
+/// starts everyone as the same preset character), or at the sewer exit when the player skipped the intro. Each menu
+/// opens once the game is in play (no load, no other menu), and the next once the last one has closed.
 /// </summary>
 [Service]
 public sealed partial class CharacterMenus(IPlayers players, IInput input, IUserInterface ui, ILogger logger)
@@ -31,7 +31,7 @@ public sealed partial class CharacterMenus(IPlayers players, IInput input, IUser
         _step = 0;
         _opened = false;
         _timer = 0;
-        logger.LogInformation("[QuestSync] Making the character at the sewer exit: race, class and birthsign menus.");
+        logger.LogInformation("[QuestSync] Making the character: race, class and birthsign menus.");
     }
 
     private void Update()
@@ -62,7 +62,7 @@ public sealed partial class CharacterMenus(IPlayers players, IInput input, IUser
             if (++_step >= Names.Length)
             {
                 _step = -1;
-                ui.ShowMessage("Your character is ready. The sewer gate lets you change it before you go out.", MessagePosition.Center, 6f);
+                ui.ShowMessage("Your character is ready.", MessagePosition.Center, 5f);
                 logger.LogInformation("[QuestSync] Character menus done.");
             }
             return;
