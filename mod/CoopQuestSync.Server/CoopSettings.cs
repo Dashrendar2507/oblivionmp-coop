@@ -121,9 +121,10 @@ public sealed class CoopSettings
     /// <summary>
     /// What a player who has never left the sewers gets on joining: "ask" (a window: the prison intro or the sewer exit),
     /// "sewers" (always the sewer exit, with a short note), or "off" (the game's own start, nothing from the mod).
-    /// Either way, the party's quest progress waits until they are out of the sewers.
+    /// Either way, the party's quest progress waits until they are out of the sewers. "off" by default since 0.7.0:
+    /// OblivionMP 1.1 starts every player from its own world save instead of the prison.
     /// </summary>
-    public string NewStart { get; set; } = "ask";
+    public string NewStart { get; set; } = "off";
 
     /// <summary>
     /// When the prison intro is offered: "fresh" (only until someone has left the sewers on this server: the Emperor and
@@ -195,7 +196,7 @@ public sealed class CoopSettings
         DifficultyDealt ??= "Unset";
         DifficultyTaken ??= "Unset";
         CommandAccess = CommandAccess is "everyone" ? "everyone" : "admins";
-        NewStart = NewStart is "sewers" or "off" ? NewStart : "ask";
+        NewStart = NewStart is "sewers" or "ask" ? NewStart : "off";
         PrisonStart = PrisonStart is "always" or "never" ? PrisonStart : "fresh";
         Admins = (Admins ?? []).Where(a => a is not null && Guid.TryParse(a.Id, out _)).DistinctBy(a => Guid.Parse(a.Id)).ToList();
     }
