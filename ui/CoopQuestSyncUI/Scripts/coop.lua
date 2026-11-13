@@ -791,11 +791,22 @@ function S.menuKindCheck()
         log("open screens: " .. (list == "" and "(none found among " .. #all .. ")" or list))
     end
     local kind = ""
+    -- Only the conversation's own screens (and the HUD): "dialog", so the server knows a MenuMode 1008 seen then is
+    -- not a merchant (the guard's fine conversation raised it, 2026-11-13).
+    local onlyDialog = #names > 0
+    for _, n in ipairs(names) do
+        if not (n:find("^WBP_ModernMenu_Dialog") or n:find("^WBP_ModernHud_")) then
+            onlyDialog = false
+        end
+    end
+    if onlyDialog then
+        kind = "dialog"
+    end
     for _, n in ipairs(names) do
         local l = n:lower()
         if l:find("lockpick", 1, true) or l:find("lock_pick", 1, true) then
             kind = "lockpick"
-        elseif kind == "" and l == "wbp_modernmenu_container_c" then
+        elseif (kind == "" or kind == "dialog") and l == "wbp_modernmenu_container_c" then
             -- Chests and pockets share it (2026-11-13): the server tells them apart by sneaking.
             kind = "container"
         end

@@ -62,6 +62,7 @@ public sealed partial class ConversationRelay(IEntities entities, IServerEvents 
     /// <summary>The menu the player's add-on recognised (lockpicking), for menus the dialogue plugin can't see.</summary>
     private readonly Dictionary<PlayerId, string> _addonMenu = new();
     private readonly HashSet<PlayerId> _containerLogged = new();
+    private readonly Dictionary<PlayerId, bool> _containerFromTalk = new();
 
     /// <summary>What a player is doing in each menu the dialogue plugin reports, as the others read it.</summary>
     private static readonly Dictionary<string, string> Activities = new()
@@ -115,6 +116,7 @@ public sealed partial class ConversationRelay(IEntities entities, IServerEvents 
         _activity.Remove(player);
         _addonMenu.Remove(player);
         _containerLogged.Remove(player);
+        _containerFromTalk.Remove(player);
         _ghosts.Remove(player);
         if (_talks.ContainsKey(player))
             End(player);
@@ -344,10 +346,15 @@ public sealed partial class ConversationRelay(IEntities entities, IServerEvents 
 
     private void OnMenuKind(PlayerId player, string kind)
     {
-        if (kind.Length == 0 || (kind != "container" && !Activities.ContainsKey(kind)))
+        _addonMenu.TryGetValue(player, out var before);
+        if (kind.Length == 0 || (kind is not ("container" or "dialog") && !Activities.ContainsKey(kind)))
             _addonMenu.Remove(player);
         else
             _addonMenu[player] = kind;
+        // Pockets stay pockets when the owner catches them and talks (2026-11-13: "bartering" with the guard): an item
+        // screen only means a merchant when it opened during a conversation.
+        if (kind == "container" && before != "container")
+            _containerFromTalk[player] = entities.TryLookup(player, out MainCharacter m) && m.InDialogue;
     }
 
     /// <summary>Notes the menu a player has open and tells whoever watches their conversation.</summary>
@@ -358,6 +365,11 @@ public sealed partial class ConversationRelay(IEntities entities, IServerEvents 
         // pockets of the one they sneak up on (looting a chest while sneaking counts too, the game can't tell us which).
         if (menu == "barter" && !main.InDialogue)
             menu = main.CharacterStateFlags.HasFlag(CharacterStateFlags.IsSneaking) ? "pickpocket" : null;
+        // The plugin's barter token while the add-on sees nothing but the conversation (the guard's fine), or while
+        // pockets opened before the talk are still up: not a merchant.
+        if (menu == "barter" && _addonMenu.TryGetValue(id, out var screen)
+            && (screen == "dialog" || (screen == "container" && !_containerFromTalk.GetValueOrDefault(id))))
+            menu = null;
         if (menu is null && _addonMenu.TryGetValue(id, out var seen))
         {
             // The remaster's item screen (seen by the add-on; the dialogue plugin's MenuMode 1008 never fired for
@@ -365,7 +377,7 @@ public sealed partial class ConversationRelay(IEntities entities, IServerEvents 
             if (seen == "container")
             {
                 var sneaking = main.CharacterStateFlags.HasFlag(CharacterStateFlags.IsSneaking);
-                seen = main.InDialogue ? "barter" : sneaking ? "pickpocket" : null;
+                seen = _containerFromTalk.GetValueOrDefault(id) ? "barter" : sneaking ? "pickpocket" : null;
                 if (_activity.GetValueOrDefault(id) is null && seen is null && _containerLogged.Add(id))
                     logger.LogInformation("[QuestSync] {Player} opened an item screen, not sneaking: a chest, not pockets.", sync.Nickname(id));
             }
