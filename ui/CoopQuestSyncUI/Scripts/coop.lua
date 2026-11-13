@@ -795,6 +795,9 @@ function S.menuKindCheck()
         local l = n:lower()
         if l:find("lockpick", 1, true) or l:find("lock_pick", 1, true) then
             kind = "lockpick"
+        elseif kind == "" and l == "wbp_modernmenu_container_c" then
+            -- Chests and pockets share it (2026-11-13): the server tells them apart by sneaking.
+            kind = "container"
         end
     end
     if kind ~= (S.menuKind or "") then

@@ -61,6 +61,7 @@ public sealed partial class ConversationRelay(IEntities entities, IServerEvents 
     private readonly Dictionary<PlayerId, string> _activity = new();
     /// <summary>The menu the player's add-on recognised (lockpicking), for menus the dialogue plugin can't see.</summary>
     private readonly Dictionary<PlayerId, string> _addonMenu = new();
+    private readonly HashSet<PlayerId> _containerLogged = new();
 
     /// <summary>What a player is doing in each menu the dialogue plugin reports, as the others read it.</summary>
     private static readonly Dictionary<string, string> Activities = new()
@@ -113,6 +114,7 @@ public sealed partial class ConversationRelay(IEntities entities, IServerEvents 
         _dialogueSlot.Remove(player);
         _activity.Remove(player);
         _addonMenu.Remove(player);
+        _containerLogged.Remove(player);
         _ghosts.Remove(player);
         if (_talks.ContainsKey(player))
             End(player);
@@ -342,7 +344,7 @@ public sealed partial class ConversationRelay(IEntities entities, IServerEvents 
 
     private void OnMenuKind(PlayerId player, string kind)
     {
-        if (kind.Length == 0 || !Activities.ContainsKey(kind))
+        if (kind.Length == 0 || (kind != "container" && !Activities.ContainsKey(kind)))
             _addonMenu.Remove(player);
         else
             _addonMenu[player] = kind;
@@ -357,7 +359,20 @@ public sealed partial class ConversationRelay(IEntities entities, IServerEvents 
         if (menu == "barter" && !main.InDialogue)
             menu = main.CharacterStateFlags.HasFlag(CharacterStateFlags.IsSneaking) ? "pickpocket" : null;
         if (menu is null && _addonMenu.TryGetValue(id, out var seen))
+        {
+            // The remaster's item screen (seen by the add-on; the dialogue plugin's MenuMode 1008 never fired for
+            // pockets, 2026-11-13): pockets while sneaking, a merchant in a conversation, else a chest.
+            if (seen == "container")
+            {
+                var sneaking = main.CharacterStateFlags.HasFlag(CharacterStateFlags.IsSneaking);
+                seen = main.InDialogue ? "barter" : sneaking ? "pickpocket" : null;
+                if (_activity.GetValueOrDefault(id) is null && seen is null && _containerLogged.Add(id))
+                    logger.LogInformation("[QuestSync] {Player} opened an item screen, not sneaking: a chest, not pockets.", sync.Nickname(id));
+            }
             menu = seen;
+        }
+        else
+            _containerLogged.Remove(id);
         var doing = menu is not null && Activities.TryGetValue(menu, out var label) ? label : null;
         _activity.TryGetValue(id, out var was);
         if (doing == was)
