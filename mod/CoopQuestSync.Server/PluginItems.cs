@@ -1,4 +1,4 @@
-using OblivionMp.Sdk.Common.Archetypes;
+using OblivionMP.SDK.Common.Archetypes;
 
 namespace CoopQuestSync.Server;
 

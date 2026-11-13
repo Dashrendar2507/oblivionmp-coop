@@ -16,8 +16,34 @@ public sealed partial class CoopRpc
     public event Action<PlayerId>? GiveUpRequested;
     public event Action<PlayerId>? FollowToggled;
     public event Action<PlayerId>? JoinRequested;
+    public event Action<PlayerId>? GotoRequested;
+    public event Action<PlayerId>? RebornLoaded;
+    public event Action<PlayerId, string>? MenuKindReported;
+    public event Action<PlayerId, string>? TextLanguageReported;
+    public event Action<PlayerId, string>? TextFoundReceived;
 
-    partial void OnJoinTalker(RpcContext context) => JoinRequested?.Invoke(context.Sender);
+    partial void OnTextLanguage(RpcContext context, string language) => TextLanguageReported?.Invoke(context.Sender, language);
+
+    partial void OnTextFound(RpcContext context, string json) => TextFoundReceived?.Invoke(context.Sender, json);
+
+    /// <summary>
+    /// Asked first when the join key comes in: true when it was taken (a teammate asked to come, and this accepts), so
+    /// the conversation join doesn't run as well.
+    /// </summary>
+    public Func<PlayerId, bool>? JoinTaken;
+
+    partial void OnJoinTalker(RpcContext context)
+    {
+        if (JoinTaken?.Invoke(context.Sender) == true)
+            return;
+        JoinRequested?.Invoke(context.Sender);
+    }
+
+    partial void OnTravelToFriend(RpcContext context) => GotoRequested?.Invoke(context.Sender);
+
+    partial void OnRebirthLoaded(RpcContext context) => RebornLoaded?.Invoke(context.Sender);
+
+    partial void OnMenuKind(RpcContext context, string kind) => MenuKindReported?.Invoke(context.Sender, kind);
 
     partial void OnToggleFollow(RpcContext context) => FollowToggled?.Invoke(context.Sender);
 

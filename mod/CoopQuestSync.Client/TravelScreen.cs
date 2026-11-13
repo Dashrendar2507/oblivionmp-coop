@@ -1,5 +1,5 @@
 using Microsoft.Extensions.Logging;
-using OblivionMp.Sdk;
+using OblivionMP.SDK;
 using OblivionMpCSharpMod;
 using ReadyM.Cef;
 using ReadyM.SDK.Attributes;
@@ -16,7 +16,7 @@ namespace CoopQuestSync.Client;
 /// pop-up during the join's catch-up must stay visible to be closed), and lifts by itself after a while.
 /// </summary>
 [Service]
-public sealed partial class TravelScreen(CefHost cef, IPlayers players, IInput input, ILogger logger)
+public sealed partial class TravelScreen(CefHost cef, IPlayers players, IInput input, ConsoleBridge console, ILogger logger)
 {
     private const string Host = "coopwitness";
     private const float MaxSeconds = 50f;
@@ -67,6 +67,22 @@ public sealed partial class TravelScreen(CefHost cef, IPlayers players, IInput i
         _up = 0;
     }
 
+    /// <summary>A load took the page (the rebirth's reload): make it again, black at once, if the screen is wanted.</summary>
+    public void Refresh()
+    {
+        _held = false;
+        if (_text is not null)
+            _fresh = true;
+    }
+
+    /// <summary>
+    /// The rebirth's reload is starting: make no page until <see cref="Refresh"/>. A page made right after the rebirth,
+    /// while OblivionMP was tearing the world down for the reload, left that reload loading forever (2026-11-13).
+    /// </summary>
+    public void Hold() => _held = true;
+
+    private bool _held;
+
     private void Update()
     {
         var dt = Time.DeltaTime;
@@ -114,7 +130,7 @@ public sealed partial class TravelScreen(CefHost cef, IPlayers players, IInput i
             Lift();
             return;
         }
-        if (_inWorld < InWorldSeconds)
+        if (_inWorld < InWorldSeconds || _held || players.LocalMainCharacter is null)
             return;
         if (_fresh)
         {
@@ -167,6 +183,8 @@ public sealed partial class TravelScreen(CefHost cef, IPlayers players, IInput i
             _checkIn2 = 0.2f;
             if (!File.Exists(TravelRan))
                 return;
+            try { _watchedPositionCell = File.ReadAllText(TravelRan).StartsWith("player.positioncell ", StringComparison.Ordinal); }
+            catch { _watchedPositionCell = false; }
             _watching = true;
             _sawLoad = false;
             _watchFor = 0;
@@ -181,12 +199,26 @@ public sealed partial class TravelScreen(CefHost cef, IPlayers players, IInput i
         }
         else if (_sawLoad)
             _settled += dt;
-        if (_settled < 1f && _watchFor < 20f)
+        // A positioncell the game takes starts its load within a second or two; one it ignores never does
+        // (2026-11-13 12:27 and 12:35), so don't wait the full 20 s to find out.
+        var noLoadAfter = _watchedPositionCell ? PositionCellNoLoadSeconds : 20f;
+        if (_settled < 1f && (_sawLoad ? _watchFor < 20f : _watchFor < noLoadAfter))
             return;
         _watching = false;
         _moving = false;
+        string ran = "";
+        try { ran = File.ReadAllText(TravelRan).Trim(); } catch { /* gone, or the add-on is writing it */ }
         try { File.Delete(TravelRan); } catch { /* next time */ }
         logger.LogInformation("[QuestSync] In the new place after the move{Note}.", _settled >= 1f ? "" : " (no load seen)");
+        // A player.positioncell the game ignored (no load, 2026-11-13 12:27): the door's coc now, not after the
+        // server's 45 s.
+        if (!_sawLoad && ran.StartsWith("player.positioncell ", StringComparison.Ordinal)
+            && ran.Split(' ') is { Length: 6 } parts)
+        {
+            logger.LogInformation("[QuestSync] The game ignored {Command}; going in through the door instead.", ran);
+            console.GoToCell(parts[5]);
+            return;
+        }
         if (_text is not null)
         {
             _fresh = true;      // the load took the page: a new one, black at once
@@ -197,6 +229,8 @@ public sealed partial class TravelScreen(CefHost cef, IPlayers players, IInput i
     }
 
     private float _checkIn2;
+    private bool _watchedPositionCell;
+    private const float PositionCellNoLoadSeconds = 6f;
 
     private void Touch(string path)
     {

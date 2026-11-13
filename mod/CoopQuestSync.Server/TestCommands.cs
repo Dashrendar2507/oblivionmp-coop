@@ -1,6 +1,6 @@
 using OblivionMp.ChatMod.Common;
 using OblivionMp.ChatMod.Serverside;
-using OblivionMp.Sdk.Common.Archetypes;
+using OblivionMP.SDK.Common.Archetypes;
 using ReadyM.Api.Idents;
 using ReadyM.SDK.Attributes;
 using ReadyM.SDK.Server.Entities;
@@ -20,17 +20,22 @@ namespace CoopQuestSync.Server;
 ///                               During /coop test talk, the join key travels to the pinned spot, as if Ghost stood there
 /// /coop calm [player | all | near]: stop fights that went wrong (your area; a player's area and bounty; every area;
 /// the NPC closest to you). See CombatService.
+///   /coop test goto           - /coop goto's checks and cooldown, then the trip to the pinned spot, as if Ghost stood there
+///   /coop test askme          - Ghost asks to come to you (as if you had typed /coop goto lock): Alt+Y or /coop accept answers
 ///   /coop test status         - what the server knows about you: phase, area, talking, menu, frozen, switches
 ///   /coop test asghost on|off - the server treats you like Ghost, a player who isn't an admin, so you can see the
 ///                               admin commands refused without a second player (open to everyone)
-/// /coop calm and /coop test are for admins only (see <see cref="CommandAccess"/>); /coop follow, join, revive and giveup are for everyone.
+/// /coop goto [name | lock | unlock] and /coop accept [name]: travel to a teammate at any time (see <see cref="TeleportService"/>).
+/// /coop calm and /coop test are for admins only (see <see cref="CommandAccess"/>); /coop follow, join, revive, giveup,
+/// goto and accept are for everyone.
 /// </summary>
 [Service]
 public sealed partial class TestCommands(IChat chat, IEntities entities, QuestTokenSync sync, GameData data,
-    ConversationRelay talks, PartyService party, ReturnOnJoin returns, CombatService combat, CoopRpc rpc, CommandAccess access)
+    ConversationRelay talks, PartyService party, ReturnOnJoin returns, CombatService combat, CoopRpc rpc, CommandAccess access,
+    TeleportService teleport)
 {
     private const string Ghost = "Ghost";
-    private const string Usage = "/coop follow | join | revive | giveup, /coop calm [player | all | near], or /coop test talk [ask] | stop | stage <quest> <stage> | effects <quest> | revive | voice | pin | back | status | asghost on|off";
+    private const string Usage = "/coop follow | join | revive | giveup | goto [name | lock | unlock] | accept [name], /coop calm [player | all | near], or /coop test talk [ask] | stop | stage <quest> <stage> | effects <quest> | revive (or heal) | voice | pin | back | goto | askme | status | asghost on|off";
 
     private void Start() => chat.AddCommand("coop", Usage, Run);
 
@@ -44,6 +49,16 @@ public sealed partial class TestCommands(IChat chat, IEntities entities, QuestTo
                 return;
             var result = combat.Calm(sender, string.Join(' ', parts.Skip(1)));
             Reply(sender, result);
+            return;
+        }
+        // Travel to a teammate at any time (open to everyone, see TeleportService).
+        if (parts.Length >= 1 && parts[0].ToLowerInvariant() is "goto" or "accept")
+        {
+            var rest = string.Join(' ', parts.Skip(1));
+            if (parts[0].Equals("goto", StringComparison.OrdinalIgnoreCase))
+                teleport.Goto(sender, rest);
+            else
+                teleport.Accept(sender, rest);
             return;
         }
         // Same as the keys, for when a key doesn't get through.
@@ -106,6 +121,11 @@ public sealed partial class TestCommands(IChat chat, IEntities entities, QuestTo
                     Reply(sender, "Wait until the server shows you as \"in sync\" on the page, then try again.");
                     break;
                 }
+                if (view.Suppressed.Contains(quest))
+                {
+                    Reply(sender, $"{quest} was reset on the web page while you play: your game still has its old stages, so the server takes its tokens until you rejoin. Rejoin, then try again.");
+                    break;
+                }
                 if (view.Stages.Contains(stage))
                 {
                     Reply(sender, $"You already have {stage}. Pick a stage you don't have yet.");
@@ -115,7 +135,7 @@ public sealed partial class TestCommands(IChat chat, IEntities entities, QuestTo
                 sync.PushOne(me, stage);
                 var on = effects.Where(e => sync.Settings.Allowed("live", e)).ToList();
                 var off = effects.Except(on).ToList();
-                Reply(sender, $"{Ghost} advanced {data.QuestName(quest)} to stage {stageNo}."
+                Reply(sender, $"{Ghost} advanced {data.QuestName(quest, sync.LanguageOf(sender))} to stage {stageNo}."
                     + (effects.Count == 0 ? " This stage has no effects on the player."
                         : $" Effects you should get: {(on.Count > 0 ? string.Join(", ", on) : "none")}. Switched off: {(off.Count > 0 ? string.Join(", ", off) : "none")}."));
                 break;
@@ -134,6 +154,7 @@ public sealed partial class TestCommands(IChat chat, IEntities entities, QuestTo
             }
 
             case "revive":
+            case "heal":    // no R in it: OblivionMP's rebirth key fires even while typing in the chat (2026-11-13)
                 Reply(sender, party.TestRevive(sender, Ghost) ? "Ghost revived you." : "You are not down. Die first (console: kill), with \"When a player dies\" set to revive.");
                 break;
 
@@ -171,6 +192,14 @@ public sealed partial class TestCommands(IChat chat, IEntities entities, QuestTo
                 Reply(sender, returns.TestBack(sender));
                 break;
 
+            case "goto":
+                Reply(sender, teleport.TestGoto(sender));
+                break;
+
+            case "askme":
+                Reply(sender, teleport.TestAskMe(sender));
+                break;
+
             case "status":
             {
                 if (!sync.Players.TryGetValue(sender, out var view))
@@ -180,7 +209,8 @@ public sealed partial class TestCommands(IChat chat, IEntities entities, QuestTo
                 Reply(sender, $"Phase {view.Phase}{(view.CatchingUp ? " (catching up)" : "")}, area {(view.Area is { } area ? GameData.AreaKey(area) : "unknown")}, "
                     + $"talking {view.InDialogue}, menu {talks.Activity(sender) ?? "none"}, in combat {view.InCombat}, frozen {view.WantFrozen}. "
                     + $"Effect switches now ({phase}): {string.Join(", ", allowed)}. Dialogue text loaded: {(data.HasText ? "yes" : "no")}. "
-                    + returns.Describe(sender) + " " + combat.Describe());
+                    + $"Your game's language: {view.Language ?? "not known yet"}{(view.Language is { } lang ? $" (server has {data.Learned(lang).Found} texts learned in it)" : "")}. "
+                    + returns.Describe(sender) + " " + teleport.Describe(sender) + " " + combat.Describe());
                 break;
             }
 

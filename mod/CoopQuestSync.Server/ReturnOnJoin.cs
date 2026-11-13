@@ -1,9 +1,9 @@
 using System.Numerics;
 using Microsoft.Extensions.Logging;
-using OblivionMp.Sdk.Common.Archetypes;
+using OblivionMP.SDK.Common.Archetypes;
 using ReadyM.Api.Idents;
-using ReadyM.Relay.Server.Sdk.Ecs;
-using ReadyM.Relay.Server.Sdk.Events;
+using ReadyM.SDK.Server.Events;
+using ReadyM.SDK.Archetypes.Core;
 using ReadyM.SDK.Attributes;
 using ReadyM.SDK.Server.Entities;
 
@@ -43,12 +43,23 @@ public sealed class ReturnSpot
 /// </summary>
 [Service]
 public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents events, QuestTokenSync sync, GameData data,
-    CoopRpc rpc, ILogger logger)
+    CoopRpc rpc, QuestSyncConfig config, ILogger logger)
 {
     /// <summary>How long a player stays in an area before they are moved: the game must have finished loading it.</summary>
     private const float SettleSeconds = 4f;
-    /// <summary>How long to wait for the game to take the player into the building.</summary>
-    private const float CellTimeoutSeconds = 25f;
+    /// <summary>
+    /// How long a join waits for the plugin's handshake before deciding where the player goes. A brand-new character
+    /// spends a minute in the main menu and the race menu first (2026-11-13: plugin seen 56 s after joining), and
+    /// only the plugin can say they are new (CQSIntro).
+    /// </summary>
+    private const float PluginWaitSeconds = 150f;
+    /// <summary>How long to wait for the game to take the player into the building. Longer than the add-on may hold a
+    /// command back (30 s, while the join's quest catch-up or a menu runs), or the server gave up before the trip.</summary>
+    private const float CellTimeoutSeconds = 45f;
+    /// <summary>No sign of a positioncell trip after this long: coc instead, for this trip only. Longer than the add-on's
+    /// 30 s hold, so the positioncell has run by then: 0.6.6's 15 s sent a coc while it still waited (a second console
+    /// move right behind the first), and then used coc for every later trip until the server restarted.</summary>
+    private const float DirectTimeoutSeconds = 45f;
     private const float RecordEverySeconds = 2f;
     private const float SaveEverySeconds = 60f;
     /// <summary>Faster than this up or down (cm/s) is falling or jumping, not standing.</summary>
@@ -58,6 +69,13 @@ public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents event
     private static readonly float[] RecheckAfter = [2f, 5f, 10f];
     /// <summary>The travel screen lifts after this long whatever happens.</summary>
     private const float ScreenMaxSeconds = 45f;
+    /// <summary>A client too old to say its reload is over: go on after this long anyway.</summary>
+    private const float RebornTimeoutSeconds = 25f;
+    /// <summary>After the client says its reload is over, the server's view of the player's area may lag a little.</summary>
+    private const float RebornAreaSeconds = 1.5f;
+    /// <summary>The trip waits this long after the rebirth's reload: a player.positioncell 0.7 s after the reload did
+    /// nothing at all (2026-11-13 12:27), while one 13 s after the join's load worked.</summary>
+    private const float AfterReloadSeconds = 6f;
     /// <summary>
     /// One game unit in centimetres, and the side of an exterior cell in game units: for the cell <c>cow</c> asks
     /// for. Only roughly right is needed: once the player is in the world space, the server puts them on the spot.
@@ -77,6 +95,8 @@ public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents event
         public bool Started;
         public ReturnSpot? Going;
         public float GoingSince;
+        /// <summary>The trip in was asked as positioncell (straight onto the spot): coc if that does nothing.</summary>
+        public bool Direct;
         public Vector3? Target;
         /// <summary>Where the game had put them before the move (the door, for a coc).</summary>
         public Vector3 MovedFrom;
@@ -92,6 +112,14 @@ public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents event
         public PlayerId? Joining;
         /// <summary>Where they stood lately on the ground in this area, newest last.</summary>
         public readonly List<Vector3> Trail = new();
+        /// <summary>Brought back to life: OblivionMP reloads their save first, then they go to the party (<see cref="AfterRebirth"/>).</summary>
+        public bool Reborn;
+        public bool RebornLoaded;
+        public float RebornLoadedAt;
+        public float RebornSince;
+        public float FirstSeen;
+        public PlayerId? RebornTo;
+        public ReturnSpot? RebornSpot;
     }
 
     /// <summary>A player who travelled to a teammate has arrived next to them.</summary>
@@ -104,12 +132,21 @@ public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents event
     private float _sinceSave;
     private readonly HashSet<string> _unknownAreas = new();
 
-    private void Start() => events.OnPlayerDisconnected += OnPlayerDisconnected;
-
-    private void Stop() => events.OnPlayerDisconnected -= OnPlayerDisconnected;
-
-    private void OnPlayerDisconnected(PlayerId player, Entity _, LiteNetLib.DisconnectReason __)
+    private void Start()
     {
+        events.OnPlayerDisconnected += OnPlayerDisconnected;
+        rpc.RebornLoaded += OnRebornLoaded;
+    }
+
+    private void Stop()
+    {
+        events.OnPlayerDisconnected -= OnPlayerDisconnected;
+        rpc.RebornLoaded -= OnRebornLoaded;
+    }
+
+    private void OnPlayerDisconnected(Player gone, Guid _, LiteNetLib.DisconnectReason __)
+    {
+        var player = gone.PlayerId;
         _sessions.Remove(player);
         _pinned.Remove(player);
         sync.MarkDirty();   // the state file gets their last spot now
@@ -137,7 +174,7 @@ public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents event
                 continue;
             var area = GameData.AreaKey(areaId);
             if (!_sessions.TryGetValue(id, out var s))
-                _sessions[id] = s = new Session();
+                _sessions[id] = s = new Session { FirstSeen = _clock };
             if (s.Area != area)
             {
                 s.Area = area;
@@ -147,8 +184,35 @@ public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents event
             var name = sync.Nickname(id);
             var settled = _clock - s.Since >= SettleSeconds;
 
+            if (s.Reborn)
+            {
+                var loaded = s.RebornLoaded && _clock - s.Since >= RebornAreaSeconds && _clock - s.RebornLoadedAt >= AfterReloadSeconds;
+                if (main.IsDead || !(loaded || (_clock - s.RebornSince > RebornTimeoutSeconds && settled)))
+                    continue;
+                s.Reborn = false;
+                FinishRebirth(main, name, area, s);
+                continue;
+            }
+
             if (!s.Started)
             {
+                // A new character with an old nickname (2026-11-13: taken from the race menu to the shop where that
+                // nickname last stood): nothing happens until the plugin has said whether they left the sewers.
+                if (view.Phase != QuestTokenSync.Phase.Ready && _clock - s.FirstSeen < PluginWaitSeconds)
+                    continue;
+                // Never left the sewers (a new character, in the prison or choosing a start): the game's or the new
+                // start's place, not where this nickname last stood. Decided once the plugin has had time to say so.
+                if (view.Intro > 0 && sync.Players.ContainsKey(id))
+                {
+                    if (!settled)
+                        continue;
+                    s.Started = true;
+                    s.Resolved = true;
+                    if (s.Screen)
+                        LowerScreen(id, s);
+                    logger.LogInformation("[QuestSync] {Player}: hasn't left the sewers, so not taken back to where they last played.", name);
+                    continue;
+                }
                 if (!s.ScreenAsked)
                 {
                     s.ScreenAsked = true;
@@ -182,6 +246,14 @@ public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents event
                     }
                     else
                         Place(main, name, s, going, going.Cell is null ? "back where you left" : "back inside");
+                }
+                else if (s.Direct && going.Cell is { } door && area != going.Area && _clock - s.GoingSince > DirectTimeoutSeconds)
+                {
+                    s.Direct = false;
+                    s.GoingSince = _clock;
+                    logger.LogWarning("[QuestSync] {Player}: player.positioncell didn't take them into {Cell} in {Seconds} s; trying coc.",
+                        name, door, DirectTimeoutSeconds);
+                    rpc.SendGoToCell(id, door);
                 }
                 else if (_clock - s.GoingSince > CellTimeoutSeconds)
                 {
@@ -247,19 +319,18 @@ public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents event
         {
             s.Going = spot;
             s.GoingSince = _clock;
-            if (s.Joining is { } to)
-                RaiseScreen(main.PlayerId, s, $"Travelling to {sync.Nickname(to)}...");
-            rpc.SendGoToCell(main.PlayerId, cell);
-            logger.LogInformation("[QuestSync] {Player} {Why} {Cell}: asking their game to go there.",
-                name, s.Joining is null ? "left inside" : "travels into", cell);
+            ScreenForMove(main.PlayerId, s);
+            s.Direct = config.ArriveInsideDirectly;
+            rpc.SendGoToCell(main.PlayerId, s.Direct ? $"{cell} {GameXyz(spot)}" : cell);
+            logger.LogInformation("[QuestSync] {Player} {Why} {Cell}: asking their game to go there ({How}).",
+                name, s.Joining is null ? "left inside" : "travels into", cell, s.Direct ? "player.positioncell" : "coc");
             return;
         }
         if (WorldPlace(spot) is { } place)
         {
             s.Going = spot;
             s.GoingSince = _clock;
-            if (s.Joining is { } to)
-                RaiseScreen(main.PlayerId, s, $"Travelling to {sync.Nickname(to)}...");
+            ScreenForMove(main.PlayerId, s);
             rpc.SendGoToWorld(main.PlayerId, place);
             logger.LogInformation("[QuestSync] {Player} {Why} {Area}: asking their game to go there (cow {Place}).",
                 name, s.Joining is null ? "left outdoors in" : "travels to", spot.Area, place);
@@ -272,6 +343,17 @@ public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents event
         }
         logger.LogInformation("[QuestSync] {Player} left in {Then} but joined in {Now}; they stay where the game put them.", name, spot.Area, area);
         s.Resolved = true;
+    }
+
+    /// <summary>
+    /// The black screen for a move through a load (coc or cow), whatever started it: a join, a trip to a teammate, a
+    /// test, a respawn. Without it the player saw the new place for a moment, then the jump onto the spot
+    /// (2026-11-12, the Alt+Y test join).
+    /// </summary>
+    private void ScreenForMove(PlayerId id, Session s)
+    {
+        var text = s.Joining is { } to ? $"Travelling to {sync.Nickname(to)}..." : s.Screen ? s.ScreenText : "Travelling...";
+        RaiseScreen(id, s, text);
     }
 
     /// <summary>A black screen with this line on the player's game while it moves them (setting "Black screen while travelling").</summary>
@@ -330,6 +412,16 @@ public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents event
     /// "cow" arguments for an outdoor spot in another world space ("Tamriel 3 24"), or null for an interior.
     /// OblivionMP names an exterior area "L_" + the world space's editor id; the cell is worked out from the position.
     /// </summary>
+    /// <summary>
+    /// The spot in the game's own units for <c>player.positioncell</c>: "x y z", a little above the floor (the server
+    /// puts the player exactly on the spot once they are in).
+    /// </summary>
+    private static string GameXyz(ReturnSpot spot)
+    {
+        static int Clamp(float v) => (int)Math.Clamp(MathF.Round(v), -999999f, 999999f);
+        return $"{Clamp(spot.X / UnitCm)} {Clamp(-spot.Y / UnitCm)} {Clamp(spot.Z / UnitCm + 20)}";
+    }
+
     private static string? WorldPlace(ReturnSpot spot)
     {
         if (GameData.IsInterior(spot.Area) || !spot.Area.StartsWith("L_", StringComparison.Ordinal))
@@ -376,12 +468,19 @@ public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents event
     /// area, else into their building or world space through the add-on first. Returns what to tell the player, or
     /// null when they were moved at once (the move says so itself).
     /// </summary>
-    public string? Bring(PlayerId who, PlayerId to)
+    public string? Bring(PlayerId who, PlayerId to) => Bring(who, to, out _);
+
+    /// <inheritdoc cref="Bring(PlayerId, PlayerId)"/>
+    /// <param name="started">True when the player was moved or is on their way; false when the trip was refused.</param>
+    public string? Bring(PlayerId who, PlayerId to, out bool started)
     {
+        started = false;
         if (!entities.TryLookup(who, out MainCharacter main) || !sync.Players.TryGetValue(who, out var view) || view.Area is not { } areaId)
             return "The server doesn't know where you are yet.";
         if (main.IsDead)
             return "You can't travel while you are down.";
+        if (sync.HoldsForIntro(view))
+            return "Finish the intro first: go out through the sewer gate.";
         var them = sync.Nickname(to);
         if (NearSpot(to, main) is not { } spot)
             return $"The server doesn't know where {them} is yet.";
@@ -397,6 +496,7 @@ public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents event
             _sessions[who] = s = new Session { Area = here, Since = _clock };
         s.Started = true;
         s.Joining = to;
+        started = true;
         if (spot.Area == here)
         {
             s.Joining = null;
@@ -406,6 +506,82 @@ public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents event
         }
         GoTo(main, name, here, s, spot);
         return $"Travelling to {them}...";
+    }
+
+    /// <summary>
+    /// The player is being brought back to life (a revive or a respawn). OblivionMP does it with its "rebirth", which
+    /// reloads the player's own save, wherever that was (2026-11-12: Alt+G in a shop put the player outside, at the
+    /// save's spot). So the travel screen goes up now, and once the reload is over the player travels next to
+    /// <paramref name="to"/>, else to <paramref name="pos"/> in <paramref name="area"/> (where they fell, or their last
+    /// safe spot), into a building or another world space too.
+    /// </summary>
+    public void AfterRebirth(PlayerId who, PlayerId? to, AreaId? area, Vector3? pos, string text)
+    {
+        if (!_sessions.TryGetValue(who, out var s))
+            _sessions[who] = s = new Session { Since = _clock };
+        s.Started = true;
+        s.Going = null;
+        s.Joining = null;
+        s.Target = null;
+        s.Reborn = true;
+        s.RebornLoaded = false;
+        s.RebornSince = _clock;
+        s.RebornTo = to;
+        s.RebornSpot = null;
+        if (area is { } a && pos is { } p)
+        {
+            var key = GameData.AreaKey(a);
+            s.RebornSpot = new ReturnSpot
+            {
+                Area = key, Cell = GameData.IsInterior(key) ? data.InteriorCell(key) : null,
+                X = p.X, Y = p.Y, Z = p.Z,
+                Yaw = entities.TryLookup(who, out MainCharacter m) ? m.Rotation : 0,
+            };
+        }
+        RaiseScreen(who, s, text);
+    }
+
+    /// <summary>The client's reload after the rebirth is over (sent by its Resurrection).</summary>
+    private void OnRebornLoaded(PlayerId player)
+    {
+        if (_sessions.TryGetValue(player, out var s) && s.Reborn)
+        {
+            s.RebornLoaded = true;
+            s.RebornLoadedAt = _clock;
+        }
+    }
+
+    private void FinishRebirth(MainCharacter main, string name, string area, Session s)
+    {
+        var id = main.PlayerId;
+        if (s.Screen)
+            RaiseScreen(id, s, s.ScreenText); // the reload dropped the page
+        if (s.RebornTo is { } to && entities.TryLookup(to, out MainCharacter _))
+        {
+            var message = Bring(id, to, out var started);
+            if (started)
+            {
+                if (message is not null)
+                    rpc.SendNotice(id, message);
+                logger.LogInformation("[QuestSync] {Player}: after the reload, back to {To}.", name, sync.Nickname(to));
+                return;
+            }
+            if (message is not null && message.StartsWith("You are already next to", StringComparison.Ordinal))
+            {
+                s.Resolved = true;
+                return;
+            }
+            logger.LogInformation("[QuestSync] {Player}: after the reload, can't go to {To} ({Why}).", name, sync.Nickname(to), message);
+        }
+        if (s.RebornSpot is { } spot)
+        {
+            logger.LogInformation("[QuestSync] {Player}: after the reload, back to {Place}.", name, spot.Cell ?? spot.Area);
+            GoTo(main, name, area, s, spot);
+            return;
+        }
+        s.Resolved = true;
+        rpc.SendNotice(id, "You are back where your save put you.");
+        logger.LogInformation("[QuestSync] {Player}: after the reload, nowhere to take them; they stay where the save put them.", name);
     }
 
     /// <summary>Test: remembers where the player stands now, for <see cref="TestBack"/>.</summary>

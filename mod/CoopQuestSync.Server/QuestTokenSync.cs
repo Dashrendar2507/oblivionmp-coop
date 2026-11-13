@@ -3,15 +3,15 @@ using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using OblivionMp.ChatMod.Common;
 using OblivionMp.ChatMod.Serverside;
-using OblivionMp.Sdk.Common.Archetypes;
-using OblivionMp.Sdk.Common.Archetypes.Mixins;
-using OblivionMp.Sdk.Serverside.Items;
+using OblivionMP.SDK.Common.Archetypes;
+using OblivionMP.SDK.Common.Archetypes.Mixins;
+using OblivionMP.SDK.Serverside.Items;
 using ReadyM.Api.Idents;
 using ReadyM.Relay.Common.Oblivion;
 using ReadyM.Relay.Common.Oblivion.ECS.Values;
 using ReadyM.Relay.Common.Oblivion.Rpc;
-using ReadyM.Relay.Server.Sdk.Ecs;
-using ReadyM.Relay.Server.Sdk.Events;
+using ReadyM.SDK.Server.Events;
+using ReadyM.SDK.Archetypes.Core;
 using ReadyM.SDK.Attributes;
 using ReadyM.SDK.Server.Entities;
 
@@ -70,6 +70,18 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
 
     /// <summary>Where each player last stood outdoors: the fallback when they can't be taken back inside.</summary>
     public Dictionary<string, ReturnSpot> Outdoors { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Someone has left the sewers on this server, so the prison intro has been played (or skipped) here: new players
+    /// start at the sewer exit. See <see cref="NewStart"/>.
+    /// </summary>
+    public bool SewersLeft { get; set; }
+
+    /// <summary>
+    /// Players (by nickname) who typed /coop goto lock: others must ask them before travelling to them. See
+    /// <see cref="TeleportService"/>.
+    /// </summary>
+    public SortedSet<string> GotoLocked { get; } = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>Saves the state file on the next pass.</summary>
     public void MarkDirty() => _dirty = true;
@@ -134,7 +146,20 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
         public bool InDialogue;
         public bool InCombat;
         public AreaId? Area;
+
+        /// <summary>
+        /// The plugin's CQSIntro: 0 once the player has left the sewers (MQ01 88), 1 while they are in the prison intro,
+        /// 2 while they never left the sewers but no intro runs (not the vanilla start). See <see cref="NewStart"/>.
+        /// </summary>
+        public int Intro;
+        /// <summary>Shared stages wait until the player is out of the sewers: replaying MQ02 would stop their intro.</summary>
+        public bool IntroHeld;
+        /// <summary>The language the player's game runs in ("fr"), from their client; null until it says.</summary>
+        public string? Language;
     }
+
+    /// <summary>The language <paramref name="id"/>'s game runs in, or null (then the page's text is used).</summary>
+    public string? LanguageOf(PlayerId id) => _players.TryGetValue(id, out var view) ? view.Language : null;
 
     private readonly record struct Snapshot(uint? ModIndex, HashSet<QuestStage> Stages, int Busy, int Ack,
         Dictionary<uint, int> Items, List<(uint FormId, int Count)> Legacy, Dictionary<uint, int> Own);
@@ -181,9 +206,9 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
         SaveState();
     }
 
-    private void OnPlayerConnected(PlayerId playerId, Entity _) => _players[playerId] = new PlayerView();
+    private void OnPlayerConnected(Player joined, Guid _) => _players[joined.PlayerId] = new PlayerView();
 
-    private void OnPlayerDisconnected(PlayerId playerId, Entity _, LiteNetLib.DisconnectReason __) => _players.Remove(playerId);
+    private void OnPlayerDisconnected(Player gone, Guid _, LiteNetLib.DisconnectReason __) => _players.Remove(gone.PlayerId);
 
     private void OnPlayerJoinedArea(PlayerId playerId, AreaId area) => View(playerId).Area = area;
 
@@ -234,6 +259,7 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
             }
             view.ModIndex = snap.ModIndex;
             view.Own = snap.Own;
+            view.Intro = Map.IntroLocalId != 0 ? snap.Own.GetValueOrDefault(Map.IntroLocalId) : 0;
             var slot = snap.ModIndex.Value;
 
             switch (view.Phase)
@@ -380,6 +406,24 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
                 if (!_players.TryGetValue(main.PlayerId, out var view) || view.Phase != Phase.Ready)
                     continue;
                 var joining = nowReady.Any(m => m.PlayerId == main.PlayerId);
+                // Still in the intro (or about to choose a start): no shared stages yet. MQ02 25 stops the intro, and
+                // the party's progress would land in the prison. The catch-up runs once they are out of the sewers.
+                if (HoldsForIntro(view))
+                {
+                    if ((joining || sharedChanged || view.PendingPush) && !view.IntroHeld)
+                    {
+                        view.IntroHeld = true;
+                        logger.LogInformation("[QuestSync] {Player}: still in the intro; the party's progress waits until they leave the sewers.", Nickname(main.PlayerId));
+                    }
+                    view.PendingPush = false;
+                    continue;
+                }
+                if (view.IntroHeld)
+                {
+                    view.IntroHeld = false;
+                    joining = true;
+                    logger.LogInformation("[QuestSync] {Player}: out of the sewers; catching up with the party.", Nickname(main.PlayerId));
+                }
                 if (!(joining || sharedChanged || view.PendingPush))
                     continue;
                 if (Settings.HoldDuringDialogue && view.InDialogue && !joining)
@@ -408,14 +452,33 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
         RebuildState();
     }
 
+    /// <summary>
+    /// Whether the party's progress waits for this player: they are in the prison intro, or never left the sewers and
+    /// are choosing or taking a start (<see cref="NewStart"/>). A player who never left the sewers while the mod leaves
+    /// the start to the game ("off") and no intro runs is not held: nothing would ever end the wait.
+    /// </summary>
+    public bool HoldsForIntro(PlayerView view)
+    {
+        if (view.Intro == 1)
+            return true;
+        if (view.Intro != 2)
+            return false;
+        return Settings.NewStart != "off"
+               || view.Own.GetValueOrDefault(Map.StartDoneLocalId) > 0 || view.Own.GetValueOrDefault(Map.StartPrisonLocalId) > 0;
+    }
+
     /// <summary>"Alice advanced Quest: journal text" in the other players' chat.</summary>
     private void Announce(PlayerId from, QuestStage stage)
     {
-        var text = data.StageText(stage);
-        var line = $"{Nickname(from)} advanced {data.QuestName(stage.Quest)}" + (text is null ? $" (stage {stage.Stage})." : $": {text}");
-        foreach (var (id, _) in _players)
-            if (id != from)
-                chat.SendTo(id, line, ChatLineKind.System);
+        foreach (var (id, view) in _players)
+        {
+            if (id == from)
+                continue;
+            // In each player's own language, where the server has the text in it.
+            var text = data.StageText(stage, view.Language);
+            var line = $"{Nickname(from)} advanced {data.QuestName(stage.Quest, view.Language)}" + (text is null ? $" (stage {stage.Stage})." : $": {text}");
+            chat.SendTo(id, line, ChatLineKind.System);
+        }
     }
 
     /// <summary>
@@ -580,6 +643,10 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
             return false;
         if (view.Stages.Contains(stage))
             return true;
+        // Reset while they play: the server takes this quest's tokens until they rejoin (their game still has its
+        // stages), so a token given now would be taken back at once (2026-11-13, MS05).
+        if (view.Suppressed.Contains(stage.Quest))
+            return false;
         if (!Give(main, view, stage))
             return false;
         Bump(main, view);
@@ -705,7 +772,8 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
             {
                 id = id.ToString(),
                 name = Nickname(id),
-                phase = view.ModIndex is null ? "NoPlugin" : view.CatchingUp ? "CatchingUp" : view.Phase.ToString(),
+                phase = view.ModIndex is null ? "NoPlugin" : view.CatchingUp ? "CatchingUp" : view.Phase == Phase.Ready && HoldsForIntro(view) ? "Intro" : view.Phase.ToString(),
+                intro = view.Intro,
                 stages = view.Stages.GroupBy(s => s.Quest).ToDictionary(g => g.Key, g => g.Select(s => s.Stage).Order().ToArray()),
                 area = view.Area is { } a ? GameData.AreaKey(a) : null,
                 talking = view.InDialogue,
@@ -725,6 +793,7 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
             players,
             shared = Shared.ToDictionary(kv => kv.Key, kv => kv.Value.ToArray()),
             reset = ResetQuests.ToArray(),
+            sewersLeft = SewersLeft,
             access = AccessInfo?.Invoke(),
         }, CoopSettings.Json);
     }
@@ -739,6 +808,8 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
         public CoopSettings? Settings { get; set; }
         public Dictionary<string, ReturnSpot>? Returns { get; set; }
         public Dictionary<string, ReturnSpot>? Outdoors { get; set; }
+        public bool? SewersLeft { get; set; }
+        public string[]? GotoLocked { get; set; }
     }
 
     private void LoadState()
@@ -764,8 +835,11 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
                 Returns[player] = spot;
             foreach (var (player, spot) in state.Outdoors ?? new())
                 Outdoors[player] = spot;
+            foreach (var player in state.GotoLocked ?? [])
+                GotoLocked.Add(player);
             if (state.AutoSync is { } auto)
                 AutoSync = auto;
+            SewersLeft = state.SewersLeft ?? false;
             if (state.Settings is not null)
                 Settings = state.Settings;
             else if (!string.IsNullOrWhiteSpace(state.SourcePlayer))
@@ -795,6 +869,8 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
                 Settings = Settings,
                 Returns = Returns,
                 Outdoors = Outdoors,
+                SewersLeft = SewersLeft,
+                GotoLocked = GotoLocked.ToArray(),
             };
             var tmp = StatePath + ".tmp";
             File.WriteAllText(tmp, JsonSerializer.Serialize(state, new JsonSerializerOptions { WriteIndented = true }));

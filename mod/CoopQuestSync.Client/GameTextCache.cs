@@ -2,7 +2,7 @@ using System.Globalization;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
-using OblivionMp.Sdk;
+using OblivionMP.SDK;
 using ReadyM.SDK.Attributes;
 
 namespace CoopQuestSync.Client;
@@ -34,6 +34,16 @@ public sealed partial class GameTextCache(ILogger logger)
     private float _waited;
     private bool _started;
 
+    /// <summary>Set by the mod's entry point: the RPCs to the server (resolved late, the RPC class needs this one).</summary>
+    public static Func<ClientRpc>? Rpc;
+
+    /// <summary>The language this game runs in, once known (the add-on's, else the settings' or Windows' guess).</summary>
+    private string? _language;
+    private bool _languageWanted;
+    /// <summary>Keys the server asked for (TextWanted), until they are all looked up and sent back.</summary>
+    private List<string>? _serverWants;
+    private float _serverWantsAt;
+
     private static string AddonFolder => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
         "ReadyM.Launcher", "Oblivion", "Mods", "CoopQuestSyncUI");
 
@@ -48,6 +58,7 @@ public sealed partial class GameTextCache(ILogger logger)
         {
             _pollIn = 0.1f;
             ReadReplies();
+            AnswerServer(false);
         }
         if (_started)
             return;
@@ -57,7 +68,86 @@ public sealed partial class GameTextCache(ILogger logger)
             return;
         _started = true;
         var languages = Candidates(fromAddon);
+        _language = languages[0];
+        if (_languageWanted)
+            SendLanguage();
         Task.Run(() => Load(languages));
+    }
+
+    /// <summary>
+    /// The server asks for the game's text (keys, one per line), to keep for its web page and chat lines; an empty
+    /// request asks only which language this game runs in. The add-on looks the keys up in the running game.
+    /// </summary>
+    public void ServerWants(string keys)
+    {
+        _languageWanted = true;
+        if (_language is null)
+            return; // answered once the language is known (no text before that either)
+        SendLanguage();
+        var list = keys.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(k => k.StartsWith("LOC_", StringComparison.Ordinal) && k.Length < 200).Distinct().Take(1000).ToList();
+        if (list.Count == 0)
+            return;
+        _serverWants = list;
+        _serverWantsAt = _clock;
+        if (_text is null && !_addonSilent)
+        {
+            // Asked again even when asked before: a reply may have been lost.
+            var ask = list.Where(k => !_fromGame.ContainsKey(k)).ToList();
+            foreach (var k in ask)
+                _asked.Add(k);
+            WriteRequest(ask);
+        }
+        AnswerServer(false);
+    }
+
+    private void SendLanguage()
+    {
+        try
+        {
+            Rpc?.Invoke().SendTextLanguage(_language!);
+        }
+        catch (Exception e)
+        {
+            logger.LogWarning("[QuestSync] Couldn't tell the server the game's language: {Error}", e.Message);
+        }
+    }
+
+    /// <summary>Sends the server the text it asked for, once every key is looked up (or after 20 s, what there is).</summary>
+    private void AnswerServer(bool force)
+    {
+        if (_serverWants is not { } wants || _language is null)
+            return;
+        var late = _clock - _serverWantsAt > 20f;
+        var text = new Dictionary<string, string>(StringComparer.Ordinal);
+        string? error = null;
+        if (_text is { } files)
+            foreach (var k in wants)
+                text[k] = files.TryGetValue(k, out var v) ? v : "";
+        else if (_addonSilent)
+            error = "the CoopQuestSyncUI add-on doesn't answer";
+        else
+        {
+            foreach (var k in wants)
+                if (_fromGame.TryGetValue(k, out var v))
+                    text[k] = v;
+            if (text.Count < wants.Count && !late && !force)
+                return;
+            if (text.Count == 0)
+                error = "the CoopQuestSyncUI add-on didn't answer in time";
+        }
+        _serverWants = null;
+        try
+        {
+            var json = System.Text.Json.JsonSerializer.Serialize(new { language = _language, text, error });
+            Rpc?.Invoke().SendTextFound(json);
+            logger.LogInformation("[QuestSync] Sent the server {Count} of {Wanted} game text(s) in {Language}{Error}.",
+                text.Count(kv => kv.Value.Length > 0), wants.Count, _language, error is null ? "" : $" ({error})");
+        }
+        catch (Exception e)
+        {
+            logger.LogWarning("[QuestSync] Couldn't send the server the game's text: {Error}", e.Message);
+        }
     }
 
     private void Load(List<string> languages)
@@ -179,7 +269,11 @@ public sealed partial class GameTextCache(ILogger logger)
     /// <summary>Asks the add-on for these keys (once each).</summary>
     public void Request(IEnumerable<string> keys)
     {
-        var fresh = keys.Where(k => _asked.Add(k)).ToList();
+        WriteRequest(keys.Where(k => _asked.Add(k)).ToList());
+    }
+
+    private void WriteRequest(List<string> fresh)
+    {
         if (fresh.Count == 0)
             return;
         try

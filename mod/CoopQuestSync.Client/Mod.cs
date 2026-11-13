@@ -3,8 +3,8 @@ using Microsoft.Extensions.Logging;
 using ReadyM.Api.DI;
 using ReadyM.Cef.Rpc;
 using ReadyM.SDK.Attributes;
-using ReadyM.Sdk.Common.Input;
-using OblivionMp.Sdk;
+using OblivionMpCSharpMod.Input;
+using OblivionMP.SDK;
 
 namespace CoopQuestSync.Client;
 
@@ -21,6 +21,9 @@ public sealed partial class Mod(IDependencyContainer services, IInput input, ILo
         var keys = new CoopKeys(input, () => services.Resolve<ClientRpc>(), logger);
         services.RegisterSingleton<CoopKeys, CoopKeys>(keys);
         keys.Start();
+
+        // The game's text: the server asks this game for it (in its language) and keeps it for its page and chat.
+        GameTextCache.Rpc = () => services.Resolve<ClientRpc>();
 
         logger.LogInformation("[QuestSync] Client half loaded.");
     }

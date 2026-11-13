@@ -1,20 +1,20 @@
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
-using OblivionMp.Sdk;
-using ReadyM.Sdk.Common.Input;
+using OblivionMP.SDK;
+using OblivionMpCSharpMod.Input;
 
 namespace CoopQuestSync.Client;
 
 /// <summary>
 /// The co-op keys (Alt + a letter): listen in or leave a conversation, travel to the talker, revive the teammate next to you, respawn when
-/// you are down. The letters come from the server (web page), so a key the game also uses can be moved.
+/// you are down, travel to a teammate at any time. The letters come from the server (web page), so a key the game also uses can be moved.
 ///
 /// The binds are polled, not "unhandled by UI": the game's own input takes the keys it uses before an unhandled bind
 /// would see them. A polled bind also lets the game see the key, hence keys the game doesn't use.
 /// </summary>
 public sealed class CoopKeys(IInput input, Func<ClientRpc> rpc, ILogger logger)
 {
-    public static readonly Dictionary<string, string> Defaults = new() { ["follow"] = "U", ["join"] = "Y", ["revive"] = "H", ["respawn"] = "G" };
+    public static readonly Dictionary<string, string> Defaults = new() { ["follow"] = "U", ["join"] = "Y", ["revive"] = "H", ["respawn"] = "G", ["goto"] = "O" };
 
     private readonly Dictionary<string, (string Key, IDisposable? Bind)> _binds = new();
     private readonly Dictionary<string, DateTime> _lastPress = new();
@@ -24,7 +24,7 @@ public sealed class CoopKeys(IInput input, Func<ClientRpc> rpc, ILogger logger)
 
     public void Start() => Apply(Defaults);
 
-    /// <summary>The server's keys. json: { follow, join, revive, respawn }.</summary>
+    /// <summary>The server's keys. json: { follow, join, revive, respawn, goto }.</summary>
     public void Update(string json)
     {
         var keys = JsonSerializer.Deserialize<Dictionary<string, string>>(json) ?? new();
@@ -67,6 +67,7 @@ public sealed class CoopKeys(IInput input, Func<ClientRpc> rpc, ILogger logger)
             case "join": rpc().SendJoinTalker(); break;
             case "revive": rpc().SendReviveNearest(); break;
             case "respawn": rpc().SendGiveUp(); break;
+            case "goto": rpc().SendTravelToFriend(); break;
         }
     }
 }

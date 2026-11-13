@@ -1,4 +1,3 @@
-using ReadyM.Api.Multiplayer;
 using ReadyM.SDK.Attributes;
 
 namespace CoopQuestSync.Common;
@@ -32,7 +31,7 @@ public static partial class CoopRpcContracts
     /// </summary>
     [ServerToClient] public static partial void PartyStatus(string json);
 
-    /// <summary>The co-op keys, Alt + these letters. json: { follow, join, revive, respawn }.</summary>
+    /// <summary>The co-op keys, Alt + these letters. json: { follow, join, revive, respawn, goto }.</summary>
     [ServerToClient] public static partial void Keys(string json);
 
     /// <summary>
@@ -71,8 +70,37 @@ public static partial class CoopRpcContracts
     /// <summary>A short message for the middle of the screen.</summary>
     [ServerToClient] public static partial void Notice(string text);
 
+    /// <summary>
+    /// The player is down: "&lt;seconds&gt;|&lt;text&gt;" for a note that stays on screen until they are back up (the
+    /// text's {s} counts down); an empty string takes it away. A 5 s notice was lost under OblivionMP's own "You died"
+    /// message (2026-11-13).
+    /// </summary>
+    [ServerToClient] public static partial void Down(string text);
+
     /// <summary>The player was revived, or is respawned: the game brings them back to life.</summary>
     [ServerToClient] public static partial void Resurrect();
+
+    /// <summary>
+    /// A new player stands at the sewer exit (the intro skipped): the game opens the race, class and birthsign menus,
+    /// one after the other.
+    /// </summary>
+    [ServerToClient] public static partial void MakeCharacter();
+
+    /// <summary>
+    /// The server would like the game's text for these keys (LOC_..., one per line), in this player's language: their
+    /// game looks them up (the CoopQuestSyncUI add-on asks the running game) and answers with <see cref="TextFound"/>.
+    /// That is how the server gets its text without reading the game's compressed files.
+    /// </summary>
+    [ServerToClient] public static partial void TextWanted(string keys);
+
+    /// <summary>The language this player's game runs in ("en", "fr", "pt-BR"...), once the client knows it.</summary>
+    [ClientToServer] public static partial void TextLanguage(string language);
+
+    /// <summary>
+    /// The answer to <see cref="TextWanted"/>. json: { language, text: { key: text } }; an empty text means the game
+    /// has none for that key.
+    /// </summary>
+    [ClientToServer] public static partial void TextFound(string json);
 
     /// <summary>The player pressed the revive key: the server looks for a downed player close by.</summary>
     [ClientToServer] public static partial void ReviveNearest();
@@ -85,4 +113,22 @@ public static partial class CoopRpcContracts
 
     /// <summary>A downed player gives up waiting and respawns next to the party.</summary>
     [ClientToServer] public static partial void GiveUp();
+
+    /// <summary>
+    /// The goto key: travel to a teammate (the last one picked with /coop goto, the leader, or the only other player),
+    /// or accept the request of a teammate who asked to come.
+    /// </summary>
+    [ClientToServer] public static partial void TravelToFriend();
+
+    /// <summary>
+    /// After a revive or respawn: OblivionMP's rebirth reloaded the player's save and the player is back in the
+    /// world, so the server can take them to the party.
+    /// </summary>
+    [ClientToServer] public static partial void RebirthLoaded();
+
+    /// <summary>
+    /// A menu the add-on recognised in the game's own screens ("lockpick"), or "" when it closed. For menus the dialogue
+    /// plugin's MenuMode can't see: the remaster's lockpicking never reached it (2026-11-13).
+    /// </summary>
+    [ClientToServer] public static partial void MenuKind(string kind);
 }

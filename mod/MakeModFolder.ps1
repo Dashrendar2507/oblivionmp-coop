@@ -141,7 +141,7 @@ Copy-BuildArtifacts -Files $manifestFiles -BaseDir $contentDir -DestRoot $modRoo
 
 # The game's text (strings.json, made from Game.locres) belongs to Bethesda and is never shipped. Remove any copy
 # left in the output from local testing, so it can't end up in a release zip.
-Get-ChildItem -Path $modRoot -Recurse -File -Include "strings.json", "*.locres" -ErrorAction SilentlyContinue | ForEach-Object {
+Get-ChildItem -Path $modRoot -Recurse -File -Include "strings.json", "*strings.json", "coop-quest-sync-strings*.json", "*.locres" -ErrorAction SilentlyContinue | ForEach-Object {
     Remove-Item -LiteralPath $_.FullName -Force
     Write-Warning "Removed $($_.Name) from the package: the game's text is never shipped."
 }

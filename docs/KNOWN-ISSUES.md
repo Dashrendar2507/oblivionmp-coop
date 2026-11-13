@@ -22,12 +22,18 @@ commands.
 
 ### The game's text comes from the players' own games
 
-Each player's add-on looks the overlay's text up in the running game. The server reads the text from the game's
-files only when the game is installed on the server computer; on a dedicated host the web page shows names worked
-out from the game's ids. The remaster's text is Oodle-compressed, so reading the files also needs
-`oo2core_9_win64.dll` on that computer (the mod never downloads it);
-the log says so, and the FModel route in [INSTALL.md](INSTALL.md#real-names-and-lines-on-the-page-and-the-overlay)
-still works. Only English has been tried.
+Each player's add-on looks the overlay's text up in the running game, so the overlay always has words. The server
+can't read the game's files on a standard install (the remaster's text is Oodle-compressed and the game ships no
+`oo2core_9_win64.dll`; the mod never downloads anything), so it learns the text from the players' games instead:
+a few minutes in the background, the first time a player of each language joins. Until then the web page shows
+names worked out from the game's ids.
+
+* Any player of a language can teach the server that language's text, so a player with a modded or tampered game
+  could put odd names on the page and in chat. Only keys the server asked for are taken, the first answer wins, and a
+  host's own file always comes first. Delete `coop-quest-sync-strings.<language>.json` to learn it again, or set
+  `"LearnTextFromPlayers": false`.
+* The web page shows one language (`"Language"` in config.json, English by default, or the first one learned).
+* Only English has been tried so far.
 
 ## Quests
 
@@ -41,11 +47,25 @@ still works. Only English has been tried.
 * **The tutorial (MQ01) isn't shared.** It's the game's help pop-ups, not a real quest.
 * **"Leader only"** shares only the leader's stages. Stages others reached before you switched stay shared.
 
+## New players
+
+* **The prison intro plays once per world.** The Emperor, the Blades and the prison doors are shared. Once someone
+  has played the intro, the Emperor stays dead and the doors stay open for everybody, so later players start at the
+  sewer exit. The mod offers the prison only until someone has left the sewers on the server.
+* **Two new players in the prison at the same time** won't both get the intro: the Emperor and the Blades follow
+  one player (the game that runs them). Start one at a time, or have the second one take the sewer exit.
+* **Baurus** leaves for his later part in the main quest at the end of the intro. If nobody plays the intro on the
+  server, he may stay in the prison. Not tested yet.
+* **Everyone who starts gets an Amulet of Kings.** It's a quest item and can't be dropped. The spare copies go once
+  Jauffre has it (setting "Take back spare amulets").
+* **OblivionMP may change how new characters start.** If a new player hasn't left the sewers but the intro isn't
+  running, the mod only offers the sewer exit, and the server log says `OblivionMP's new-player start has changed`.
+
 ## Conversations
 
 * **The overlay runs a few seconds behind.** The game reports a line when it ends, so watchers read it after the
-  talker heard it. The voice plays with the text, from nowhere (not from the NPC), and can't yet be cut short when
-  you leave the conversation: the current line finishes.
+  talker heard it. The voice plays with the text, from nowhere (not from the NPC). It
+  should stop when you leave the conversation (Alt+U); tell us if a line keeps playing.
 * **You can still turn the camera while frozen.** The freeze stops walking and fighting, not looking around.
 * **Menus might not be recognised.** Barter, persuasion, training and so on are detected by the original game's
   menu numbers. If the overlay never says "is bartering" (or another menu), tell us which one.
@@ -54,7 +74,7 @@ still works. Only English has been tried.
 * **Letting watchers walk around** during someone's conversation ("Freeze watchers: Nobody") hasn't been tested
   much. NPCs near the walker may stand still or jump into place. Reports welcome.
 * **The compass may disappear** while a co-op banner or overlay is on screen.
-* **Travelling to a conversation (Alt+Y)** into another building or world space relies on the add-on running the
+* **Travelling to a conversation (Alt+Y) or to a teammate (`/coop goto`, Alt+O)** into another building or world space relies on the add-on running the
   console's `coc` or `cow` command. You arrive on a spot the talker walked through a moment ago, or a step beside
   them, which in a tight room can be against a wall.
 
@@ -65,10 +85,13 @@ still works. Only English has been tried.
   in one player's game (the area's master), and the server can't order an NPC to attack a given player. The server
   log now says who fights where (`Combat:` lines), to find out what OblivionMP already shares.
 * **`/coop calm` stops fights, not grudges.** An NPC that is still hostile (an enemy faction, a low disposition) can
-  start again. Guards also come back while you still have a bounty: calm that player by name to clear it.
+  start again. Guards also come back while you still have a bounty: calm that player by name to clear it. Inside
+  dungeons the server doesn't know which area an NPC is in, so calm takes the fighting NPCs within about 40 m of the
+  players there instead: a fight further away needs `/coop calm all`.
 * **Followers and companions** aren't shared or synced (not possible with OblivionMP's SDK 1.0).
-* **Respawning next to someone only works in the same area** (both outside, or the same interior). Otherwise you
-  come back where you last stood on solid ground.
+* **Getting back up reloads your save.** OblivionMP brings a dead player back with its "rebirth", which loads your
+  last local save. The mod then takes you back to the party (through the add-on's `coc`/`cow` when that's another
+  building or city), so it takes a load or two, behind a black screen.
 * **The co-op keys also reach the game.** Alt+U also presses U in the game, and so on. If that's a problem, pick
   other letters on the web page.
 

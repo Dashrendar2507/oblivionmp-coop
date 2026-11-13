@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
-using OblivionMp.Sdk;
+using OblivionMP.SDK;
 using OblivionMpCSharpMod;
 using ReadyM.SDK.Attributes;
 
@@ -18,9 +18,10 @@ namespace CoopQuestSync.Client;
 /// this mod runs, so a missing or old add-on is copied into place now and works from the next start of the game.
 /// </summary>
 [Service]
-public sealed partial class ConsoleBridge(IUserInterface ui, RestartNotice restart, ILogger logger)
+public sealed partial class ConsoleBridge(IUserInterface ui, IInput input, RestartNotice restart, ILogger logger)
 {
     private static readonly Regex CellId = new("^[A-Za-z0-9_]{1,64}$");
+    private static readonly Regex CellSpot = new("^([A-Za-z0-9_]{1,64}) (-?[0-9]{1,6}) (-?[0-9]{1,6}) (-?[0-9]{1,6})$");
     private static readonly Regex WorldPlace = new("^[A-Za-z0-9_]{1,64} -?[0-9]{1,4} -?[0-9]{1,4}$");
     private static readonly Regex RefId = new("^[0-9A-Fa-f]{1,8}$");
     /// <summary>Commands the server may ask for by name, with nothing of its own in them.</summary>
@@ -115,12 +116,19 @@ public sealed partial class ConsoleBridge(IUserInterface ui, RestartNotice resta
     /// <summary>Takes the player into an interior: <c>coc &lt;cell&gt;</c>.</summary>
     public void GoToCell(string cell)
     {
+        // "<cell> <x> <y> <z>": straight onto the spot inside, so the NPCs by the door don't greet the player first.
+        var m = CellSpot.Match(cell);
+        if (m.Success)
+        {
+            Move($"player.positioncell {m.Groups[2].Value} {m.Groups[3].Value} {m.Groups[4].Value} 0 {m.Groups[1].Value}");
+            return;
+        }
         if (!CellId.IsMatch(cell))
         {
             logger.LogWarning("[QuestSync] Ignored a cell name that isn't one: {Cell}", cell);
             return;
         }
-        Write("coc " + cell);
+        Move("coc " + cell);
     }
 
     /// <summary>Takes the player to a cell of an exterior world space: <c>cow &lt;world&gt; &lt;x&gt; &lt;y&gt;</c>.</summary>
@@ -131,7 +139,51 @@ public sealed partial class ConsoleBridge(IUserInterface ui, RestartNotice resta
             logger.LogWarning("[QuestSync] Ignored a place that isn't one: {Place}", place);
             return;
         }
-        Write("cow " + place);
+        Move("cow " + place);
+    }
+
+    /// <summary>A move waits until nothing has the keyboard: a load with the chat open leaves the game broken
+    /// (2026-11-13, <c>/coop goto</c> typed in the chat). Only the newest move waits.</summary>
+    private string? _heldMove;
+    private float _heldFor;
+    private float _freeFor;
+    private const float HoldMaxSeconds = 40f;
+
+    private void Move(string command)
+    {
+        if (_heldMove is null && input.CanApplyInput())
+        {
+            Write(command);
+            return;
+        }
+        if (_heldMove is null)
+        {
+            ui.ShowMessage("Co-op: close the chat to travel.", MessagePosition.Center, 4f);
+            logger.LogInformation("[QuestSync] Waiting for the chat or menu to close before: {Command}", command);
+        }
+        _heldMove = command;
+        _heldFor = 0;
+        _freeFor = 0;
+    }
+
+    private void Update()
+    {
+        if (_heldMove is not { } move)
+            return;
+        var dt = Time.DeltaTime;
+        _heldFor += dt;
+        _freeFor = input.CanApplyInput() ? _freeFor + dt : 0;
+        if (_freeFor >= 0.3f)
+        {
+            _heldMove = null;
+            Write(move);
+        }
+        else if (_heldFor > HoldMaxSeconds)
+        {
+            _heldMove = null;
+            logger.LogInformation("[QuestSync] Dropped {Command}: the chat or a menu stayed open {Seconds} s.", move, (int)HoldMaxSeconds);
+            ui.ShowMessage("Co-op: travel cancelled, the chat stayed open.", MessagePosition.Center, 5f);
+        }
     }
 
     /// <summary>Stops these NPCs' fights ("0001A2B3 FF000C41"): <c>&lt;ref&gt;.StopCombat</c> for each.</summary>

@@ -29,6 +29,11 @@ CoopQuestSync.esp
   * CQSReplay (global): counts down after the last SetStage; the batch ends when it reaches 0.
   * CQSAllow*: one per effect category (see scriptpatch.CATEGORIES).
   * CQSFreeze: while the server gives it, the player's controls are off (watching someone's conversation).
+  * New-player start (CQSNewStart quest, see NEW_START_SCRIPT): CQSIntro is held while the player hasn't left the
+    sewers (count 1 in the prison intro, 2 when no intro runs), so the server holds the quest catch-up. CQSStartOffer
+    from the server opens the start window (count 1: prison or sewer exit, 2: sewer exit only); the answer comes back
+    as CQSStartPrison, or CQSStartDone once the player stands at the sewer exit. CQSStartKit marks that the server
+    handed out the amulet and the starter kit.
   * Two Message lines frame each batch. The CoopQuestSyncUI Lua add-on hides every HUD
     notification between them, so a catch-up on join is silent.
 
@@ -49,6 +54,8 @@ BASE = 0xC05000           # unusual local ids so the server can spot our forms
 BEACON, SEQ, BUSY, ACK, GLOB_GO, GLOB_REPLAY = (BASE + i for i in range(6))
 ALLOW = {c: BASE + 0x100 + i for i, c in enumerate(scriptpatch.CATEGORIES)}
 FREEZE = BASE + 0x110
+# New-player start (see NEW_START_SCRIPT): the server's offer, the player's answers, and the intro flag.
+START_OFFER, START_PRISON, START_DONE, START_INTRO, START_KIT = (BASE + 0x120 + i for i in range(5))
 FIRST_FREE = BASE + 0x1000   # 0.2 test builds used ids below this; never reuse them
 LEGACY = range(BASE + 0x10, BASE + 0x30)  # token ids the 0.2 test build handed out; kept as inert items
 DLG_BEACON = 0xC08000        # the dialogue plugin's own beacon
@@ -241,6 +248,104 @@ CONTROL_SCRIPT = "\r\n".join([
     "EnablePlayerControls",
     "endif",
     "end"]) + "\r\n"
+
+# The vanilla intro (Charactergen) puts a new character in the prison, MQ01 88 is "has left the sewers". The skip does
+# what Charactergen's last stage does for the player's own game (MQ02 10 and 20, the topics), stops the intro, and puts
+# the player just inside the sewer gate, whose own script then offers to revise the character before going out. It
+# never runs Charactergen's stage scripts: those kill and move the Emperor and the Blades, who are shared NPCs.
+START_TOPICS = ["AmuletofKingsTopic", "WeynonPrioryTopic", "OrderofTalosTopic", "JauffreTopic", "UrielSeptimTopic"]
+START_ASK = "Welcome to the co-op server! Where do you want to start?"
+START_PRISON_BUTTON = "In the prison: play the intro"
+START_SKIP_BUTTON = "At the sewer exit: skip the intro"
+START_INFO = ("Welcome to the co-op server! You start at the sewer exit with the Amulet of Kings, "
+              "and make your character there.")
+NEW_START_SCRIPT = "\r\n".join([
+    "scn CQSNewStartScript", "float fQuestDelayTime", "short state", "short button", "short offer", "short want",
+    "short have", "short waited",
+    "begin GameMode",
+    "set fQuestDelayTime to 0.5",
+    # CQSIntro: 1 in the prison intro, 2 when the player never left the sewers but no intro runs, 0 once out.
+    "set want to 0",
+    "if GetStageDone MQ01 88 == 0",
+    "set want to 2",
+    "if GetStage Charactergen >= 5",
+    "set want to 1",
+    "endif",
+    "endif",
+    "set have to player.GetItemCount CQSIntro",
+    "if have < want",
+    "player.AddItem CQSIntro 1",
+    "elseif have > want",
+    "player.RemoveItem CQSIntro 1",
+    "endif",
+    "if state == 0",
+    "set offer to player.GetItemCount CQSStartOffer",
+    "if offer > 0 && want > 0 && player.GetItemCount CQSStartDone == 0 && player.GetItemCount CQSStartPrison == 0",
+    "if offer == 1",
+    f'MessageBox "{START_ASK}", "{START_PRISON_BUTTON}", "{START_SKIP_BUTTON}"',
+    "else",
+    f'MessageBox "{START_INFO}", "Continue"',
+    "endif",
+    "set state to 1",
+    "set waited to 0",
+    "endif",
+    "elseif state == 1",
+    # The box pauses the game, so this only counts while it is closed: an answer comes on the first run after.
+    # No answer for 5 s means the box was lost (a load): show it again.
+    "set button to GetButtonPressed",
+    "if button >= 0",
+    "if offer == 1 && button == 0",
+    "player.AddItem CQSStartPrison 1",
+    "set state to 2",
+    "else",
+    "set state to 3",
+    "endif",
+    "else",
+    "set waited to waited + 1",
+    "if waited > 10",
+    "set state to 0",
+    "endif",
+    "endif",
+    "elseif state == 3",
+    "set state to 2",
+    # A save from before the fix below can still be at state 3 after going out: no skip then.
+    "if GetStageDone MQ01 88 == 0",
+    "if GetStageDone MQ02 10 == 0",
+    "SetStage MQ02 10",
+    "endif",
+    "if GetStageDone MQ02 20 == 0",
+    "SetStage MQ02 20",
+    "endif"]
+    + [f"AddTopic {t}" for t in START_TOPICS]
+    + ["StopQuest Charactergen",
+       # MoveTo on the player ends the script there (2026-11-13: CQSStartDone never came and state stayed 3, so the
+       # player was moved back to the sewer exit every half second, even after going out): everything else first.
+       "player.AddItem CQSStartDone 1",
+       "player.MoveTo CGSewerExitMarker",
+       "endif",
+       # Chose already (an answer item is there) or out of the sewers: nothing to do. Back to 0 if the answer item is
+       # gone (an admin offered the start again).
+       "elseif player.GetItemCount CQSStartDone == 0 && player.GetItemCount CQSStartPrison == 0",
+       "set state to 0",
+       "endif",
+       "end"]) + "\r\n"
+
+# Vanilla forms the new-start script names, looked up in Oblivion.esm by editor id.
+START_FORMS = ["MQ01", "MQ02", "Charactergen", "CGSewerExitMarker", *START_TOPICS]
+
+
+def vanilla_forms(lo, edids):
+    """Editor id (lower case) -> form id, for these editor ids in Oblivion.esm (the first plugin)."""
+    want = {e.lower() for e in edids}
+    out = {}
+    for r in tes4.iter_records(lo.sources[0].buf, want={"QUST", "DIAL", "CELL", "REFR"}):
+        if r.edid and r.edid.lower() in want and r.edid.lower() not in out:
+            out[r.edid.lower()] = r.formid
+    missing = want - out.keys()
+    if missing:
+        raise SystemExit(f"not found in {lo.sources[0].name}: {sorted(missing)}")
+    return out
+
 
 # Menus the talker can open from a conversation (and lockpicking), by the game's menu codes. While one is open, the
 # dialogue plugin keeps its token in the inventory, so the server can tell the witnesses "Alice is bartering".
@@ -445,6 +550,9 @@ def build_main(lo, outdir, only):
     mod = lo.mod
     names = {"cqsbeacon": mod | BEACON, "cqsseq": mod | SEQ, "cqsbusy": mod | BUSY, "cqsack": mod | ACK,
              "cqsfreeze": mod | FREEZE}
+    start_items = {"CQSStartOffer": START_OFFER, "CQSStartPrison": START_PRISON, "CQSStartDone": START_DONE,
+                   "CQSIntro": START_INTRO, "CQSStartKit": START_KIT}
+    names.update({k.lower(): mod | v for k, v in start_items.items()})
     names.update({k.lower(): mod | v for k, v in GLOBALS.items()})
     names.update({f"cqsallow{c}": mod | v for c, v in ALLOW.items()})
     for q in quests:
@@ -466,6 +574,8 @@ def build_main(lo, outdir, only):
         clot.append(token_record(mod | local, edid))
     for c, local in ALLOW.items():
         clot.append(token_record(mod | local, f"CQSAllow{c.capitalize()}"))
+    for edid, local in start_items.items():
+        clot.append(token_record(mod | local, edid))
     for local in LEGACY:
         clot.append(token_record(mod | local, f"CQSLegacy{local:06X}"))
     glob = [glob_record(mod | v, k) for k, v in GLOBALS.items()]
@@ -517,6 +627,13 @@ def build_main(lo, outdir, only):
     rec, _ = scpt_record(mod | csid, "CQSControlScript", CONTROL_SCRIPT, resolve)
     scpt.append(rec)
     qust.append(quest_record(mod | cqid, "CQSControl", mod | csid))
+    # The new-player start. Its own names: vanilla forms the quest tables above may leave out (Charactergen is never
+    # mirrored), on top of ours.
+    start_names = {**vanilla_forms(lo, START_FORMS), **names}
+    nsid, nqid = nxt, nxt + 1; nxt += 2
+    rec, _ = scpt_record(mod | nsid, "CQSNewStartScript", NEW_START_SCRIPT, lambda n: start_names.get(n.lower()))
+    scpt.append(rec)
+    qust.append(quest_record(mod | nqid, "CQSNewStart", mod | nsid))
 
     count = len(glob) + len(clot) + len(scpt) + len(qust) + len(overrides)
     data = tes4write.header(count, nxt, "CoopQuestSync generator",
@@ -533,6 +650,8 @@ def build_main(lo, outdir, only):
         json.dump(dict(plugin=PLUGIN, masters=lo.masters, beacon=f"{BEACON:06X}", seq=f"{SEQ:06X}",
                        busy=f"{BUSY:06X}", ack=f"{ACK:06X}", freeze=f"{FREEZE:06X}",
                        allow={c: f"{v:06X}" for c, v in ALLOW.items()}, categories=scriptpatch.CATEGORIES,
+                       newStart=dict(offer=f"{START_OFFER:06X}", prison=f"{START_PRISON:06X}",
+                                     done=f"{START_DONE:06X}", intro=f"{START_INTRO:06X}", kit=f"{START_KIT:06X}"),
                        legacy=[f"{BASE + 0x10:06X}", f"{BASE + 0x30:06X}"], tokenName=TOKEN_NAME,
                        questItems=[f"{x:08X}" for x in quest_items], quests=mapping), f, indent=1)
     stages = sum(len(q["stages"]) for q in quests)

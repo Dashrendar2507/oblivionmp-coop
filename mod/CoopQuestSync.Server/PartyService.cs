@@ -3,12 +3,12 @@ using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using OblivionMp.ChatMod.Common;
 using OblivionMp.ChatMod.Serverside;
-using OblivionMp.Sdk.Common.Archetypes;
-using OblivionMp.Sdk.Serverside;
+using OblivionMP.SDK.Common.Archetypes;
+using OblivionMP.SDK.Serverside;
 using ReadyM.Api.Idents;
 using ReadyM.Relay.Common.Oblivion.ECS.Values;
-using ReadyM.Relay.Server.Sdk.Ecs;
-using ReadyM.Relay.Server.Sdk.Events;
+using ReadyM.SDK.Server.Events;
+using ReadyM.SDK.Archetypes.Core;
 using ReadyM.SDK.Attributes;
 using ReadyM.SDK.Server.Entities;
 
@@ -18,18 +18,17 @@ namespace CoopQuestSync.Server;
 /// Party rules: what happens when a player dies, the tags over players' heads, and level scaling and difficulty.
 ///
 /// Death, with the default "revive": the player stays down. A teammate standing close presses the revive key to bring them
-/// back where they fell. After ReviveSeconds (or when the downed player presses the respawn key) they come back next to the
-/// leader, or, when the leader is the one down or is not around, next to the first other player by name.
-/// The server can only move a player within their current area, so a player whose party is in another area comes
-/// back where they fell.
+/// back next to them. After ReviveSeconds (or when the downed player presses the respawn key) they come back next to the
+/// leader, or, when the leader is the one down or is not around, next to the first other player by name, in any area;
+/// with nobody else up, on their last safe spot.
+/// Coming back to life is OblivionMP's "rebirth", which reloads the player's own save: <see cref="ReturnOnJoin.AfterRebirth"/>
+/// takes them where they belong once that reload is over, behind the travel screen.
 /// </summary>
 [Service]
 public sealed partial class PartyService(IEntities entities, IServerEvents events, QuestTokenSync sync, ConversationRelay talks,
-    CoopRpc rpc, IChat chat, SessionScaling scaling, SessionDifficulty difficulty, ILogger logger)
+    CoopRpc rpc, IChat chat, SessionScaling scaling, SessionDifficulty difficulty, ReturnOnJoin travel, ILogger logger)
 {
     private const float TickSeconds = 0.25f;
-    private const float MoveAfterResurrectSeconds = 1.5f;
-    private const float SpawnOffset = 120f;
 
     private sealed class Downed
     {
@@ -39,8 +38,7 @@ public sealed partial class PartyService(IEntities entities, IServerEvents event
 
     private readonly Dictionary<PlayerId, Downed> _downed = new();
     private readonly Dictionary<PlayerId, bool> _wasDead = new();
-    /// <summary>Players just resurrected who should be put next to someone: (when, who to stand by).</summary>
-    private readonly Dictionary<PlayerId, (float At, PlayerId? Anchor, Vector3? Spot)> _moves = new();
+    private readonly HashSet<PlayerId> _downNoted = new();
 
     /// <summary>
     /// Where each player recently stood on solid ground, in their current area, so a respawn can avoid the place
@@ -82,24 +80,25 @@ public sealed partial class PartyService(IEntities entities, IServerEvents event
         };
         events.OnPlayerDisconnected += OnPlayerDisconnected;
         // The session's rules live on the world entity, which exists once the server has made it.
-        events.OnWorldEntityCreated += OnWorldCreated;
+        events.OnWorldCreated += OnWorldCreated;
     }
 
-    private void OnWorldCreated(Entity _) => ApplySessionRules();
+    private void OnWorldCreated(World _) => ApplySessionRules();
 
     private void Stop()
     {
         rpc.ReviveRequested -= OnReviveRequested;
         rpc.GiveUpRequested -= OnGiveUp;
         events.OnPlayerDisconnected -= OnPlayerDisconnected;
-        events.OnWorldEntityCreated -= OnWorldCreated;
+        events.OnWorldCreated -= OnWorldCreated;
     }
 
-    private void OnPlayerDisconnected(PlayerId player, Entity _, LiteNetLib.DisconnectReason __)
+    private void OnPlayerDisconnected(Player gone, Guid _, LiteNetLib.DisconnectReason __)
     {
+        var player = gone.PlayerId;
         _downed.Remove(player);
         _wasDead.Remove(player);
-        _moves.Remove(player);
+        _downNoted.Remove(player);
         _trails.Remove(player);
         _diedAt.Remove(player);
         _keysSent.Remove(player);
@@ -137,7 +136,7 @@ public sealed partial class PartyService(IEntities entities, IServerEvents event
         _elapsed = 0;
 
         var settings = sync.Settings;
-        var keys = JsonSerializer.Serialize(new { follow = settings.KeyFollow, join = settings.KeyJoin, revive = settings.KeyRevive, respawn = settings.KeyRespawn });
+        var keys = JsonSerializer.Serialize(new { follow = settings.KeyFollow, join = settings.KeyJoin, revive = settings.KeyRevive, respawn = settings.KeyRespawn, @goto = settings.KeyGoto });
         foreach (var main in entities.Query<MainCharacter>())
         {
             var id = main.PlayerId;
@@ -161,45 +160,39 @@ public sealed partial class PartyService(IEntities entities, IServerEvents event
             else if (!dead && was)
             {
                 if (_downed.Remove(id))
-                    logger.LogInformation("[QuestSync] {Player} is back on their feet.", sync.Nickname(id));
+                {
+                    // Up while still down for us: OblivionMP's own rebirth (R, or on its own after a while, 2026-11-13),
+                    // which reloads the player's save. Take them back as a respawn would, once that reload is over.
+                    var anchor = Anchor(id);
+                    var area = _trails.TryGetValue(id, out var trail) ? trail.Area : null;
+                    travel.AfterRebirth(id, anchor, area, SafeSpot(id),
+                        anchor is { } a ? $"Back next to {sync.Nickname(a)}..." : "Back where you fell...");
+                    logger.LogInformation("[QuestSync] {Player} came back through OblivionMP's own rebirth; taking them back after its reload.", sync.Nickname(id));
+                }
+            }
+
+            // The down note on the player's screen: up while down, gone once back up (or brought back).
+            var noted = _downNoted.Contains(id);
+            if (_downed.ContainsKey(id) != noted)
+            {
+                if (noted)
+                {
+                    _downNoted.Remove(id);
+                    rpc.SendDown(id, "");
+                }
+                else if (_downed.TryGetValue(id, out var d))
+                {
+                    _downNoted.Add(id);
+                    rpc.SendDown(id, $"{(int)Math.Max(0, d.Until - _clock)}|You are down. A teammate next to you can revive you ({settings.Key("revive")}). "
+                        + $"{settings.Key("respawn")}: back with the party now, or in {{s}} s. Don't press R, even in the chat: that's OblivionMP's own rebirth.");
+                }
             }
 
             if (_downed.TryGetValue(id, out var down))
             {
                 if (_clock >= down.Until)
                     Respawn(id, "time is up");
-                else if (_clock - down.LastReminder >= 15f)
-                {
-                    down.LastReminder = _clock;
-                    rpc.SendNotice(id, $"You are down. A teammate can revive you ({settings.Key("revive")} next to you). Back in {(int)(down.Until - _clock)} s, or {settings.Key("respawn")} to respawn now.");
-                }
             }
-        }
-
-        // Respawned players: once the game has brought them back, put them next to their anchor, or on their last
-        // safe spot when nobody is in their area.
-        foreach (var (id, (at, anchor, spot)) in _moves.ToList())
-        {
-            if (_clock < at)
-                continue;
-            _moves.Remove(id);
-            if (!entities.TryLookup(id, out MainCharacter me))
-                continue;
-            if (anchor is { } a && sync.SameArea(id, a) && entities.TryLookup(a, out MainCharacter by))
-            {
-                me.Position = by.Position + new Vector3(SpawnOffset, 0, 0);
-                logger.LogInformation("[QuestSync] {Player} respawned next to {Anchor}.", sync.Nickname(id), sync.Nickname(a));
-            }
-            else if (spot is { } p)
-            {
-                me.Position = p;
-                rpc.SendNotice(id, anchor is { } other
-                    ? $"{sync.Nickname(other)} is somewhere else; you are back where you last stood safely."
-                    : "You are back where you last stood safely.");
-                logger.LogInformation("[QuestSync] {Player} respawned on their last safe spot.", sync.Nickname(id));
-            }
-            else
-                rpc.SendNotice(id, "You are back where you fell.");
         }
 
         SendStatus(settings);
@@ -257,6 +250,8 @@ public sealed partial class PartyService(IEntities entities, IServerEvents event
             return;
         }
         _downed.Remove(target);
+        // OblivionMP's rebirth reloads the player's save: they come back next to whoever revived them.
+        travel.AfterRebirth(target, helper, null, null, $"{sync.Nickname(helper)} revived you...");
         rpc.SendResurrect(target);
         rpc.SendNotice(target, $"{sync.Nickname(helper)} revived you.");
         rpc.SendNotice(helper, $"You revived {sync.Nickname(target)}.");
@@ -268,6 +263,10 @@ public sealed partial class PartyService(IEntities entities, IServerEvents event
     {
         if (!_downed.Remove(id))
             return false;
+        // Ghost stands where you fell: back there after the rebirth's reload.
+        var area = sync.Players.TryGetValue(id, out var view) ? view.Area : null;
+        Vector3? fell = entities.TryLookup(id, out MainCharacter me) ? me.Position : null;
+        travel.AfterRebirth(id, null, area, fell, $"{helper} revived you...");
         rpc.SendResurrect(id);
         rpc.SendNotice(id, $"{helper} revived you.");
         logger.LogInformation("[QuestSync] Test: {Helper} revived {Player}.", helper, sync.Nickname(id));
@@ -283,15 +282,19 @@ public sealed partial class PartyService(IEntities entities, IServerEvents event
             Respawn(id, "gave up");
     }
 
-    /// <summary>Brings the player back, then moves them next to the leader (or the first other player by name).</summary>
+    /// <summary>
+    /// Brings the player back, then next to the leader (or the first other player by name), in any area; with nobody
+    /// else up, on their last safe spot where they died. OblivionMP's rebirth reloads the player's save first, so the
+    /// trip happens after that reload (see <see cref="ReturnOnJoin.AfterRebirth"/>).
+    /// </summary>
     private void Respawn(PlayerId id, string why)
     {
         _downed.Remove(id);
-        rpc.SendResurrect(id);
         var anchor = Anchor(id);
-        _moves[id] = (_clock + MoveAfterResurrectSeconds, anchor, SafeSpot(id));
-        if (anchor is { } a && sync.SameArea(id, a))
-            rpc.SendNotice(id, $"Respawning next to {sync.Nickname(a)}.");
+        var area = _trails.TryGetValue(id, out var trail) ? trail.Area : null;
+        travel.AfterRebirth(id, anchor, area, SafeSpot(id),
+            anchor is { } a ? $"Respawning next to {sync.Nickname(a)}..." : "Respawning...");
+        rpc.SendResurrect(id);
         logger.LogInformation("[QuestSync] {Player} respawns ({Why}).", sync.Nickname(id), why);
     }
 

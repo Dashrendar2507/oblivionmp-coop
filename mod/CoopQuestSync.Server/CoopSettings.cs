@@ -82,6 +82,15 @@ public sealed class CoopSettings
     /// <summary>A black screen with one line while the game moves a player (back on join, or to a teammate).</summary>
     public bool TravelScreen { get; set; } = true;
 
+    /// <summary>Players can travel to a teammate whenever they like: /coop goto &lt;name&gt; or the goto key.</summary>
+    public bool TeleportAnytime { get; set; } = true;
+
+    /// <summary>Seconds a player waits between two trips with /coop goto (0: no wait).</summary>
+    public int TeleportCooldown { get; set; } = 60;
+
+    /// <summary>No /coop goto while the traveller is fighting.</summary>
+    public bool TeleportNotInCombat { get; set; } = true;
+
     /// <summary>The co-op keys: Alt + these. Letters (or key names such as F6) the game doesn't use; K is the chat.</summary>
     public string KeyFollow { get; set; } = "U";
 
@@ -91,8 +100,10 @@ public sealed class CoopSettings
 
     public string KeyRespawn { get; set; } = "G";
 
+    public string KeyGoto { get; set; } = "O";
+
     /// <summary>"Alt+U", for messages.</summary>
-    public string Key(string action) => "Alt+" + action switch { "follow" => KeyFollow, "join" => KeyJoin, "revive" => KeyRevive, _ => KeyRespawn };
+    public string Key(string action) => "Alt+" + action switch { "follow" => KeyFollow, "join" => KeyJoin, "revive" => KeyRevive, "goto" => KeyGoto, _ => KeyRespawn };
 
     /// <summary>Tags over players' heads: "Talking", "Down".</summary>
     public bool StatusTags { get; set; } = true;
@@ -104,6 +115,30 @@ public sealed class CoopSettings
     public string DifficultyDealt { get; set; } = "Unset";
 
     public string DifficultyTaken { get; set; } = "Unset";
+
+    // ---- New players ----
+
+    /// <summary>
+    /// What a player who has never left the sewers gets on joining: "ask" (a window: the prison intro or the sewer exit),
+    /// "sewers" (always the sewer exit, with a short note), or "off" (the game's own start, nothing from the mod).
+    /// Either way, the party's quest progress waits until they are out of the sewers.
+    /// </summary>
+    public string NewStart { get; set; } = "ask";
+
+    /// <summary>
+    /// When the prison intro is offered: "fresh" (only until someone has left the sewers on this server: the Emperor and
+    /// the Blades are shared, so the intro can only be played once), "always" (for testing), or "never".
+    /// </summary>
+    public string PrisonStart { get; set; } = "fresh";
+
+    /// <summary>Players who skip the intro get some gear (config.json StarterKitItems), like what the prison gives.</summary>
+    public bool StarterKit { get; set; } = true;
+
+    /// <summary>
+    /// Once someone has given the Amulet of Kings to Jauffre (Deliver the Amulet, stage 50), the copies other players
+    /// still carry go away. Every player who starts gets one, and it's a quest item, so it can't be dropped.
+    /// </summary>
+    public bool TakeSpareAmulets { get; set; } = true;
 
     // ---- Command access ----
 
@@ -155,9 +190,13 @@ public sealed class CoopSettings
         KeyJoin = CleanKey(KeyJoin, "Y");
         KeyRevive = CleanKey(KeyRevive, "H");
         KeyRespawn = CleanKey(KeyRespawn, "G");
+        KeyGoto = CleanKey(KeyGoto, "O");
+        TeleportCooldown = Math.Clamp(TeleportCooldown, 0, 3600);
         DifficultyDealt ??= "Unset";
         DifficultyTaken ??= "Unset";
         CommandAccess = CommandAccess is "everyone" ? "everyone" : "admins";
+        NewStart = NewStart is "sewers" or "off" ? NewStart : "ask";
+        PrisonStart = PrisonStart is "always" or "never" ? PrisonStart : "fresh";
         Admins = (Admins ?? []).Where(a => a is not null && Guid.TryParse(a.Id, out _)).DistinctBy(a => Guid.Parse(a.Id)).ToList();
     }
 

@@ -30,7 +30,12 @@ public sealed partial class GameData(QuestSyncConfig config, ILogger logger)
     private readonly Dictionary<uint, string> _cells = new();
     private readonly Dictionary<uint, string> _voices = new();
     private readonly Dictionary<string, string> _voicesByName = new();
+    /// <summary>The host's file (coop-quest-sync-strings.json, made by hand or from the game), in config Language.</summary>
     private Dictionary<string, string> _text = new(StringComparer.Ordinal);
+    /// <summary>Text learned from the players' games, by language (coop-quest-sync-strings.&lt;language&gt;.json).</summary>
+    private readonly Dictionary<string, Dictionary<string, string>> _learned = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _unsaved = new(StringComparer.OrdinalIgnoreCase);
+    private Dictionary<string, string>? _pageText;
     private int[] _toGame = [];
     private Dictionary<int, int> _fromGame = new();
 
@@ -39,7 +44,7 @@ public sealed partial class GameData(QuestSyncConfig config, ILogger logger)
 
     private uint _dialogueBeacon;
 
-    public bool HasText { get { EnsureLoaded(); return _text.Count > 0; } }
+    public bool HasText { get { EnsureLoaded(); return PageText.Count > 0; } }
 
     private bool _loaded;
 
@@ -105,13 +110,15 @@ public sealed partial class GameData(QuestSyncConfig config, ILogger logger)
 
         LoadText();
         logger.LogInformation("[QuestSync] Game data: {Lines} dialogue lines, {Npcs} names, {Text} text entries{Note}.",
-            _lines.Count, _npcs.Count, _text.Count, _text.Count == 0 ? " (no " + KeptFileName + " or strings.json: names and lines show as keys)" : "");
+            _lines.Count, _npcs.Count, PageText.Count, PageText.Count == 0 ? " (no " + KeptFileName + " or strings.json yet: names and lines show as keys until a player's game gives the text)" : "");
     }
 
     /// <summary>
     /// The game's text, kept next to the state file (the server's working folder) as coop-quest-sync-strings.json, so
     /// replacing the mod's folder on an update doesn't lose it (2026-11-07: names showed as ids after an update). An
-    /// older strings.json next to the DLL is copied there. Without either, the server makes it from the host's game.
+    /// older strings.json next to the DLL is copied there. Without either, the server tries to make it from the host's
+    /// game, which needs an Oodle library the Steam version doesn't ship; then it learns the text from the players'
+    /// games instead (<see cref="TextLearning"/>), one file per language.
     /// </summary>
     private void LoadText()
     {
@@ -126,9 +133,11 @@ public sealed partial class GameData(QuestSyncConfig config, ILogger logger)
                 File.Copy(besideDll, path);
                 logger.LogInformation("[QuestSync] Copied the game's text to {Path}, where updates of the mod keep it.", path);
             }
-            // First start: make it from the host's own copy of the game.
-            if (!File.Exists(path) && !custom)
-                GameText.Build(path, config.GameFolder, config.Language, logger);
+            // First start: make it from the host's own copy of the game, unless the players' games already gave it.
+            if (!File.Exists(path) && !custom && !File.Exists(LearnedPath(PageLanguage)))
+                if (!GameText.Build(path, config.GameFolder, config.Language, logger))
+                    logger.LogInformation("[QuestSync] The server will learn the game's text from the players' games instead, " +
+                        "in each player's language, as they join ({Path}).", LearnedPath("<language>"));
             if (File.Exists(path))
             {
                 _text = JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(path)) ?? new();
@@ -139,10 +148,150 @@ public sealed partial class GameData(QuestSyncConfig config, ILogger logger)
         {
             logger.LogWarning("[QuestSync] Could not read {Path}: {Error}", path, e.Message);
         }
+        LoadLearned();
+    }
+
+    /// <summary>Every coop-quest-sync-strings.&lt;language&gt;.json in the server's working folder.</summary>
+    private void LoadLearned()
+    {
+        try
+        {
+            var folder = Path.GetDirectoryName(Path.GetFullPath(KeptFileName)) ?? ".";
+            foreach (var file in Directory.GetFiles(folder, "coop-quest-sync-strings.*.json"))
+            {
+                var language = Path.GetFileName(file)["coop-quest-sync-strings.".Length..^".json".Length];
+                if (!IsLanguage(language))
+                    continue;
+                try
+                {
+                    var text = JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(file)) ?? new();
+                    _learned[language] = new Dictionary<string, string>(text, StringComparer.Ordinal);
+                    logger.LogInformation("[QuestSync] The game's text in {Language} (from the players' games): {Path}, {Count} of {Wanted}.",
+                        language, file, text.Count, UsedKeys.Count);
+                }
+                catch (Exception e)
+                {
+                    logger.LogWarning("[QuestSync] Could not read {Path}: {Error}", file, e.Message);
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            logger.LogWarning("[QuestSync] Could not look for learned text: {Error}", e.Message);
+        }
     }
 
     /// <summary>The game's text, in the server's working folder next to coop-quest-sync-state.json.</summary>
     public const string KeptFileName = "coop-quest-sync-strings.json";
+
+    /// <summary>Where the text learned from the players' games in <paramref name="language"/> is kept.</summary>
+    public static string LearnedPath(string language) => Path.GetFullPath($"coop-quest-sync-strings.{language}.json");
+
+    /// <summary>A culture name the game uses ("en", "fr", "pt-BR", "zh-Hans"), safe in a file name.</summary>
+    public static bool IsLanguage(string? value)
+        => value is not null && Regex.IsMatch(value, "^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8}){0,2}$");
+
+    /// <summary>The language of the host's file and of the web page (config Language).</summary>
+    public string PageLanguage => config.Language?.Trim() is { } l && IsLanguage(l) ? l : "en";
+
+    private HashSet<string>? _usedKeys;
+
+    /// <summary>The text keys the mod's tables use (LOC_...).</summary>
+    public HashSet<string> UsedKeys => _usedKeys ??= GameText.UsedKeys();
+
+    /// <summary>
+    /// The text the web page and the server's own lines use: the host's file, else what was learned in the page's
+    /// language, else the language learned the most of.
+    /// </summary>
+    private Dictionary<string, string> PageText
+    {
+        get
+        {
+            EnsureLoaded();
+            if (_pageText is not null)
+                return _pageText;
+            if (_text.Count > 0)
+                return _pageText = _text;
+            if (_learned.TryGetValue(PageLanguage, out var page) && page.Count > 0)
+                return _pageText = page;
+            return _pageText = _learned.Values.OrderByDescending(t => t.Count(kv => kv.Value.Length > 0)).FirstOrDefault()
+                               ?? _text;
+        }
+    }
+
+    /// <summary>Keys the server has no text for yet in <paramref name="language"/> (asked of a player of that language).</summary>
+    public List<string> MissingText(string language)
+    {
+        EnsureLoaded();
+        _learned.TryGetValue(language, out var learned);
+        var host = SameLanguage(language, PageLanguage) ? _text : null;
+        return UsedKeys.Where(k => (learned is null || !learned.ContainsKey(k)) && (host is null || !host.ContainsKey(k)))
+            .OrderBy(k => k, StringComparer.Ordinal).ToList();
+    }
+
+    /// <summary>"en" and "EN" are the same; "en" and "en-GB" too (the game ships one English).</summary>
+    public static bool SameLanguage(string a, string b)
+        => string.Equals(a, b, StringComparison.OrdinalIgnoreCase)
+           || string.Equals(a.Split('-')[0], b.Split('-')[0], StringComparison.OrdinalIgnoreCase)
+              && (!a.Contains('-') || !b.Contains('-'));
+
+    /// <summary>Takes in text a player's game looked up; an empty text marks a key the game has none for.</summary>
+    public int Learn(string language, IEnumerable<KeyValuePair<string, string>> entries)
+    {
+        EnsureLoaded();
+        if (!_learned.TryGetValue(language, out var learned))
+            _learned[language] = learned = new Dictionary<string, string>(StringComparer.Ordinal);
+        var added = 0;
+        foreach (var (key, value) in entries)
+            if (UsedKeys.Contains(key) && learned.TryAdd(key, value))
+                added++;
+        if (added > 0)
+        {
+            _unsaved.Add(language);
+            _pageText = null;
+            _webMap = null;
+        }
+        return added;
+    }
+
+    /// <summary>How much text is known in <paramref name="language"/>: (keys answered, keys with words).</summary>
+    public (int Answered, int Found) Learned(string language)
+        => _learned.TryGetValue(language, out var t) ? (t.Count, t.Count(kv => kv.Value.Length > 0)) : (0, 0);
+
+    /// <summary>Writes the learned text that changed since the last save.</summary>
+    public void SaveLearned()
+    {
+        foreach (var language in _unsaved.ToList())
+        {
+            var path = LearnedPath(language);
+            try
+            {
+                var temp = path + ".tmp";
+                File.WriteAllText(temp, JsonSerializer.Serialize(_learned[language]), new System.Text.UTF8Encoding(false));
+                File.Move(temp, path, overwrite: true);
+                _unsaved.Remove(language);
+            }
+            catch (Exception e)
+            {
+                logger.LogWarning("[QuestSync] Could not write {Path}: {Error}", path, e.Message);
+            }
+        }
+    }
+
+    /// <summary>The text for a key in a language: what that language's players gave, else the page's text.</summary>
+    private string? Lookup(string key, string? language)
+    {
+        EnsureLoaded();
+        if (language is not null)
+        {
+            foreach (var (lang, learned) in _learned)
+                if (SameLanguage(lang, language) && learned.TryGetValue(key, out var mine) && mine.Length > 0)
+                    return mine;
+            if (SameLanguage(language, PageLanguage) && _text.TryGetValue(key, out var host) && host.Length > 0)
+                return host;
+        }
+        return PageText.TryGetValue(key, out var text) && text.Length > 0 ? text : null;
+    }
 
     /// <summary>A few random topic lines that name their speaker, for test conversations.</summary>
     public List<Line> SampleLines(int count)
@@ -256,33 +405,33 @@ public sealed partial class GameData(QuestSyncConfig config, ILogger logger)
     }
 
     /// <summary>Text for a localization key; for a name without text, the key made readable.</summary>
-    public string Name(string? key)
+    public string Name(string? key, string? language = null)
     {
         EnsureLoaded();
         if (string.IsNullOrEmpty(key))
             return "";
-        if (_text.TryGetValue(key, out var text))
+        if (Lookup(key, language) is { } text)
             return text;
         var bare = Regex.Replace(key, "^LOC_[A-Z]+_", "");
         return Regex.Replace(bare, "(?<=[a-z])(?=[A-Z0-9])", " ");
     }
 
     /// <summary>Text for a localization key, or null when there is none (dialogue lines, journal entries).</summary>
-    public string? Text(string? key)
+    public string? Text(string? key, string? language = null)
     {
         EnsureLoaded();
         if (string.IsNullOrEmpty(key))
             return null;
-        if (_text.TryGetValue(key, out var text))
+        if (Lookup(key, language) is { } text)
             return text;
         return key.StartsWith("LOC_", StringComparison.Ordinal) ? null : key;
     }
 
     /// <summary>A quest's display name.</summary>
-    public string QuestName(string editorId)
+    public string QuestName(string editorId, string? language = null)
     {
         var q = Map.Quest(editorId);
-        var name = q?.Name is { } key ? Text(key) : null;
+        var name = q?.Name is { } key ? Text(key, language) : null;
         return name ?? editorId;
     }
 
@@ -306,6 +455,6 @@ public sealed partial class GameData(QuestSyncConfig config, ILogger logger)
     }
 
     /// <summary>A stage's journal entry, or null.</summary>
-    public string? StageText(QuestStage stage)
-        => Text(Map.Quest(stage.Quest)?.StageInfos.FirstOrDefault(s => s.Stage == stage.Stage)?.Text);
+    public string? StageText(QuestStage stage, string? language = null)
+        => Text(Map.Quest(stage.Quest)?.StageInfos.FirstOrDefault(s => s.Stage == stage.Stage)?.Text, language);
 }

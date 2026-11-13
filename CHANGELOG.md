@@ -1,6 +1,65 @@
 # Changelog
 
-## Unreleased
+## 0.5.4 (public test)
+
+* **`/coop calm near` calms every NPC fighting within 15 m of you**, plus the closest one. It used to calm only the
+  closest: with two attackers, the other kept fighting and the calmed one joined back in.
+
+## 0.5.3 (public test)
+
+* **`/coop calm` works in dungeons.** OblivionMP gives most NPCs inside dungeons no area on the server, so `/coop calm`,
+  `/coop calm near` and `/coop calm <name>` skipped them and only `/coop calm all` stopped the fight. Those NPCs now
+  count when they are within about 40 m of a player in that area (`near` keeps its 15 m). The log says how many were
+  taken this way.
+* **`/coop calm <name>` finds the player** without minding case or the dot at the end of a ReadyM name
+  (`dashrendar2507` finds `dashrendar2507.`), and with just the start of a name when only one player matches.
+
+## 0.5.2 (public test)
+
+* **The server learns the game's text from the players' games**, so nobody makes a file by hand. Each player's
+  client says which language its game runs in; for each language the server lacks, it asks one player of that
+  language for the text, 200 keys at a time, in the background once they're in the world, and their add-on looks it
+  up in the running game. Kept as `coop-quest-sync-strings.<language>.json` next to the state file. "X advanced ..."
+  chat lines now reach each player in their own game's language. `/coop test status` shows your game's language.
+  A host's own `coop-quest-sync-strings.json` still comes first. config.json: `LearnTextFromPlayers` (on). No add-on
+  change, so no game restart.
+
+* **Docs**: the README, install guide and known issues say why the server can't read the game's text from its files
+  on a standard Steam install (no `oo2core_9_win64.dll`, and the mod never downloads one) and list every log line
+  about it. `mod/TESTING.md` is rewritten, with a test for the server's text and the PC or server location of every
+  file.
+
+## 0.5.1 (public test)
+
+* **New players choose where to start**: a player who has never left the sewers gets the game's own message box on
+  their first join: "In the prison: play the intro" or "At the sewer exit: skip the intro". The prison is only
+  offered until someone has left the sewers on the server (the Emperor and the Blades are shared, so the intro plays
+  once per world). The sewer exit start sets "Deliver the Amulet" in the player's journal, gives the Amulet of Kings
+  and a starter kit, puts them just inside the sewer gate, and opens the race, class and birthsign menus; the gate
+  then offers to change them again, as in the game. Settings "New players start", "Offer the prison intro",
+  "Starter kit" and "Take back spare amulets"; `/qs newstart`. config.json: `StarterKitItems`.
+* **The party's progress no longer breaks a new player's intro**: shared stages wait until the player is out of the
+  sewers. Replaying "Deliver the Amulet" on join stopped the intro and left a new player stuck in the prison cell.
+  Players who haven't left the sewers aren't taken back to where their nickname last played, and can't travel to a
+  teammate until they're out.
+* The plugin generator's script compiler knows `MessageBox` with buttons, `GetButtonPressed`, `MoveTo` and
+  `AddTopic`, checked byte for byte against the game's own scripts.
+* **Revive and respawn bring you back to the party.** OblivionMP brings a dead player back with its "rebirth", which
+  reloads the player's own save, so Alt+G put you wherever your save was (2026-11-12), and the server's move right
+  after it was lost during the load. Now the travel screen goes up before getting back up, the client tells the
+  server when the reload is over, and the server then takes you next to whoever revived you, next to the leader
+  (any area now, into buildings and cities through the add-on), or back to your last safe spot. Nothing moves you
+  while the reload is still running.
+* **Every move through a load is behind the black screen**, not only a join's or a trip to a teammate's: the test
+  join with Ghost (Alt+Y during `/coop test talk`), `/coop test back` and `/coop test goto` showed the new place and
+  then the jump.
+* **Travel to a teammate any time**, not only to a conversation: `/coop goto <name>` (the start of a name is
+  enough) takes you next to them, into their building or world space too, behind the black travel screen. The new
+  goto key, **Alt+O**, goes to the last teammate you picked, else the leader, else the only other player. Not while
+  down, talking or (setting) fighting, and once per cooldown (60 s). The teammate sees "Alice is coming to you".
+  `/coop goto lock` makes teammates ask first: you see "Alice wants to come to you" and let them with Alt+Y or
+  `/coop accept` within 20 s. Kept in the state file. Settings "Travel to teammates any time", "Seconds between
+  trips", "No trips during a fight", and the Goto key.
 
 * **The game's text survives updates**: the server keeps it as `coop-quest-sync-strings.json` in its own folder,
   next to `coop-quest-sync-state.json`, instead of `strings.json` inside the mod's folder (an update wiped it and

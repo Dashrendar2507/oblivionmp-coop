@@ -39,6 +39,7 @@ local COMMAND_TAKEN = FOLDER .. "command.run"
 local ALLOWED = {
     "^coc [%w_]+$",                 -- into a building (back where you left, travel to a teammate)
     "^cow [%w_]+ %-?%d+ %-?%d+$",   -- to another world space
+    "^player%.positioncell %-?%d+ %-?%d+ %-?%d+ 0 [%w_]+$", -- into a building, straight onto the spot
     "^%x+%.StopCombat$",            -- /coop calm: an NPC stops fighting
     "^player%.scaonactor$",         -- /coop calm: guards stop chasing you
     "^player%.SetCrimeGold 0$",     -- /coop calm: your bounty goes to 0
@@ -199,8 +200,10 @@ end
 -- while the game closes a menu (OblivionMP shuts the quest pop-up during the join catch-up) crashed the game
 -- (2026-11-07, coc and StopCombat). Game thread.
 S.commandQueue = S.commandQueue or {}
-local QUIET_AFTER_SYNC = 3 -- seconds after the catch-up ends
-local QUIET_AFTER_MENU = 2 -- seconds after a menu opens or closes
+-- 3 and 2 s still saw a join's coc crash inside OblivionMP's console hook (2026-11-13 12:14, Aleswell), the same
+-- way as 2026-11-07; an identical join at 11:50 went fine. Longer quiet is a guess that the world is still settling.
+local QUIET_AFTER_SYNC = 8 -- seconds after the catch-up ends
+local QUIET_AFTER_MENU = 4 -- seconds after a menu opens or closes
 local COMMAND_MAX_WAIT = 30 -- run anyway after this long, so a stuck menu state can't hold commands forever
 
 local function takeCommands()
@@ -310,7 +313,7 @@ function S.runCommands()
         end
         log("running " .. next.cmd .. " after " .. COMMAND_MAX_WAIT .. " s even though " .. busy)
     end
-    local moves = next.cmd:match("^coc ") or next.cmd:match("^cow ")
+    local moves = next.cmd:match("^coc ") or next.cmd:match("^cow ") or next.cmd:match("^player%.positioncell ")
     -- Only with a client that brings the world back (it writes fade-ok): an older one left it black for the whole
     -- FADE_MAX (2026-11-07).
     if moves and not next.faded and hasFile(FOLDER .. "fade-ok") then
@@ -416,17 +419,46 @@ local function postEvent(event, pawn)
     return false, table.concat(errors, " | ")
 end
 
+-- Stops the voice playing now. ExecuteActionOnPlayingID isn't in the remaster's Wwise (2026-11-13: "not found"), so
+-- the voice played on after Alt+U: try the calls that stop one event, keep the one that works.
 local function stopVoice()
     if not S.playingId or S.playingId == 0 then
         return
     end
-    local id = S.playingId
-    S.playingId = nil
-    local ok, err = pcall(function() statics():ExecuteActionOnPlayingID(0, id, 0, 0) end)
-    if not ok and not S.stopWarned then
+    local id, event = S.playingId, S.playingEvent
+    S.playingId, S.playingEvent = nil, nil
+    local tries = {
+        { "ExecuteActionOnEvent", function() statics():ExecuteActionOnEvent(event, 0, nil, 0, 0, id) end },
+        { "event:ExecuteAction", function() event:ExecuteAction(0, nil, id, 0, 0) end },
+        { "ExecuteActionOnPlayingID", function() statics():ExecuteActionOnPlayingID(0, id, 0, 0) end },
+    }
+    if S.stopHow then
+        for i, t in ipairs(tries) do
+            if t[1] == S.stopHow then
+                table.insert(tries, 1, table.remove(tries, i))
+                break
+            end
+        end
+    end
+    local errors = {}
+    for _, t in ipairs(tries) do
+        if t[1] ~= "event:ExecuteAction" and t[1] ~= "ExecuteActionOnEvent" or event then
+            local ok, err = pcall(t[2])
+            if ok then
+                if S.stopHow ~= t[1] then
+                    S.stopHow = t[1]
+                    log("voice stopped with " .. t[1])
+                end
+                return
+            end
+            errors[#errors + 1] = t[1] .. ": " .. tostring(err):gsub("\n.*", "")
+        end
+    end
+    if not S.stopWarned then
         S.stopWarned = true
-        log("could not stop a voice: " .. tostring(err):gsub("\n.*", ""))
-        describe("/Script/AkAudio.AkGameplayStatics:ExecuteActionOnPlayingID")
+        log("could not stop a voice: " .. table.concat(errors, " | "))
+        describe("/Script/AkAudio.AkGameplayStatics:ExecuteActionOnEvent")
+        describe("/Script/AkAudio.AkAudioEvent:ExecuteAction")
     end
 end
 
@@ -458,6 +490,7 @@ function S.playVoice(spec)
     local ok, how, id = postEvent(event, pawn)
     if ok then
         S.playingId = type(id) == "number" and id or nil
+        S.playingEvent = event
         log("voice " .. where .. " (" .. how .. ", playing id " .. tostring(id) .. ")")
     else
         log("could not play " .. where .. ": " .. how)
@@ -717,6 +750,82 @@ end
 
 -- Menus ----------------------------------------------------------------------------------------------------------
 
+-- Which screen is open, for the ones the dialogue plugin's MenuMode can't see: the remaster's lockpicking never
+-- reached it (2026-11-13). While a menu is open, once a second: the game's activated CommonUI screens. Their class
+-- names go to the log when they change (to learn the remaster's names), and a lockpicking one writes "lockpick" to
+-- menu-kind, which the client passes to the server. Game thread.
+local KIND_FILE = FOLDER .. "menu-kind"
+local KIND_EVERY = 1
+os.remove(KIND_FILE)
+
+function S.menuKindCheck()
+    if not S.menuOpen then
+        if S.menuKind then
+            os.remove(KIND_FILE)
+            S.menuKind = nil
+        end
+        S.menuClasses = nil
+        return
+    end
+    if S.kindAt and os.clock() - S.kindAt < KIND_EVERY then
+        return
+    end
+    S.kindAt = os.clock()
+    local names, seen = {}, {}
+    local all = FindAllOf("CommonActivatableWidget") or {}
+    for _, w in ipairs(all) do
+        pcall(function()
+            if w:IsValid() and w:IsActivated() then
+                local n = w:GetClass():GetFName():ToString()
+                if not seen[n] then
+                    seen[n] = true
+                    names[#names + 1] = n
+                end
+            end
+        end)
+    end
+    table.sort(names)
+    local list = table.concat(names, ", ", 1, math.min(#names, 15))
+    if list ~= S.menuClasses then
+        S.menuClasses = list
+        log("open screens: " .. (list == "" and "(none found among " .. #all .. ")" or list))
+    end
+    local kind = ""
+    -- Only the conversation's own screens (and the HUD): "dialog", so the server knows a MenuMode 1008 seen then is
+    -- not a merchant (the guard's fine conversation raised it, 2026-11-13).
+    local onlyDialog = #names > 0
+    for _, n in ipairs(names) do
+        if not (n:find("^WBP_ModernMenu_Dialog") or n:find("^WBP_ModernHud_")) then
+            onlyDialog = false
+        end
+    end
+    if onlyDialog then
+        kind = "dialog"
+    end
+    for _, n in ipairs(names) do
+        local l = n:lower()
+        if l:find("lockpick", 1, true) or l:find("lock_pick", 1, true) then
+            kind = "lockpick"
+        elseif (kind == "" or kind == "dialog") and l == "wbp_modernmenu_container_c" then
+            -- Chests and pockets share it (2026-11-13): the server tells them apart by sneaking.
+            kind = "container"
+        end
+    end
+    if kind ~= (S.menuKind or "") then
+        S.menuKind = kind ~= "" and kind or nil
+        if kind == "" then
+            os.remove(KIND_FILE)
+        else
+            local f = io.open(KIND_FILE, "w")
+            if f then
+                f:write(kind)
+                f:close()
+            end
+            log("menu kind: " .. kind)
+        end
+    end
+end
+
 -- A menu (map, inventory, journal...) shows the mouse cursor; walking around doesn't. Game thread.
 function S.menuCheck()
     local pc = playerController()
@@ -814,6 +923,11 @@ function S.gameJob()
     if not S.lite and os.clock() - S.lastMenu >= MENU_EVERY then
         S.lastMenu = os.clock()
         pcall(S.menuCheck)
+        local okKind, errKind = pcall(S.menuKindCheck)
+        if not okKind and not S.kindErrLogged then
+            S.kindErrLogged = true
+            log("menu kind: " .. tostring(errKind))
+        end
         pcall(S.questAddedCheck)
     end
     for _, step in ipairs({ S.fadeCheck, S.runCommands, S.runVoice, S.runText }) do

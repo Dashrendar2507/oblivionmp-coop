@@ -1,7 +1,7 @@
 """Tiny Oblivion script compiler for a small subset of the language.
 
 Supported: scn, short/long/float declarations, begin <mode>/end, set <var> to <expr>,
-if/elseif/else/endif, return, and command statements (optionally ref.Command) whose
+if/elseif/else/endif, return, Message "text", MessageBox "text", "button"..., and command statements (optionally ref.Command) whose
 parameters are form references or integers. Expressions: + - * /, comparisons, && ||,
 parentheses, numbers, local variables and known functions (optionally ref.Func).
 """
@@ -17,6 +17,9 @@ FUNCS = {
     "removeitem":    (0x1052, ["ref", "int"]),
     "startquest":    (0x1036, ["ref"]),
     "stopquest":     (0x1037, ["ref"]),
+    "moveto":        (0x109E, ["ref"]),
+    "addtopic":      (0x1058, ["ref"]),
+    "getbuttonpressed": (0x101F, None),
     # no parameter block at all: just opcode and a zero length
     "enableplayercontrols":  (0x1060, None),
     "disableplayercontrols": (0x1061, None),
@@ -181,6 +184,15 @@ class Script:
                 text = m.group(1).encode("cp1252")
                 body = struct.pack("<HH", 1, len(text)) + text + b"\0" * 6
                 stmts.append(["stmt", struct.pack("<HH", 0x1059, len(body)) + body])
+            elif kw == "messagebox":
+                texts = re.findall(r'"([^"%]*)"', l)
+                if not texts or len(texts) > 10 or re.sub(r'"[^"]*"|[\s,]', "", l[len(kw):]):
+                    raise CompileError(f"only MessageBox \"text\", \"button\"... is supported: {l}")
+                msg, buttons = texts[0].encode("cp1252"), [t.encode("cp1252") for t in texts[1:]]
+                body = struct.pack("<HH", 1, len(msg)) + msg + struct.pack("<HH", 0, len(buttons))
+                for b in buttons:
+                    body += struct.pack("<HH", 1, len(b)) + b
+                stmts.append(["stmt", struct.pack("<HH", 0x1000, len(body)) + body])
             elif kw == "return":
                 stmts.append(["stmt", b"\x1e\x00\x00\x00"])
             else:

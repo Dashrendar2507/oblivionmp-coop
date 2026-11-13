@@ -22,6 +22,12 @@ public sealed class TokenMap
     public uint BusyLocalId { get; }
     public uint AckLocalId { get; }
     public uint FreezeLocalId { get; }
+    /// <summary>The new-player start's items (0 when the plugin is older than 0.6). See <see cref="NewStart"/>.</summary>
+    public uint StartOfferLocalId { get; }
+    public uint StartPrisonLocalId { get; }
+    public uint StartDoneLocalId { get; }
+    public uint IntroLocalId { get; }
+    public uint StartKitLocalId { get; }
     /// <summary>Category -> local id of its CQSAllow item.</summary>
     public IReadOnlyDictionary<string, uint> AllowLocalIds => _allow;
     /// <summary>Plugins the generator read, in its numbering: the top byte of a form id in the tables is an index here.</summary>
@@ -58,6 +64,14 @@ public sealed class TokenMap
         AckLocalId = ParseHex(root.GetProperty("ack").GetString()!);
         if (root.TryGetProperty("freeze", out var freeze))
             FreezeLocalId = ParseHex(freeze.GetString()!);
+        if (root.TryGetProperty("newStart", out var start))
+        {
+            StartOfferLocalId = ParseHex(start.GetProperty("offer").GetString()!);
+            StartPrisonLocalId = ParseHex(start.GetProperty("prison").GetString()!);
+            StartDoneLocalId = ParseHex(start.GetProperty("done").GetString()!);
+            IntroLocalId = ParseHex(start.GetProperty("intro").GetString()!);
+            StartKitLocalId = ParseHex(start.GetProperty("kit").GetString()!);
+        }
         if (root.TryGetProperty("allow", out var allow))
             foreach (var p in allow.EnumerateObject())
                 _allow[p.Name] = ParseHex(p.Value.GetString()!);
