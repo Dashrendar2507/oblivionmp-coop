@@ -1,6 +1,6 @@
 using OblivionMp.ChatMod.Common;
 using OblivionMp.ChatMod.Serverside;
-using OblivionMp.Sdk.Common.Archetypes;
+using OblivionMP.SDK.Common.Archetypes;
 using ReadyM.Api.Idents;
 using ReadyM.SDK.Attributes;
 using ReadyM.SDK.Server.Entities;

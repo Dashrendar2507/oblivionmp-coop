@@ -3,8 +3,8 @@ using Microsoft.Extensions.Logging;
 using ReadyM.Api.DI;
 using ReadyM.Cef.Rpc;
 using ReadyM.SDK.Attributes;
-using ReadyM.Sdk.Common.Input;
-using OblivionMp.Sdk;
+using OblivionMpCSharpMod.Input;
+using OblivionMP.SDK;
 
 namespace CoopQuestSync.Client;
 

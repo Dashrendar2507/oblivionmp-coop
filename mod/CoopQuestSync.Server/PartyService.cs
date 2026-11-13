@@ -3,12 +3,12 @@ using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using OblivionMp.ChatMod.Common;
 using OblivionMp.ChatMod.Serverside;
-using OblivionMp.Sdk.Common.Archetypes;
-using OblivionMp.Sdk.Serverside;
+using OblivionMP.SDK.Common.Archetypes;
+using OblivionMP.SDK.Serverside;
 using ReadyM.Api.Idents;
 using ReadyM.Relay.Common.Oblivion.ECS.Values;
-using ReadyM.Relay.Server.Sdk.Ecs;
-using ReadyM.Relay.Server.Sdk.Events;
+using ReadyM.SDK.Server.Events;
+using ReadyM.SDK.Archetypes.Core;
 using ReadyM.SDK.Attributes;
 using ReadyM.SDK.Server.Entities;
 
@@ -80,21 +80,22 @@ public sealed partial class PartyService(IEntities entities, IServerEvents event
         };
         events.OnPlayerDisconnected += OnPlayerDisconnected;
         // The session's rules live on the world entity, which exists once the server has made it.
-        events.OnWorldEntityCreated += OnWorldCreated;
+        events.OnWorldCreated += OnWorldCreated;
     }
 
-    private void OnWorldCreated(Entity _) => ApplySessionRules();
+    private void OnWorldCreated(World _) => ApplySessionRules();
 
     private void Stop()
     {
         rpc.ReviveRequested -= OnReviveRequested;
         rpc.GiveUpRequested -= OnGiveUp;
         events.OnPlayerDisconnected -= OnPlayerDisconnected;
-        events.OnWorldEntityCreated -= OnWorldCreated;
+        events.OnWorldCreated -= OnWorldCreated;
     }
 
-    private void OnPlayerDisconnected(PlayerId player, Entity _, LiteNetLib.DisconnectReason __)
+    private void OnPlayerDisconnected(Player gone, Guid _, LiteNetLib.DisconnectReason __)
     {
+        var player = gone.PlayerId;
         _downed.Remove(player);
         _wasDead.Remove(player);
         _downNoted.Remove(player);

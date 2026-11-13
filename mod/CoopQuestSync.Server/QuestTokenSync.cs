@@ -3,15 +3,15 @@ using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using OblivionMp.ChatMod.Common;
 using OblivionMp.ChatMod.Serverside;
-using OblivionMp.Sdk.Common.Archetypes;
-using OblivionMp.Sdk.Common.Archetypes.Mixins;
-using OblivionMp.Sdk.Serverside.Items;
+using OblivionMP.SDK.Common.Archetypes;
+using OblivionMP.SDK.Common.Archetypes.Mixins;
+using OblivionMP.SDK.Serverside.Items;
 using ReadyM.Api.Idents;
 using ReadyM.Relay.Common.Oblivion;
 using ReadyM.Relay.Common.Oblivion.ECS.Values;
 using ReadyM.Relay.Common.Oblivion.Rpc;
-using ReadyM.Relay.Server.Sdk.Ecs;
-using ReadyM.Relay.Server.Sdk.Events;
+using ReadyM.SDK.Server.Events;
+using ReadyM.SDK.Archetypes.Core;
 using ReadyM.SDK.Attributes;
 using ReadyM.SDK.Server.Entities;
 
@@ -206,9 +206,9 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
         SaveState();
     }
 
-    private void OnPlayerConnected(PlayerId playerId, Entity _) => _players[playerId] = new PlayerView();
+    private void OnPlayerConnected(Player joined, Guid _) => _players[joined.PlayerId] = new PlayerView();
 
-    private void OnPlayerDisconnected(PlayerId playerId, Entity _, LiteNetLib.DisconnectReason __) => _players.Remove(playerId);
+    private void OnPlayerDisconnected(Player gone, Guid _, LiteNetLib.DisconnectReason __) => _players.Remove(gone.PlayerId);
 
     private void OnPlayerJoinedArea(PlayerId playerId, AreaId area) => View(playerId).Area = area;
 

@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Logging;
-using OblivionMp.Sdk;
-using OblivionMp.Sdk.Archetypes.Extensions;
+using OblivionMP.SDK;
+using OblivionMP.SDK.Archetypes.Extensions;
 using OblivionMpCSharpMod;
 using ReadyM.SDK.Attributes;
 

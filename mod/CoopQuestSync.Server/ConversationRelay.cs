@@ -1,11 +1,11 @@
 using System.Numerics;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
-using OblivionMp.Sdk.Common.Archetypes;
+using OblivionMP.SDK.Common.Archetypes;
 using ReadyM.Relay.Common.Oblivion.ECS.Values;
 using ReadyM.Api.Idents;
-using ReadyM.Relay.Server.Sdk.Ecs;
-using ReadyM.Relay.Server.Sdk.Events;
+using ReadyM.SDK.Server.Events;
+using ReadyM.SDK.Archetypes.Core;
 using ReadyM.SDK.Attributes;
 using ReadyM.SDK.Server.Entities;
 
@@ -113,8 +113,9 @@ public sealed partial class ConversationRelay(IEntities entities, IServerEvents 
         travel.Arrived -= OnArrived;
     }
 
-    private void OnPlayerDisconnected(PlayerId player, Entity _, LiteNetLib.DisconnectReason __)
+    private void OnPlayerDisconnected(Player gone, Guid _, LiteNetLib.DisconnectReason __)
     {
+        var player = gone.PlayerId;
         _dialogueSlot.Remove(player);
         _activity.Remove(player);
         _addonMenu.Remove(player);

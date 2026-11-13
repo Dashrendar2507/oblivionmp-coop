@@ -1,5 +1,5 @@
 using Microsoft.Extensions.Logging;
-using OblivionMp.Sdk;
+using OblivionMP.SDK;
 using ReadyM.SDK.Attributes;
 
 namespace CoopQuestSync.Client;

@@ -1,11 +1,11 @@
 using System.Numerics;
 using Microsoft.Extensions.Logging;
-using OblivionMp.Sdk.Common.Archetypes;
-using OblivionMp.Sdk.Common.Archetypes.Mixins;
+using OblivionMP.SDK.Common.Archetypes;
+using OblivionMP.SDK.Common.Archetypes.Mixins;
 using ReadyM.Api.Idents;
 using ReadyM.Relay.Common.Oblivion.ECS.Values;
-using ReadyM.Relay.Server.Sdk.Ecs;
-using ReadyM.Relay.Server.Sdk.Events;
+using ReadyM.SDK.Server.Events;
+using ReadyM.SDK.Archetypes.Core;
 using ReadyM.SDK.Attributes;
 using ReadyM.SDK.Server.Entities;
 using CellScope = ReadyM.SDK.Archetypes.Core.Cell;
@@ -47,7 +47,7 @@ public sealed partial class CombatService(IEntities entities, IServerEvents even
 
     private void Stop() => events.OnPlayerDisconnected -= OnPlayerDisconnected;
 
-    private void OnPlayerDisconnected(PlayerId player, Entity _, LiteNetLib.DisconnectReason __) => _playerCombat.Remove(player);
+    private void OnPlayerDisconnected(Player gone, Guid _, LiteNetLib.DisconnectReason __) => _playerCombat.Remove(gone.PlayerId);
 
     /// <summary>An NPC is fighting: its AI is on its combat step, or it stands in a combat stance.</summary>
     private static bool Fighting(Npc npc)

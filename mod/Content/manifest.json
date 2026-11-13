@@ -1,12 +1,12 @@
 {
   "uniqueId": "CoopQuestSync",
-  "version": "0.6.16",
+  "version": "0.7.0",
   "name": "Co-op Quest Sync",
   "author": "Nicolas",
   "description": "Co-op for vanilla Oblivion: shared quest progress and stage effects, shared conversations, revive and party rules. Plugins mirror quest stages and dialogue lines into hidden token items; the server shares them with the other players.",
   "link": "https://github.com/Dashrendar2507/oblivionmp-coop",
   "dependencies": [
-    { "uniqueId": "OblivionMP.SDK", "minimumVersion": "1.0.0" },
-    { "uniqueId": "OblivionMP.Chat", "minimumVersion": "1.0.0" }
+    { "uniqueId": "OblivionMP.SDK", "minimumVersion": "1.1.0" },
+    { "uniqueId": "OblivionMP.Chat", "minimumVersion": "1.1.0" }
   ]
 }

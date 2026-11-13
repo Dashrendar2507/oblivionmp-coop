@@ -1,7 +1,7 @@
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
-using OblivionMp.Sdk;
-using ReadyM.Sdk.Common.Input;
+using OblivionMP.SDK;
+using OblivionMpCSharpMod.Input;
 
 namespace CoopQuestSync.Client;
 

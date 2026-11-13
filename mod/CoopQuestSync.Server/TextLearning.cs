@@ -1,8 +1,8 @@
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using ReadyM.Api.Idents;
-using ReadyM.Relay.Server.Sdk.Ecs;
-using ReadyM.Relay.Server.Sdk.Events;
+using ReadyM.SDK.Server.Events;
+using ReadyM.SDK.Archetypes.Core;
 using ReadyM.SDK.Attributes;
 using ReadyM.SDK.Server.Entities;
 
@@ -59,8 +59,9 @@ public sealed partial class TextLearning(IServerEvents events, QuestTokenSync sy
         data.SaveLearned();
     }
 
-    private void OnPlayerDisconnected(PlayerId player, Entity _, LiteNetLib.DisconnectReason __)
+    private void OnPlayerDisconnected(Player gone, Guid _, LiteNetLib.DisconnectReason __)
     {
+        var player = gone.PlayerId;
         _gaveUpOn.Remove(player);
         _pinged.Remove(player);
         foreach (var (language, ask) in _asking.ToList())

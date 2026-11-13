@@ -1,5 +1,5 @@
 using Microsoft.Extensions.Logging;
-using OblivionMp.Sdk;
+using OblivionMP.SDK;
 using OblivionMpCSharpMod;
 using ReadyM.Cef;
 using ReadyM.SDK.Attributes;
