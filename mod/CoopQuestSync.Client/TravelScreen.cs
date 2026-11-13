@@ -70,9 +70,18 @@ public sealed partial class TravelScreen(CefHost cef, IPlayers players, IInput i
     /// <summary>A load took the page (the rebirth's reload): make it again, black at once, if the screen is wanted.</summary>
     public void Refresh()
     {
+        _held = false;
         if (_text is not null)
             _fresh = true;
     }
+
+    /// <summary>
+    /// The rebirth's reload is starting: make no page until <see cref="Refresh"/>. A page made right after the rebirth,
+    /// while OblivionMP was tearing the world down for the reload, left that reload loading forever (2026-11-13).
+    /// </summary>
+    public void Hold() => _held = true;
+
+    private bool _held;
 
     private void Update()
     {
@@ -121,7 +130,7 @@ public sealed partial class TravelScreen(CefHost cef, IPlayers players, IInput i
             Lift();
             return;
         }
-        if (_inWorld < InWorldSeconds)
+        if (_inWorld < InWorldSeconds || _held)
             return;
         if (_fresh)
         {

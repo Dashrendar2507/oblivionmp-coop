@@ -7,7 +7,8 @@
   after it was lost during the load. Now the travel screen goes up before getting back up, the client tells the
   server when the reload is over, and the server then takes you next to whoever revived you, next to the leader
   (any area now, into buildings and cities through the add-on), or back to your last safe spot. Nothing moves you
-  while the reload is still running.
+  while the reload is still running. The travel page waits until that reload is over: a page made while OblivionMP
+  tore the world down for it left the reload loading forever (2026-11-13).
 * **Every move through a load is behind the black screen**, not only a join's or a trip to a teammate's: the test
   join with Ghost (Alt+Y during `/coop test talk`), `/coop test back` and `/coop test goto` showed the new place and
   then the jump.
