@@ -16,7 +16,7 @@ namespace CoopQuestSync.Client;
 /// pop-up during the join's catch-up must stay visible to be closed), and lifts by itself after a while.
 /// </summary>
 [Service]
-public sealed partial class TravelScreen(CefHost cef, IPlayers players, IInput input, ILogger logger)
+public sealed partial class TravelScreen(CefHost cef, IPlayers players, IInput input, ConsoleBridge console, ILogger logger)
 {
     private const string Host = "coopwitness";
     private const float MaxSeconds = 50f;
@@ -201,8 +201,19 @@ public sealed partial class TravelScreen(CefHost cef, IPlayers players, IInput i
             return;
         _watching = false;
         _moving = false;
+        string ran = "";
+        try { ran = File.ReadAllText(TravelRan).Trim(); } catch { /* gone, or the add-on is writing it */ }
         try { File.Delete(TravelRan); } catch { /* next time */ }
         logger.LogInformation("[QuestSync] In the new place after the move{Note}.", _settled >= 1f ? "" : " (no load seen)");
+        // A player.positioncell the game ignored (no load, 2026-11-13 12:27): the door's coc now, not after the
+        // server's 45 s.
+        if (_settled < 1f && ran.StartsWith("player.positioncell ", StringComparison.Ordinal)
+            && ran.Split(' ') is { Length: 6 } parts)
+        {
+            logger.LogInformation("[QuestSync] The game ignored {Command}; going in through the door instead.", ran);
+            console.GoToCell(parts[5]);
+            return;
+        }
         if (_text is not null)
         {
             _fresh = true;      // the load took the page: a new one, black at once

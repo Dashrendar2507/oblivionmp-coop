@@ -67,6 +67,9 @@ public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents event
     private const float RebornTimeoutSeconds = 25f;
     /// <summary>After the client says its reload is over, the server's view of the player's area may lag a little.</summary>
     private const float RebornAreaSeconds = 1.5f;
+    /// <summary>The trip waits this long after the rebirth's reload: a player.positioncell 0.7 s after the reload did
+    /// nothing at all (2026-11-13 12:27), while one 13 s after the join's load worked.</summary>
+    private const float AfterReloadSeconds = 4f;
     /// <summary>
     /// One game unit in centimetres, and the side of an exterior cell in game units: for the cell <c>cow</c> asks
     /// for. Only roughly right is needed: once the player is in the world space, the server puts them on the spot.
@@ -106,6 +109,7 @@ public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents event
         /// <summary>Brought back to life: OblivionMP reloads their save first, then they go to the party (<see cref="AfterRebirth"/>).</summary>
         public bool Reborn;
         public bool RebornLoaded;
+        public float RebornLoadedAt;
         public float RebornSince;
         public PlayerId? RebornTo;
         public ReturnSpot? RebornSpot;
@@ -174,7 +178,7 @@ public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents event
 
             if (s.Reborn)
             {
-                var loaded = s.RebornLoaded && _clock - s.Since >= RebornAreaSeconds;
+                var loaded = s.RebornLoaded && _clock - s.Since >= RebornAreaSeconds && _clock - s.RebornLoadedAt >= AfterReloadSeconds;
                 if (main.IsDead || !(loaded || (_clock - s.RebornSince > RebornTimeoutSeconds && settled)))
                     continue;
                 s.Reborn = false;
@@ -529,7 +533,10 @@ public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents event
     private void OnRebornLoaded(PlayerId player)
     {
         if (_sessions.TryGetValue(player, out var s) && s.Reborn)
+        {
             s.RebornLoaded = true;
+            s.RebornLoadedAt = _clock;
+        }
     }
 
     private void FinishRebirth(MainCharacter main, string name, string area, Session s)

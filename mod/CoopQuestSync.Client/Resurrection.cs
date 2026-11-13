@@ -19,8 +19,13 @@ namespace CoopQuestSync.Client;
 public sealed partial class Resurrection(IPlayers players, IInput input, IUserInterface ui, TravelScreen travel, DownNote down,
     IDependencyContainer services, ILogger logger)
 {
-    /// <summary>No load this long after the rebirth: there was none (or it was very quick).</summary>
-    private const float NoLoadSeconds = 6f;
+    /// <summary>No load this long after the rebirth: there was none (or it was very quick). OblivionMP's quickload
+    /// started 2.5 s after the rebirth on 2026-11-13 11:51, and later than 6 s in a 12:2x test.</summary>
+    private const float NoLoadSeconds = 15f;
+    /// <summary>Without input this long is a load, not the chat closing or the death screen going away: a short blip
+    /// counted as the reload once, so the black page went up over the world (the player could still punch) and the
+    /// real reload came after it (2026-11-13).</summary>
+    private const float LoadSeconds = 1.5f;
     /// <summary>Back in the world, able to move, for this long: the reload is over.</summary>
     private const float SettledSeconds = 1f;
     private const float GiveUpSeconds = 45f;
@@ -31,6 +36,7 @@ public sealed partial class Resurrection(IPlayers players, IInput input, IUserIn
 
     private bool _watching;
     private bool _sawLoad;
+    private float _blocked;
     private float _watchFor;
     private float _settled;
 
@@ -56,6 +62,7 @@ public sealed partial class Resurrection(IPlayers players, IInput input, IUserIn
             travel.Hold();
             _watching = true;
             _sawLoad = false;
+            _blocked = 0;
             _watchFor = 0;
             _settled = 0;
             logger.LogInformation("[QuestSync] OblivionMP's own rebirth brought this player back; watching its reload.");
@@ -83,6 +90,7 @@ public sealed partial class Resurrection(IPlayers players, IInput input, IUserIn
         _pending = false;
         _watching = true;
         _sawLoad = false;
+        _blocked = 0;
         _watchFor = 0;
         _settled = 0;
         down.Set("");       // gone before the reload, not during it
@@ -98,12 +106,13 @@ public sealed partial class Resurrection(IPlayers players, IInput input, IUserIn
         if (!_watching)
             return;
         _watchFor += dt;
-        var playing = players.LocalMainCharacter is { IsDead: false } && input.CanApplyInput();
-        if (!playing)
-        {
+        var me = players.LocalMainCharacter;
+        var loading = me is null || !input.CanApplyInput();
+        _blocked = loading ? _blocked + dt : 0;
+        if (_blocked >= LoadSeconds || me is null)
             _sawLoad = true;
+        if (loading || me is { IsDead: true })
             _settled = 0;
-        }
         else
             _settled += dt;
         var done = _sawLoad ? _settled >= SettledSeconds : _watchFor >= NoLoadSeconds;
