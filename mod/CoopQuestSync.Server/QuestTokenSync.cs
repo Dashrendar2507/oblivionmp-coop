@@ -643,6 +643,10 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
             return false;
         if (view.Stages.Contains(stage))
             return true;
+        // Reset while they play: the server takes this quest's tokens until they rejoin (their game still has its
+        // stages), so a token given now would be taken back at once (2026-11-13, MS05).
+        if (view.Suppressed.Contains(stage.Quest))
+            return false;
         if (!Give(main, view, stage))
             return false;
         Bump(main, view);

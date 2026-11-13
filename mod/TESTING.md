@@ -1,6 +1,6 @@
-# Co-op Quest Sync 0.6.12: every test still to do
+# Co-op Quest Sync 0.6.13: every test still to do
 
-0.6.12 adds fixes from your 2026-11-13 tests (Part 1) to the combined build: no endless load after Alt+G (0.6.4), a
+0.6.13 adds fixes from your 2026-11-13 tests (Part 1) to the combined build: no endless load after Alt+G (0.6.4), a
 note on screen while you're down, `/coop calm near` that sticks, the voice stopping at once, arriving inside a
 building straight on the spot, and a calmer "Taking you back" on join (0.6.7, after the 12:14 crash), no long black screen after a revive (0.6.8/0.6.9), no load with the chat open (0.6.10), and lockpicking and pickpocketing shown to the others (0.6.11/0.6.12). It's for OblivionMP **1.0.x** (your server is 1.0.1) and contains:
 
@@ -34,14 +34,14 @@ on). You host and play on the same computer, but they are still different folder
 | Local saves | **PC:** `%USERPROFILE%\Documents\My Games\Oblivion Remastered\Saved\SaveGames\` |
 | Plugins.txt | **PC:** `C:\Program Files (x86)\Steam\steamapps\common\Oblivion Remastered\OblivionRemastered\Content\Dev\ObvData\Data\Plugins.txt` |
 
-## Install 0.6.12
+## Install 0.6.13
 
 1. **Server:** stop the server. Delete `<server folder>\mods\CoopQuestSync\` and copy in the `CoopQuestSync`
    folder from the zip, so you get `<server folder>\mods\CoopQuestSync\manifest.json`. Don't touch
    `<server folder>\coop-quest-sync-state.json` or `<server folder>\coop-quest-sync-strings.json`.
 2. **PC:** nothing to copy, but **the add-on changed** (0.6.12): on your first join a note in the top left corner asks
    you to restart the game. Quit and start it again once, so the new add-on runs.
-3. **Server:** start the server. The log's mod load order shows **`CoopQuestSync v0.6.12`**. Also `The game's text: <server folder>\coop-quest-sync-strings.json`
+3. **Server:** start the server. The log's mod load order shows **`CoopQuestSync v0.6.13`**. Also `The game's text: <server folder>\coop-quest-sync-strings.json`
    and `Quest admin page: http://localhost:9060/`.
 4. **Server:** on http://localhost:9060/, **Co-op settings** has both **Party > Travel to teammates any time** and
    **New players > New players start**. If either is missing, the old folder is still in place.
@@ -188,10 +188,15 @@ If the log says `<you>'s game didn't send the text asked for in 45 s`, check tha
 3. **Voices.** Talk to any NPC yourself for a line or two first. Then `/coop test voice`: a voice line plays and the
    chat says which. Then `/coop test talk`: Ghost's lines come with their voices. Alt+U stops the voice;
    `/coop test talk ask` (the banner) never plays one. Silent? Send **PC** `UE4SS.log` (lines with `voice`).
-4. **Stage effects.** Save first (these stages move you into a quest's dream world). `/coop test effects MS05` lists
-   its stages with effects (`70: teleport/...`; MS93 has none, the 0.6.9 doc was wrong). `/coop test stage MS05 70`:
-   you get it as if live, and the game moves you. Load your save. Then on the page turn **Live > Teleport** off and
-   `/coop test stage MS05 72`: you get the stage but stay put. Turn it back on and load your save again.
+4. **Stage effects.** Don't reset the quest on the web page first: a quest reset while you play is held back until
+   you rejoin (your game still has its old stages). 0.6.13 now says so instead of giving a token and taking it back
+   at once, which is what happened with MS05 at 13:34. MS05 70 also only runs inside the quest's dream (each of its
+   scripts has a condition), so it can't be tested out of order. Use the Nine Divines pilgrimage instead:
+   * Save first. `/coop test effects NDPilgrim` lists `35: teleport` and `60: teleport`.
+   * `/coop test stage NDPilgrim 35`: the game moves you to the sky battle (Pelinal's vision). Load your save.
+   * On the page turn **Live > Teleport** off, `/coop test stage NDPilgrim 35`: you get the stage but stay put.
+     Turn it back on and load your save again.
+   * Items already passed: MS05 40 gave you the Dreamworld Amulet at 13:32.
 5. **Not an admin.** `/coop test asghost on`: `/qs auto off` and `/coop test status` are refused with "Only server
    admins can use ...", `/qs whoami` and `/coop follow` still work, and the page shows **testing as Ghost (not
    admin)**. `/coop test asghost off` gives your rights back.
@@ -277,8 +282,8 @@ the first join (the add-on installs itself, a note says so).
 
 ## Part 7: later, on OblivionMP 1.1.0
 
-Not now: 0.6.12 is built for 1.0 and **won't load on a 1.1.0 server**, and a 1.1 build won't load on 1.0.1. The move
-to SDK 1.1.0 is ready in its own pull request. When you upgrade the server, ask for a 0.6.12 build for 1.1 (the
+Not now: 0.6.13 is built for 1.0 and **won't load on a 1.1.0 server**, and a 1.1 build won't load on 1.0.1. The move
+to SDK 1.1.0 is ready in its own pull request. When you upgrade the server, ask for a 0.6.13 build for 1.1 (the
 earlier `0.6.1-sdk1.1` zip doesn't have the 0.5.4 and 0.6.2 fixes).
 
 1. **Server:** set up the 1.1.0 server as ReadyM describes: copy `saves`, `data`, `branding` and `config.json` from

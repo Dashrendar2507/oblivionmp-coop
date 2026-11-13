@@ -66,6 +66,11 @@ public sealed partial class QuestCommands(IChat chat, IEntities entities, QuestT
                     Reply(sender, $"The plugin has no token for {parts[1]} {parts[2]}. Use the quest's editor id, like MS93, and one of its stages.");
                     break;
                 }
+                if (sync.Players.TryGetValue(sender, out var pv) && pv.Suppressed.Contains(quest))
+                {
+                    Reply(sender, $"{quest} was reset while you play: rejoin first, then push it.");
+                    break;
+                }
                 if (!entities.TryLookup(sender, out MainCharacter main) || !sync.PushOne(main, new QuestStage(quest, stageNo)))
                 {
                     Reply(sender, "Could not give you the token: the server has not seen the plugin in your inventory yet, or is still restoring your progress.");

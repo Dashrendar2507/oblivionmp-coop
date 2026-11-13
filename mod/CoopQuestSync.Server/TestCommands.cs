@@ -121,6 +121,11 @@ public sealed partial class TestCommands(IChat chat, IEntities entities, QuestTo
                     Reply(sender, "Wait until the server shows you as \"in sync\" on the page, then try again.");
                     break;
                 }
+                if (view.Suppressed.Contains(quest))
+                {
+                    Reply(sender, $"{quest} was reset on the web page while you play: your game still has its old stages, so the server takes its tokens until you rejoin. Rejoin, then try again.");
+                    break;
+                }
                 if (view.Stages.Contains(stage))
                 {
                     Reply(sender, $"You already have {stage}. Pick a stage you don't have yet.");
