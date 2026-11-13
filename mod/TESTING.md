@@ -1,8 +1,8 @@
-# Co-op Quest Sync 0.6.9: every test still to do
+# Co-op Quest Sync 0.6.10: every test still to do
 
-0.6.9 adds fixes from your 2026-11-13 tests (Part 1) to the combined build: no endless load after Alt+G (0.6.4), a
+0.6.10 adds fixes from your 2026-11-13 tests (Part 1) to the combined build: no endless load after Alt+G (0.6.4), a
 note on screen while you're down, `/coop calm near` that sticks, the voice stopping at once, arriving inside a
-building straight on the spot, and a calmer "Taking you back" on join (0.6.7, after the 12:14 crash), and no long black screen after a revive (0.6.8/0.6.9). It's for OblivionMP **1.0.x** (your server is 1.0.1) and contains:
+building straight on the spot, and a calmer "Taking you back" on join (0.6.7, after the 12:14 crash), no long black screen after a revive (0.6.8/0.6.9), and no load with the chat open (0.6.10). It's for OblivionMP **1.0.x** (your server is 1.0.1) and contains:
 
 * **0.5.4**: `/coop calm near` calms every NPC fighting within 15 m, `/coop calm <name>` works in dungeons and
   without the trailing dot, and the server learns the game's text from the players' games.
@@ -34,7 +34,7 @@ on). You host and play on the same computer, but they are still different folder
 | Local saves | **PC:** `%USERPROFILE%\Documents\My Games\Oblivion Remastered\Saved\SaveGames\` |
 | Plugins.txt | **PC:** `C:\Program Files (x86)\Steam\steamapps\common\Oblivion Remastered\OblivionRemastered\Content\Dev\ObvData\Data\Plugins.txt` |
 
-## Install 0.6.9
+## Install 0.6.10
 
 1. **Server:** stop the server. Delete `<server folder>\mods\CoopQuestSync\` and copy in the `CoopQuestSync`
    folder from the zip, so you get `<server folder>\mods\CoopQuestSync\manifest.json`. Don't touch
@@ -43,7 +43,7 @@ on). You host and play on the same computer, but they are still different folder
    restart is needed. Coming from 0.6.6 or older, a note in the top left corner asks you to restart the game on your
    first join: quit and start it again once, so the new add-on runs. If `off`, `lite` or `off.txt` is in `%APPDATA%\ReadyM.Launcher\Oblivion\Mods\CoopQuestSyncUI\`, delete
    it. The end of `Plugins.txt` still reads `CoopQuestSync.esp` then `CoopQuestSyncDialogue.esp`.
-3. **Server:** start the server. The log's mod load order shows **`CoopQuestSync v0.6.9`**. Also `The game's text: <server folder>\coop-quest-sync-strings.json`
+3. **Server:** start the server. The log's mod load order shows **`CoopQuestSync v0.6.10`**. Also `The game's text: <server folder>\coop-quest-sync-strings.json`
    and `Quest admin page: http://localhost:9060/`.
 4. **Server:** on http://localhost:9060/, **Co-op settings** has both **Party > Travel to teammates any time** and
    **New players > New players start**. If either is missing, the old folder is still in place.
@@ -134,6 +134,9 @@ Ghost plays the teammate. `/coop test` needs admin, which you are.
    "Test: you didn't answer Ghost (that's a no)."
 7. `/coop goto lock`, then `/coop test status`: it ends with "Goto: locked (others ask)". **Server:** restart the
    server, join again, `/coop test status` still says locked. Then `/coop goto unlock`.
+   **0.6.10:** a trip now waits until the chat is closed ("Co-op: close the chat to travel."), because a load with
+   the chat open breaks the game. Type `/coop test goto` and leave the chat open: nothing happens until you close it
+   (Enter or Esc), then the trip runs. Left open 40 s: "travel cancelled, the chat stayed open."
 8. **Into a city.** `/coop test pin` inside a city (Chorrol, Skingrad...), leave the city, wait out the cooldown,
    then `/coop test goto`: you arrive inside the city on the pin, behind the black screen (the add-on's `cow` route).
 
@@ -270,8 +273,8 @@ the first join (the add-on installs itself, a note says so).
 
 ## Part 7: later, on OblivionMP 1.1.0
 
-Not now: 0.6.9 is built for 1.0 and **won't load on a 1.1.0 server**, and a 1.1 build won't load on 1.0.1. The move
-to SDK 1.1.0 is ready in its own pull request. When you upgrade the server, ask for a 0.6.9 build for 1.1 (the
+Not now: 0.6.10 is built for 1.0 and **won't load on a 1.1.0 server**, and a 1.1 build won't load on 1.0.1. The move
+to SDK 1.1.0 is ready in its own pull request. When you upgrade the server, ask for a 0.6.10 build for 1.1 (the
 earlier `0.6.1-sdk1.1` zip doesn't have the 0.5.4 and 0.6.2 fixes).
 
 1. **Server:** set up the 1.1.0 server as ReadyM describes: copy `saves`, `data`, `branding` and `config.json` from
@@ -292,7 +295,7 @@ earlier `0.6.1-sdk1.1` zip doesn't have the 0.5.4 and 0.6.2 fixes).
 
 ## Already done (no need to redo)
 
-From your tests on 2026-11-07 and 2026-11-12:
+From your tests on 2026-11-07, 2026-11-12 and 2026-11-13:
 
 * Admin commands: the ReadyM panel's admin list is read, `/qs whoami` and `/qs auto` work.
 * The server uses your hand-made text file.
@@ -302,6 +305,8 @@ From your tests on 2026-11-07 and 2026-11-12:
 * `/coop calm` (all) inside a dungeon, with no crash.
 * Respawn alone after 60 s, back on your last safe spot.
 * The add-on no longer crashes on loads.
+* 2026-11-13: calm (near, by name, all), the down note and OblivionMP's own rebirth, the revive, the voice cut off
+  when you leave a conversation, and Part 2 tests 2, 3, 6 and 8.
 
 ## Things to watch while testing
 
