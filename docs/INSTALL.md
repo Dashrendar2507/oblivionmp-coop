@@ -197,6 +197,10 @@ the game for you when you join, but you need to add them to the list once.
    Don't remove anything that's already there. The game's own plugins (`Oblivion.esm`, `Knights.esp`, the `DLC*.esp`
    files, `AltarESPMain.esp`, `AltarDeluxe.esp`...) must stay above our two.
 
+Without these two lines, the game still loads our plugins, but in the middle of the list (before `AltarDeluxe.esp`),
+which shifts the Deluxe plugin's place and breaks the sync of its items and areas. A note on screen then says "Your
+plugin load order differs from the server's". If you see it, check that the two lines are at the very end.
+
 You won't find `CoopQuestSync.esp` in that folder before you join a server: that's normal. The launcher puts the
 plugins there when you join and removes them when you leave, so they never affect your single-player game.
 
