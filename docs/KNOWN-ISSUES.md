@@ -69,17 +69,15 @@ Version 0.7.0 is the first built for OblivionMP 1.1.0, and it has had much less 
 
 ## New players
 
-* **The prison intro plays once per world.** The Emperor, the Blades and the prison doors are shared. Once someone
-  has played the intro, the Emperor stays dead and the doors stay open for everybody, so later players start at the
-  sewer exit. The mod offers the prison only until someone has left the sewers on the server.
-* **Two new players in the prison at the same time** won't both get the intro: the Emperor and the Blades follow
-  one player (the game that runs them). Start one at a time, or have the second one take the sewer exit.
-* **Baurus** leaves for his later part in the main quest at the end of the intro. If nobody plays the intro on the
-  server, he may stay in the prison. Not tested yet.
-* **Everyone who starts gets an Amulet of Kings.** It's a quest item and can't be dropped. The spare copies go once
-  Jauffre has it (setting "Take back spare amulets").
-* **OblivionMP may change how new characters start.** If a new player hasn't left the sewers but the intro isn't
-  running, the mod only offers the sewer exit, and the server log says `OblivionMP's new-player start has changed`.
+* **Every new character starts as OblivionMP's preset.** On OblivionMP 1.1 the game always loads OblivionMP's own
+  starting save, so nobody makes a character from scratch or plays the prison intro. The mod's "Set up new
+  characters" clears the preset's bag and opens the character menus, but the preset's quest stages (Deliver the
+  Amulet started, the Knights of the Nine prophet, MS47...) stay in the new player's own journal: the game can't
+  un-set a quest stage. They're kept out of the party's progress.
+* **The 1.0 prison or sewer start is off.** It was built for OblivionMP 1.0, where a new player started in the
+  prison. It may come back when OblivionMP lets servers choose how new characters start.
+* **A character only counts as new** when the server has no player save for them when they join. To set someone
+  up again, stop the server and move their `<server folder>\saves\players\player_<ReadyM id>.sav` aside.
 
 ## Conversations
 

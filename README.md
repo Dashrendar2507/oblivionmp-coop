@@ -46,8 +46,9 @@ rejoin. The defaults keep it sane: nobody gets teleported or thrown into a fight
   `/coop goto lock`.
 * **Back where you left.** When you join, you come back where you left, inside buildings too, behind a black
   travel screen so you don't see the jumps.
-* **New players choose where they start**: the game's prison intro (once per world, since the Emperor is shared) or
-  the sewer exit with a starter kit, the Amulet of Kings and the character menus.
+* **New characters made their own**: OblivionMP 1.1 starts every new player as the same preset character. The mod
+  empties the preset's bag down to a starter kit, opens the race, class and birthsign menus, and keeps the preset's
+  quest stages out of the party's progress.
 * **Calm a fight that went wrong**: `/coop calm` (your area, a player's area, every area, or the NPCs right next to
   you), or the **Calm** buttons on the web page.
 * **Tags over players' heads**: talking, bartering, persuading, training, picking a lock, pickpocketing, down.

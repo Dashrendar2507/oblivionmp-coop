@@ -200,8 +200,8 @@ older version of the mod, remove the two lines from **PC:**
 3. **PC:** quit the game and join again from the launcher.
 
 From then on, joining is all there is to it. Within a few seconds of joining you should catch up on the party's
-quests, without pop-ups. A brand-new character gets a window first, asking where to start (see
-[USING.md](USING.md#how-it-plays)).
+quests, without pop-ups. A brand-new character first gets a starter kit and the race, class and
+birthsign menus (see [USING.md](USING.md#how-it-plays)).
 
 **Tip:** if the launcher says your join ticket expired, click **Join** in the launcher again. Each ticket is only
 good for a short time. If you host and play on the same computer, join `127.0.0.1` rather than `localhost`.
