@@ -14,7 +14,15 @@ body:
     id: version
     attributes:
       label: Mod version
-      placeholder: "0.5.0"
+      placeholder: "0.7.0"
+    validations:
+      required: true
+
+  - type: input
+    id: oblivionmp
+    attributes:
+      label: OblivionMP server version
+      placeholder: "1.1.0"
     validations:
       required: true
 
@@ -42,6 +50,11 @@ body:
         - label: Back where you left (outside and inside buildings)
         - label: Web admin page (source player, give a stage, reset a quest)
         - label: Travel to a teammate (/coop goto, Alt+O) or to a conversation (Alt+Y)
+        - label: "New-player start: the start window, the prison intro or the sewer exit with the kit"
+        - label: Calming a fight (/coop calm or the web page)
+        - label: Tags over heads (talking, bartering, lockpicking, pickpocketing, down)
+        - label: Watchers heard the NPC's voice
+        - label: "Nothing happened twice on OblivionMP 1.1 (quest pop-ups, journal entries, items, gold)"
         - label: "Sleeping, waiting and fast travel: the clock stayed and level-up worked (say who slept, below)"
 
   - type: textarea

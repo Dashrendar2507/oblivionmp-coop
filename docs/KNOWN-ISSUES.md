@@ -1,6 +1,6 @@
 # Known issues and limits
 
-Co-op Quest Sync is in public test. These are the things we already know about. If you hit one of them, there's
+Co-op Quest Sync is young: this is its first public release. These are the things we already know about. If you hit one of them, there's
 no need to report it again, unless you have something new to add (a quest where it happens, a log, a way around
 it). OblivionMP itself also has [known issues](https://docs.ready.mp) that aren't caused by this mod.
 
@@ -35,6 +35,20 @@ names worked out from the game's ids.
 * The web page shows one language (`"Language"` in config.json, English by default, or the first one learned).
 * Only English has been tried so far.
 
+## OblivionMP 1.1
+
+Version 0.7.0 is the first built for OblivionMP 1.1.0, and it has had much less play on 1.1 than on 1.0. Things
+1.1 changed that we haven't tested enough yet:
+
+* **The game's own scripts are now shared by OblivionMP.** By default, OblivionMP 1.1 replays conversation result
+  scripts, scripted activations (levers, buttons), triggers and message-box buttons on nearby players' games. With
+  the mod's quest sync on top, a quest stage, a journal entry, gold or an item may arrive **twice**, once from
+  OblivionMP and once from the mod, or reach a player who wasn't in the conversation. If you see it, please report
+  the quest and stage, and whether the other player was nearby.
+* **The game starts straight in the multiplayer world**, without the main menu, and there are no local saves any
+  more. The mod's add-on, the silent catch-up on join, the new-player start and getting back up after death haven't
+  been tested much this way. Reports welcome, good or bad.
+
 ## Quests
 
 * **Quest scripts run in each player's game.** When a stage is shared, the game runs that stage's script for every
@@ -67,8 +81,10 @@ names worked out from the game's ids.
   talker heard it. The voice plays with the text, from nowhere (not from the NPC). It
   should stop when you leave the conversation (Alt+U); tell us if a line keeps playing.
 * **You can still turn the camera while frozen.** The freeze stops walking and fighting, not looking around.
-* **Menus might not be recognised.** Barter, persuasion, training and so on are detected by the original game's
-  menu numbers. If the overlay never says "is bartering" (or another menu), tell us which one.
+* **Menus might not be recognised.** Persuasion, training, repair and the spell screens are detected by the
+  original game's menu numbers. Lockpicking, pickpocketing and bartering come from the add-on, which sees which of
+  the remaster's screens is open, and the server tells a merchant's barter from a chest by whether a conversation
+  was going on. If a tag or the overlay says the wrong thing (or nothing), tell us what you were doing.
 * **The NPC's name** on the overlay sometimes falls back to the NPC closest to the talker, which can be wrong in a
   crowd.
 * **Letting watchers walk around** during someone's conversation ("Freeze watchers: Nobody") hasn't been tested
@@ -88,37 +104,51 @@ names worked out from the game's ids.
   start again. Guards also come back while you still have a bounty: calm that player by name to clear it. Inside
   dungeons the server doesn't know which area an NPC is in, so calm takes the fighting NPCs within about 40 m of the
   players there instead: a fight further away needs `/coop calm all`.
-* **Followers and companions** aren't shared or synced (not possible with OblivionMP's SDK 1.0).
-* **Getting back up reloads your save.** OblivionMP brings a dead player back with its "rebirth", which loads your
-  last local save. The mod then takes you back to the party (through the add-on's `coc`/`cow` when that's another
+* **Followers and companions** aren't shared or synced (OblivionMP's SDK doesn't give mods a way to yet).
+* **Getting back up reloads your character.** OblivionMP brings a dead player back with its "rebirth", which
+  reloads you. The mod then takes you back to the party (through the add-on's `coc`/`cow` when that's another
   building or city), so it takes a load or two, behind a black screen.
+* **OblivionMP brings you back by itself.** After some seconds down (about 10 to 25 in our tests), OblivionMP's
+  own rebirth gets you up whether or not a teammate is coming, and **R** does it at once. The mod treats both as a
+  respawn and takes you to the party, so the 60 seconds to wait for a revive are often cut short.
 * **The co-op keys also reach the game.** Alt+U also presses U in the game, and so on. If that's a problem, pick
   other letters on the web page.
 
 ## Back where you left
 
-* Going back **inside a building** relies on the `CoopQuestSyncUI` add-on running the console's `coc` command.
-  If that fails, you come back outside, by the door.
+* Going back **inside a building** relies on the `CoopQuestSyncUI` add-on running the console's `positioncell` or
+  `coc` command. If that fails, you come back outside, by the door.
+* **The game occasionally crashes when the add-on runs `coc`**, mostly right after a join. The crash is inside
+  OblivionMP's console code and happens at random; the add-on waits for a quiet moment before every console
+  command to make it rarer. If it happens to you often, the host can untick **Put players back where they left** on
+  the web page: you then come back wherever OblivionMP puts you.
 * Going back **outside** in another world space (a city, the Shivering Isles) relies on the add-on running the
   console's `cow` command; the server then puts you on your spot. Without the add-on, it only works when your local
   save starts you in the same world space as your last outdoor spot.
 * OblivionMP has no way for mods to save your character, so your spot is only as fresh as the last time the server
   saw you.
 * The game's own loading screen for the building still shows; the black travel screen hides the jumps around it.
-* **Typing `/coop test back` with the chat open** can leave the chat stuck after the move's load (it won't close
-  or take input until you restart the game). It's the same OblivionMP issue as dying with the chat open (below):
-  close the chat before the move.
+* **A trip waits for the chat to close.** A load with the chat open breaks OblivionMP's chat (below), so a move
+  through a load says "Co-op: close the chat to travel." and waits. If the chat stays open for 40 seconds, the trip
+  is cancelled.
 
 ## OblivionMP issues seen while testing
 
 These come from OblivionMP itself, not the mod; they're listed so you don't chase them:
 
-* **R while down is OblivionMP's "rebirth"**: it heals you and reloads your save, which skips the mod's revive.
-* **A reload with the chat (K) open** can leave the chat stuck until you restart the game.
+* **A crash when quitting to desktop**, while OblivionMP shuts its browser down.
+* **R is OblivionMP's "rebirth", even while you type in the chat.** Pressed while down, it gets you up at once,
+  which skips a teammate's revive (the mod still takes you to the party). Typing a word with an R in the chat while
+  you're down does the same.
+* **OblivionMP gets a dead player up by itself** after some seconds (see Party, above).
+* **Paying a fine to a guard can move you** somewhere else. The mod doesn't move you there (its logs show nothing at
+  that moment); it comes from OblivionMP.
+* **A console command (`coc`) occasionally crashes the game** (see Back where you left, above).
+* **A reload with the chat (K) open** can leave the chat stuck until you restart the game. The mod's own trips wait
+  until the chat is closed.
 * **"Multiple entities mapped to the same game object"** errors flooding UE4SS.log: the server ended up with two
   copies of one NPC (seen with an NPC who walked through a load door by himself). It repeats every time someone
   enters that area.
-* **A crash when quitting to desktop**, while OblivionMP shuts its browser down.
 
 ## The UE4SS add-on
 
@@ -126,9 +156,9 @@ These come from OblivionMP itself, not the mod; they're listed so you don't chas
   top left corner says so until you do.
 * If `UE4SS.log` has no `[CoopQuestSyncUI]` lines after that restart, the add-on isn't running: quest pop-ups may
   show while you catch up, and "back inside" won't work. Please report it with the log.
-* The add-on runs console commands (coc, cow, calm) only when the game is quiet: not during the join's catch-up and
-  not within 2 seconds of a menu opening or closing (a command run then crashed the game). After 30 seconds it runs
-  anyway.
+* The add-on runs console commands (coc, cow, positioncell, calm) only when the game is quiet: not during the join's
+  catch-up nor in the 8 seconds after it, and not within 4 seconds of a menu opening or closing (a command run then
+  crashed the game). After 30 seconds it runs anyway.
 * If a "Quest Added" window during the catch-up can't be closed (UE4SS.log says `could not close`), close it by
   hand; the black travel screen steps aside for it after 2.5 seconds.
 * **If the game crashes on load**, put an empty file named `off` (`off.txt` works too) in
