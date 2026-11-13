@@ -1,6 +1,6 @@
-# Co-op Quest Sync 0.6.3: every test still to do
+# Co-op Quest Sync 0.6.4: every test still to do
 
-0.6.3 puts all the test work in one build, for OblivionMP **1.0.x** (your server is 1.0.1):
+0.6.4 is 0.6.3 plus a fix for the endless load after Alt+G (your 2026-11-13 test, Part 1.2). 0.6.3 puts all the test work in one build, for OblivionMP **1.0.x** (your server is 1.0.1):
 
 * **0.5.4**: `/coop calm near` calms every NPC fighting within 15 m, `/coop calm <name>` works in dungeons and
   without the trailing dot, and the server learns the game's text from the players' games.
@@ -32,7 +32,7 @@ on). You host and play on the same computer, but they are still different folder
 | Local saves | **PC:** `%USERPROFILE%\Documents\My Games\Oblivion Remastered\Saved\SaveGames\` |
 | Plugins.txt | **PC:** `C:\Program Files (x86)\Steam\steamapps\common\Oblivion Remastered\OblivionRemastered\Content\Dev\ObvData\Data\Plugins.txt` |
 
-## Install 0.6.3
+## Install 0.6.4
 
 1. **Server:** stop the server. Delete `<server folder>\mods\CoopQuestSync\` and copy in the `CoopQuestSync`
    folder from the zip, so you get `<server folder>\mods\CoopQuestSync\manifest.json`. Don't touch
@@ -40,8 +40,7 @@ on). You host and play on the same computer, but they are still different folder
 2. **PC:** nothing to copy. The add-on is the same as in 0.5.4 and 0.6.2, so no "restart the game" note should
    appear. If `off`, `lite` or `off.txt` is in `%APPDATA%\ReadyM.Launcher\Oblivion\Mods\CoopQuestSyncUI\`, delete
    it. The end of `Plugins.txt` still reads `CoopQuestSync.esp` then `CoopQuestSyncDialogue.esp`.
-3. **Server:** start the server. The log's mod load order shows **`CoopQuestSync v0.6.3`** (your last test still
-   ran 0.5.3, which is why the fade was missing). Also `The game's text: <server folder>\coop-quest-sync-strings.json`
+3. **Server:** start the server. The log's mod load order shows **`CoopQuestSync v0.6.4`**. Also `The game's text: <server folder>\coop-quest-sync-strings.json`
    and `Quest admin page: http://localhost:9060/`.
 4. **Server:** on http://localhost:9060/, **Co-op settings** has both **Party > Travel to teammates any time** and
    **New players > New players start**. If either is missing, the old folder is still in place.
@@ -57,6 +56,9 @@ from the load until you stand on the pinned spot: no visible jump once inside.
 **1.2 Alt+G.** In a shop, stand still a few seconds, then die (console: `player.modav health -1000`). Press
 **Alt+G**. Expected: black screen, OblivionMP's reload (its loading screen), probably a second load into the shop,
 then you stand inside the shop a few steps from where you died. Not at your local save's spot any more.
+On 2026-11-13 (0.6.3) this loaded forever: the black screen was made in the middle of the reload. 0.6.4 waits for the
+reload to end first. If it still loads forever, do 1.4's check with **R** right away (in the same dungeon), and send
+**PC** `UE4SS.log` (lines with `Rebirth`, `QuickLoad`, `OnLoadFinished`).
 
 **1.3 Revive.** Die again in the shop, then `/coop test revive`: same as 1.2, with "Ghost revived you...".
 
@@ -226,8 +228,8 @@ the first join (the add-on installs itself, a note says so).
 
 ## Part 7: later, on OblivionMP 1.1.0
 
-Not now: 0.6.3 is built for 1.0 and **won't load on a 1.1.0 server**, and a 1.1 build won't load on 1.0.1. The move
-to SDK 1.1.0 is ready in its own pull request. When you upgrade the server, ask for a 0.6.3 build for 1.1 (the
+Not now: 0.6.4 is built for 1.0 and **won't load on a 1.1.0 server**, and a 1.1 build won't load on 1.0.1. The move
+to SDK 1.1.0 is ready in its own pull request. When you upgrade the server, ask for a 0.6.4 build for 1.1 (the
 earlier `0.6.1-sdk1.1` zip doesn't have the 0.5.4 and 0.6.2 fixes).
 
 1. **Server:** set up the 1.1.0 server as ReadyM describes: copy `saves`, `data`, `branding` and `config.json` from

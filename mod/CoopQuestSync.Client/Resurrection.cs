@@ -67,6 +67,7 @@ public sealed partial class Resurrection(IPlayers players, IInput input, IUserIn
         _sawLoad = false;
         _watchFor = 0;
         _settled = 0;
+        travel.Hold();      // no travel page while the reload tears the world down
         me.ResurrectLocalPlayer();
         logger.LogInformation("[QuestSync] Brought back to life by the server{Waited}.", _told ? " (after the chat or menu closed)" : "");
         if (_told)
