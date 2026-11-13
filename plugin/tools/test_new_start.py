@@ -21,6 +21,7 @@ class Game:
         self.topics = set()
         self.stopped = set()
         self.at = "prison"
+        self.moves = 0
 
     def setstage(self, q, s):
         self.done.setdefault(q, set()).add(s)
@@ -108,6 +109,8 @@ class Script:
                 g.stopped.add(l.split()[1].upper())
             elif kw == "player.moveto":
                 g.at = l.split()[1]
+                g.moves += 1
+                return                   # MoveTo on the player ends the script there (the game does this)
             else:
                 raise Exception("unhandled " + l)
         assert not stack, "unbalanced if/endif"
@@ -148,9 +151,13 @@ def main():
     check("skip: no prison answer", not g.inv.get("CQSStartPrison"))
     check("skip: the window is not shown again", len(g.boxes) == 1, g.boxes)
     check("skip: still in the intro until the gate", g.inv.get("CQSIntro") == 1, g.inv)
+    ticks(s, g, 10)
+    check("skip: moved to the sewer exit once", g.moves == 1, g.moves)
     g.setstage("MQ01", 88)       # the sewer gate's Finished button
+    g.at = "outside"
     ticks(s, g)
     check("out of the sewers: CQSIntro gone", g.inv.get("CQSIntro") == 0, g.inv)
+    check("out of the sewers: not moved back", g.at == "outside" and g.moves == 1, (g.at, g.moves))
 
     # 2. A new player picks the prison.
     s, g = Script(src), Game(**in_prison)
@@ -195,6 +202,13 @@ def main():
     g.press(0)
     ticks(s, g)
     check("no intro running: skipped to the sewer exit", g.at == "CGSewerExitMarker")
+
+    # 6b. A save from 0.6.15 or older, stuck at state 3 after going out: no move back.
+    s, g = Script(src), Game(cur={"MQ01": 88}, done={"MQ01": {5, 88}, "MQ02": {10, 20}}, inv={"CQSIntro": 0})
+    s.vars["state"] = 3
+    g.at = "outside"
+    ticks(s, g)
+    check("old save stuck at state 3: not moved", g.at == "outside" and g.moves == 0, (g.at, g.moves))
 
     # 7. An admin offers the start again: the answer item is taken, the window comes back.
     s, g = Script(src), Game(**in_prison)

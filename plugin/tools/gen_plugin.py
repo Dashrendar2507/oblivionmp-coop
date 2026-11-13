@@ -307,6 +307,9 @@ NEW_START_SCRIPT = "\r\n".join([
     "endif",
     "endif",
     "elseif state == 3",
+    "set state to 2",
+    # A save from before the fix below can still be at state 3 after going out: no skip then.
+    "if GetStageDone MQ01 88 == 0",
     "if GetStageDone MQ02 10 == 0",
     "SetStage MQ02 10",
     "endif",
@@ -315,9 +318,11 @@ NEW_START_SCRIPT = "\r\n".join([
     "endif"]
     + [f"AddTopic {t}" for t in START_TOPICS]
     + ["StopQuest Charactergen",
-       "player.MoveTo CGSewerExitMarker",
+       # MoveTo on the player ends the script there (2026-11-13: CQSStartDone never came and state stayed 3, so the
+       # player was moved back to the sewer exit every half second, even after going out): everything else first.
        "player.AddItem CQSStartDone 1",
-       "set state to 2",
+       "player.MoveTo CGSewerExitMarker",
+       "endif",
        # Chose already (an answer item is there) or out of the sewers: nothing to do. Back to 0 if the answer item is
        # gone (an admin offered the start again).
        "elseif player.GetItemCount CQSStartDone == 0 && player.GetItemCount CQSStartPrison == 0",

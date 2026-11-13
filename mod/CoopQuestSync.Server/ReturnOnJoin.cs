@@ -47,6 +47,12 @@ public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents event
 {
     /// <summary>How long a player stays in an area before they are moved: the game must have finished loading it.</summary>
     private const float SettleSeconds = 4f;
+    /// <summary>
+    /// How long a join waits for the plugin's handshake before deciding where the player goes. A brand-new character
+    /// spends a minute in the main menu and the race menu first (2026-11-13: plugin seen 56 s after joining), and
+    /// only the plugin can say they are new (CQSIntro).
+    /// </summary>
+    private const float PluginWaitSeconds = 150f;
     /// <summary>How long to wait for the game to take the player into the building. Longer than the add-on may hold a
     /// command back (30 s, while the join's quest catch-up or a menu runs), or the server gave up before the trip.</summary>
     private const float CellTimeoutSeconds = 45f;
@@ -111,6 +117,7 @@ public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents event
         public bool RebornLoaded;
         public float RebornLoadedAt;
         public float RebornSince;
+        public float FirstSeen;
         public PlayerId? RebornTo;
         public ReturnSpot? RebornSpot;
     }
@@ -166,7 +173,7 @@ public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents event
                 continue;
             var area = GameData.AreaKey(areaId);
             if (!_sessions.TryGetValue(id, out var s))
-                _sessions[id] = s = new Session();
+                _sessions[id] = s = new Session { FirstSeen = _clock };
             if (s.Area != area)
             {
                 s.Area = area;
@@ -188,6 +195,10 @@ public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents event
 
             if (!s.Started)
             {
+                // A new character with an old nickname (2026-11-13: taken from the race menu to the shop where that
+                // nickname last stood): nothing happens until the plugin has said whether they left the sewers.
+                if (view.Phase != QuestTokenSync.Phase.Ready && _clock - s.FirstSeen < PluginWaitSeconds)
+                    continue;
                 // Never left the sewers (a new character, in the prison or choosing a start): the game's or the new
                 // start's place, not where this nickname last stood. Decided once the plugin has had time to say so.
                 if (view.Intro > 0 && sync.Players.ContainsKey(id))

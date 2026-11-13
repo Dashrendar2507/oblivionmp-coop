@@ -1,8 +1,8 @@
-# Co-op Quest Sync 0.6.15: every test still to do
+# Co-op Quest Sync 0.6.16: every test still to do
 
-0.6.15 adds fixes from your 2026-11-13 tests (Part 1) to the combined build: no endless load after Alt+G (0.6.4), a
+0.6.16 adds fixes from your 2026-11-13 tests (Part 1) to the combined build: no endless load after Alt+G (0.6.4), a
 note on screen while you're down, `/coop calm near` that sticks, the voice stopping at once, arriving inside a
-building straight on the spot, and a calmer "Taking you back" on join (0.6.7, after the 12:14 crash), no long black screen after a revive (0.6.8/0.6.9), no load with the chat open (0.6.10), lockpicking and pickpocketing shown to the others (0.6.11/0.6.12), and merchant bartering shown again (0.6.15). It's for OblivionMP **1.0.x** (your server is 1.0.1) and contains:
+building straight on the spot, and a calmer "Taking you back" on join (0.6.7, after the 12:14 crash), no long black screen after a revive (0.6.8/0.6.9), no load with the chat open (0.6.10), lockpicking and pickpocketing shown to the others (0.6.11/0.6.12), merchant bartering shown again (0.6.15), and two new-start fixes (0.6.16, Part 5). It's for OblivionMP **1.0.x** (your server is 1.0.1) and contains:
 
 * **0.5.4**: `/coop calm near` calms every NPC fighting within 15 m, `/coop calm <name>` works in dungeons and
   without the trailing dot, and the server learns the game's text from the players' games.
@@ -34,15 +34,15 @@ on). You host and play on the same computer, but they are still different folder
 | Local saves | **PC:** `%USERPROFILE%\Documents\My Games\Oblivion Remastered\Saved\SaveGames\` |
 | Plugins.txt | **PC:** `C:\Program Files (x86)\Steam\steamapps\common\Oblivion Remastered\OblivionRemastered\Content\Dev\ObvData\Data\Plugins.txt` |
 
-## Install 0.6.15
+## Install 0.6.16
 
 1. **Server:** stop the server. Delete `<server folder>\mods\CoopQuestSync\` and copy in the `CoopQuestSync`
    folder from the zip, so you get `<server folder>\mods\CoopQuestSync\manifest.json`. Don't touch
    `<server folder>\coop-quest-sync-state.json` or `<server folder>\coop-quest-sync-strings.json`.
-2. **PC:** nothing to copy. The add-on is the same as in 0.6.14: if you already restarted the game once on 0.6.14,
-   no restart is needed. Coming from an older build, a note in the top left corner asks you to restart on your first
-   join: quit and start the game again once, so the new add-on runs.
-3. **Server:** start the server. The log's mod load order shows **`CoopQuestSync v0.6.15`**. Also `The game's text: <server folder>\coop-quest-sync-strings.json`
+2. **PC:** nothing to copy, but **the plugin changed** (`CoopQuestSync.esp`, 0.6.16): quit the game before you join,
+   so it starts with the new one. The add-on is the same as in 0.6.14. Coming from an older build, a note in the top
+   left corner asks you to restart on your first join: quit and start the game again once, so the new add-on runs.
+3. **Server:** start the server. The log's mod load order shows **`CoopQuestSync v0.6.16`**. Also `The game's text: <server folder>\coop-quest-sync-strings.json`
    and `Quest admin page: http://localhost:9060/`.
 4. **Server:** on http://localhost:9060/, **Co-op settings** has both **Party > Travel to teammates any time** and
    **New players > New players start**. If either is missing, the old folder is still in place.
@@ -214,6 +214,17 @@ If the log says `<you>'s game didn't send the text asked for in 45 s`, check tha
 
 This one needs a character still in the intro, so it hides your real one for a while. Do it last.
 
+**Fixed in 0.6.16** (from your 2026-11-13 14:13 test):
+
+* A new character was sent to where your nickname last played (Borba's shop in Cheydinhal) while the race menu was
+  still open. The "Taking you back" trip now waits until the plugin has said whether you've left the sewers, and a
+  new character is never taken back. Server log: `<name>: hasn't left the sewers, so not taken back to where they
+  last played.`
+* After the skip, the game stopped reading our start script at the move to the sewer exit, so the rest never ran:
+  no amulet, no starter kit, no race/class/birthsign menus, and the script kept moving you back to the sewer exit
+  every half second, even after you went out (that's why Esc didn't work). Now the move is the script's last step.
+  Your 14:13 test character (the one whose Esc didn't work) is safe to load: it won't be moved again.
+
 1. **Server:** stop the server. In `<server folder>\saves\players\`, move `player_<your ReadyM id>.sav` (your id
    starts with `7198b060`) to your desktop. That's your real character: keep it safe.
 2. **Server:** start the server. On http://localhost:9060/, **Co-op settings > New players**: set **Offer the prison
@@ -228,13 +239,15 @@ This one needs a character still in the intro, so it hides your real one for a w
 
 **5A, the skip.** Press **At the sewer exit: skip the intro**.
 
-1. You're moved next to the sewer gate. Your inventory has the Amulet of Kings, an iron shortsword, an iron bow, 25
+1. You're moved next to the sewer gate, once. Server log: `<name>: start at the sewer exit: gave the Amulet of Kings,
+   <n> starter item(s).` Your inventory has the Amulet of Kings, an iron shortsword, an iron bow, 25
    iron arrows, 5 lockpicks, 3 healing potions, a torch, a leather cuirass and leather boots. The journal shows
    "Deliver the Amulet".
 2. The race menu opens, then class, then birthsign. Then: "Your character is ready. The sewer gate lets you change
    it before you go out."
 3. Use the sewer gate: the game's own box (Edit Race, Birthsign, Class, Finished). Press **Finished**.
 4. Outside, the party's progress arrives. Server log: `<name>: out of the sewers; catching up with the party.`
+5. You stay outside: walk away from the gate, then press Esc. The game's menu opens.
 
 **5B, the prison.** **Server:** delete the test `player_<id>.sav` in `<server folder>\saves\players\`. Then repeat
 steps 3 and 4 above with a fresh new-game save, and press **In the prison: play the intro**. The intro plays as
@@ -291,8 +304,8 @@ the first join (the add-on installs itself, a note says so).
 
 ## Part 7: later, on OblivionMP 1.1.0
 
-Not now: 0.6.15 is built for 1.0 and **won't load on a 1.1.0 server**, and a 1.1 build won't load on 1.0.1. The move
-to SDK 1.1.0 is ready in its own pull request. When you upgrade the server, ask for a 0.6.15 build for 1.1 (the
+Not now: 0.6.16 is built for 1.0 and **won't load on a 1.1.0 server**, and a 1.1 build won't load on 1.0.1. The move
+to SDK 1.1.0 is ready in its own pull request. When you upgrade the server, ask for a 0.6.16 build for 1.1 (the
 earlier `0.6.1-sdk1.1` zip doesn't have the 0.5.4 and 0.6.2 fixes).
 
 1. **Server:** set up the 1.1.0 server as ReadyM describes: copy `saves`, `data`, `branding` and `config.json` from
