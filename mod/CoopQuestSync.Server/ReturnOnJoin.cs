@@ -348,6 +348,35 @@ public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents event
     }
 
     /// <summary>
+    /// Sends a player to a fixed spot through the add-on (a new character to the sewer exit, see
+    /// <see cref="FreshCharacter"/>). False when the server doesn't know where they are yet.
+    /// </summary>
+    public bool SendTo(PlayerId who, ReturnSpot spot, string screenText)
+    {
+        if (!entities.TryLookup(who, out MainCharacter main) || !sync.Players.TryGetValue(who, out var view) || view.Area is not { } areaId)
+            return false;
+        var here = GameData.AreaKey(areaId);
+        if (!_sessions.TryGetValue(who, out var s))
+            _sessions[who] = s = new Session { Area = here, Since = _clock };
+        s.Started = true;
+        s.Resolved = true;
+        s.Joining = null;
+        RaiseScreen(who, s, screenText);
+        GoTo(main, sync.Nickname(who), here, s, spot);
+        return true;
+    }
+
+    /// <summary>A spot inside an interior, from the game's own coordinates (as in the Construction Set).</summary>
+    public static ReturnSpot GameSpot(uint cellFormId, string cell, float x, float y, float z) => new()
+    {
+        Area = $"L_PersistentDungeon-{cellFormId:X}",
+        Cell = cell,
+        X = x * UnitCm,
+        Y = -y * UnitCm,
+        Z = z * UnitCm,
+    };
+
+    /// <summary>
     /// The black screen for a move through a load (coc or cow), whatever started it: a join, a trip to a teammate, a
     /// test, a respawn. Without it the player saw the new place for a moment, then the jump onto the spot
     /// (2026-11-12, the Alt+Y test join).
