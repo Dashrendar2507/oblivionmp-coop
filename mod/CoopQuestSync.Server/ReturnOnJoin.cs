@@ -69,7 +69,7 @@ public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents event
     private const float RebornAreaSeconds = 1.5f;
     /// <summary>The trip waits this long after the rebirth's reload: a player.positioncell 0.7 s after the reload did
     /// nothing at all (2026-11-13 12:27), while one 13 s after the join's load worked.</summary>
-    private const float AfterReloadSeconds = 4f;
+    private const float AfterReloadSeconds = 6f;
     /// <summary>
     /// One game unit in centimetres, and the side of an exterior cell in game units: for the cell <c>cow</c> asks
     /// for. Only roughly right is needed: once the player is in the world space, the server puts them on the spot.

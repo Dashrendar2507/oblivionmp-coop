@@ -183,6 +183,8 @@ public sealed partial class TravelScreen(CefHost cef, IPlayers players, IInput i
             _checkIn2 = 0.2f;
             if (!File.Exists(TravelRan))
                 return;
+            try { _watchedPositionCell = File.ReadAllText(TravelRan).StartsWith("player.positioncell ", StringComparison.Ordinal); }
+            catch { _watchedPositionCell = false; }
             _watching = true;
             _sawLoad = false;
             _watchFor = 0;
@@ -197,7 +199,10 @@ public sealed partial class TravelScreen(CefHost cef, IPlayers players, IInput i
         }
         else if (_sawLoad)
             _settled += dt;
-        if (_settled < 1f && _watchFor < 20f)
+        // A positioncell the game takes starts its load within a second or two; one it ignores never does
+        // (2026-11-13 12:27 and 12:35), so don't wait the full 20 s to find out.
+        var noLoadAfter = _watchedPositionCell ? PositionCellNoLoadSeconds : 20f;
+        if (_settled < 1f && (_sawLoad ? _watchFor < 20f : _watchFor < noLoadAfter))
             return;
         _watching = false;
         _moving = false;
@@ -207,7 +212,7 @@ public sealed partial class TravelScreen(CefHost cef, IPlayers players, IInput i
         logger.LogInformation("[QuestSync] In the new place after the move{Note}.", _settled >= 1f ? "" : " (no load seen)");
         // A player.positioncell the game ignored (no load, 2026-11-13 12:27): the door's coc now, not after the
         // server's 45 s.
-        if (_settled < 1f && ran.StartsWith("player.positioncell ", StringComparison.Ordinal)
+        if (!_sawLoad && ran.StartsWith("player.positioncell ", StringComparison.Ordinal)
             && ran.Split(' ') is { Length: 6 } parts)
         {
             logger.LogInformation("[QuestSync] The game ignored {Command}; going in through the door instead.", ran);
@@ -224,6 +229,8 @@ public sealed partial class TravelScreen(CefHost cef, IPlayers players, IInput i
     }
 
     private float _checkIn2;
+    private bool _watchedPositionCell;
+    private const float PositionCellNoLoadSeconds = 6f;
 
     private void Touch(string path)
     {
