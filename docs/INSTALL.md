@@ -38,7 +38,7 @@ Remastered**, **Manage**, **Browse local files**).
 | Optional settings file | **Server:** `<server folder>\mods\CoopQuestSync\server\config.json` |
 | Server log | **Server:** the server console window, or the **Terminal** tab of the ReadyM admin panel (http://localhost:9050). The mod's lines start with `[QuestSync]`. |
 | Co-op web page | **Server:** http://localhost:9060/ |
-| Plugins.txt | **PC:** `<game folder>\OblivionRemastered\Content\Dev\ObvData\Data\Plugins.txt` |
+| Plugins.txt | **PC:** `<game folder>\OblivionRemastered\Content\Dev\ObvData\Data\Plugins.txt`. The launcher edits it while you play; don't add the mod's plugins yourself. |
 | The add-on | **PC:** `%APPDATA%\ReadyM.Launcher\Oblivion\Mods\CoopQuestSyncUI\` (paste it into the File Explorer address bar). Installed by the mod on the first join. |
 | UE4SS.log | **PC:** `<game folder>\OblivionRemastered\Binaries\Win64\UE4SS.log`. A new one each time the game starts. |
 
@@ -173,32 +173,21 @@ single quest, open it on the page and use its reset button.
 ### Uninstalling
 
 **Server:** delete `<server folder>\mods\CoopQuestSync\` and restart the server. You can also delete
-`coop-quest-sync-state.json` and `coop-quest-sync-strings*.json` from `<server folder>`. Players should remove the
-two lines they added to `Plugins.txt` (see below).
+`coop-quest-sync-state.json` and `coop-quest-sync-strings*.json` from `<server folder>`. Players have nothing to
+remove: the launcher only adds the mod's plugins while they play on the server.
 
 ## Part 2: every player's PC
 
-### One-time setup: Plugins.txt
+### Nothing to set up for the plugins
 
-The game only loads plugins listed in a text file called `Plugins.txt`. The launcher copies our two plugins into
-the game for you when you join, but you need to add them to the list once.
+The mod comes with two game plugins, `CoopQuestSync.esp` and `CoopQuestSyncDialogue.esp`. When you join, the ReadyM
+Launcher copies them into the game and adds them to the game's plugin list (`Plugins.txt`); when you close the game,
+it removes them and puts your `Plugins.txt` back as it was, so they never affect your single-player game.
 
-1. **PC:** find the game folder. On Steam: right-click **Oblivion Remastered** in your library, **Manage**,
-   **Browse local files**. By default it's `C:\Program Files (x86)\Steam\steamapps\common\Oblivion Remastered\`.
-2. **PC:** open `OblivionRemastered\Content\Dev\ObvData\Data\` inside it.
-3. **PC:** open `Plugins.txt` in Notepad.
-4. **PC:** add these two lines at the **very end** of the file, then save:
-
-   ```text
-   CoopQuestSync.esp
-   CoopQuestSyncDialogue.esp
-   ```
-
-   Don't remove anything that's already there. The game's own plugins (`Oblivion.esm`, `Knights.esp`, the `DLC*.esp`
-   files, `AltarESPMain.esp`, `AltarDeluxe.esp`...) must stay above our two.
-
-You won't find `CoopQuestSync.esp` in that folder before you join a server: that's normal. The launcher puts the
-plugins there when you join and removes them when you leave, so they never affect your single-player game.
+**Don't add them to `Plugins.txt` yourself.** The launcher adds them anyway, so they end up listed twice and the
+quest sync stops working (the server log says the plugin never answered the handshake). If you added them for an
+older version of the mod, remove the two lines from **PC:**
+`<game folder>\OblivionRemastered\Content\Dev\ObvData\Data\Plugins.txt`.
 
 ### First join
 
@@ -211,8 +200,8 @@ plugins there when you join and removes them when you leave, so they never affec
 3. **PC:** quit the game and join again from the launcher.
 
 From then on, joining is all there is to it. Within a few seconds of joining you should catch up on the party's
-quests, without pop-ups. A brand-new character gets a window first, asking where to start (see
-[USING.md](USING.md#how-it-plays)).
+quests, without pop-ups. A brand-new character first gets a starter kit and the race, class and
+birthsign menus (see [USING.md](USING.md#how-it-plays)).
 
 **Tip:** if the launcher says your join ticket expired, click **Join** in the launcher again. Each ticket is only
 good for a short time. If you host and play on the same computer, join `127.0.0.1` rather than `localhost`.
@@ -236,5 +225,5 @@ to turn the add-on back on.
 
 ### Removing it
 
-1. **PC:** delete the two lines from `<game folder>\OblivionRemastered\Content\Dev\ObvData\Data\Plugins.txt`.
-2. **PC (optional):** delete the add-on folder `%APPDATA%\ReadyM.Launcher\Oblivion\Mods\CoopQuestSyncUI\`.
+**PC (optional):** delete the add-on folder `%APPDATA%\ReadyM.Launcher\Oblivion\Mods\CoopQuestSyncUI\`. The
+plugins need nothing: the launcher removes them whenever the game closes.

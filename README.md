@@ -46,8 +46,9 @@ rejoin. The defaults keep it sane: nobody gets teleported or thrown into a fight
   `/coop goto lock`.
 * **Back where you left.** When you join, you come back where you left, inside buildings too, behind a black
   travel screen so you don't see the jumps.
-* **New players choose where they start**: the game's prison intro (once per world, since the Emperor is shared) or
-  the sewer exit with a starter kit, the Amulet of Kings and the character menus.
+* **New characters made their own**: OblivionMP 1.1 starts every new player as the same preset character. The mod
+  empties the preset's bag down to a starter kit, opens the race, class and birthsign menus, and keeps the preset's
+  quest stages out of the party's progress.
 * **Calm a fight that went wrong**: `/coop calm` (your area, a player's area, every area, or the NPCs right next to
   you), or the **Calm** buttons on the web page.
 * **Tags over players' heads**: talking, bartering, persuading, training, picking a lock, pickpocketing, down.
@@ -79,14 +80,9 @@ file whether it's on the server or on the player's PC.
    [Releases](https://github.com/Dashrendar2507/oblivionmp-coop/releases). Stop the server, copy the zip's
    `CoopQuestSync` folder into the server's `mods\` folder (so you get `<server folder>\mods\CoopQuestSync\manifest.json`),
    and start the server.
-2. **Every player's PC:** add two lines to the end of the game's `Plugins.txt`, in
-   `...\Oblivion Remastered\OblivionRemastered\Content\Dev\ObvData\Data\` (on Steam, by default
-   `C:\Program Files (x86)\Steam\steamapps\common\Oblivion Remastered\`):
-   ```
-   CoopQuestSync.esp
-   CoopQuestSyncDialogue.esp
-   ```
-   Then join through the ReadyM Launcher as usual. The launcher downloads the mod and its plugins for you.
+2. **Every player's PC:** join through the ReadyM Launcher as usual. The launcher downloads the mod and adds its two
+   plugins to the game's plugin list for you while you play. Don't add them to `Plugins.txt` by hand: listed twice,
+   they break the quest sync.
 3. **Every player's PC, first join only:** the mod installs a small UE4SS add-on in
    `%APPDATA%\ReadyM.Launcher\Oblivion\Mods\CoopQuestSyncUI\` and a note asks you to **restart the game once**. After
    that, nothing else to do.
@@ -106,6 +102,9 @@ The important ones (full list in [docs/KNOWN-ISSUES.md](docs/KNOWN-ISSUES.md)):
   "rebirth" and fires even while you type in the chat; OblivionMP brings a dead player back by itself after some
   seconds; paying a fine to a guard can move you; and a console command (`coc`, used to put you back inside a
   building) occasionally crashes the game.
+* On joining, OblivionMP briefly shows "Your plugin load order differs from the server's, DLC areas will not
+  sync". The launcher puts the mod's plugins before `AltarDeluxe.esp`, which OblivionMP doesn't expect. The mod
+  works; the Deluxe content may not sync between players.
 * Every player needs **all** the game's official plugins, including the **Deluxe** ones (`AltarDeluxe.esp`). The
   remaster comes with all of them.
 * Friendly fire can't be turned off, and fights, followers and companions aren't shared: OblivionMP doesn't give

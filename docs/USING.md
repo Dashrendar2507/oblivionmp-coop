@@ -40,12 +40,14 @@ with an R in them while you're down (see [Death](#how-it-plays) below).
   25 seconds in our tests), and **R** does the same at once, even while you type in the chat. The mod can't stop
   either, so it treats them as a respawn: once that reload is over, it takes you to the party (or your last safe
   spot), the same as Alt+G. A revive is only possible before that happens.
-* **New players.** A player who has never left the sewers gets a window on their first join: start in the prison
-  with the game's own intro, or at the sewer exit with the intro skipped. The prison is only offered until someone
-  has left the sewers on the server: the Emperor and the Blades are shared, so the intro can only play once per
-  world. At the sewer exit you get the Amulet of Kings, "Deliver the Amulet" in your journal, and a starter kit, and
-  the race, class and birthsign menus open one after the other. The sewer gate lets you change them again before you
-  go out, as in the game. The party's quest progress reaches you once you're out of the sewers.
+* **New players.** OblivionMP 1.1 starts every new character as the same preset: "Danmer", just out of the sewers
+  near the Aleswell inn, with gear, gold and a few quest stages. About 8 seconds after a new character is in the
+  world, the mod empties their bag except for a starter kit, then opens the race menu (name, race, face), then
+  class, then birthsign; a chat line says "Welcome! Make your character...". The preset's quest stages (Deliver the
+  Amulet, the Knights of the Nine prophet, MS47...) are never shared with the party or announced. The party's real
+  progress then reaches the new player through the usual catch-up. A new character isn't taken back to where their
+  nickname last played. "New" means the server has no save for that player (`<server folder>\saves\players\player_<ReadyM id>.sav`);
+  a character above level 1 is never touched. To start someone over, stop the server and move their file aside.
 * **Back where you left.** When you join, the server puts you back where you were when you left, inside buildings
   too. The screen goes black with "Taking you back to where you left..." until you stand in your spot, so you don't
   see the jumps. Into a building, you arrive straight on your spot rather than at its door. Travelling to a
@@ -131,11 +133,12 @@ reaches the stage always gets everything. These switches decide what everyone el
 
 | Setting | Default | Meaning |
 | --- | --- | --- |
-| New players start | Ask | Ask: a window offers the prison intro or the sewer exit. Sewer exit: always there, with a short note. Game's own: the mod leaves the start alone. |
-| Offer the prison intro | Fresh world | Fresh world: only until someone has left the sewers on this server. Always: for testing. Never. |
-| Prison intro here | | Whether someone has left the sewers on this server. **Played: reset** offers the prison again (only on a fresh world). |
-| Starter kit | On | Gear for the sewer exit start: iron shortsword and bow, 25 arrows, 5 lockpicks, 3 healing potions, a torch, leather cuirass and boots. config.json `StarterKitItems` changes it. |
-| Take back spare amulets | On | Every new player gets an Amulet of Kings. Once Jauffre has it ("Deliver the Amulet" stage 50), the other copies go. |
+| Set up new characters | On | Empty a new character's bag down to the starter kit, open the race, class and birthsign menus, and keep the preset's quest stages out of the party's progress. |
+| Starter kit | On | Iron shortsword and bow, 25 arrows, 5 lockpicks, 3 healing potions, a torch, leather cuirass and boots. Off: the bag stays empty. config.json `StarterKitItems` changes it. |
+| Prison or sewer start | Off (game's own) | The 1.0 start: a window offering the game's prison intro or the sewer exit. It doesn't fit OblivionMP 1.1, which always starts new players as its preset, so leave it off for now. |
+| Offer the prison intro | Fresh world | Only with the prison or sewer start on. Fresh world: only until someone has left the sewers on this server. Always: for testing. Never. |
+| Prison intro here | | Only with the prison or sewer start on. Whether someone has left the sewers on this server. **Played: reset** offers the prison again (only on a fresh world). |
+| Take back spare amulets | On | Only with the prison or sewer start on, which gives every new player an Amulet of Kings. Once Jauffre has it ("Deliver the Amulet" stage 50), the other copies go. |
 
 ## Chat commands
 
@@ -150,8 +153,8 @@ reaches the stage always gets everything. These switches decide what everyone el
 | `/qs reset` | Reset every shared quest. |
 | `/qs whoami` | Your ReadyM id, and whether the server counts you as an admin. |
 | `/qs newstart` | Where new players start, and where each player is (in the intro, at the sewer exit, out). |
-| `/qs newstart again <name>` | Show that player the start window again (only while they haven't left the sewers). |
-| `/qs newstart fresh` | Offer the prison intro again. Only on a fresh world: the Emperor alive, the prison doors closed. |
+| `/qs newstart again <name>` | With the prison or sewer start on: show that player the start window again (only while they haven't left the sewers). |
+| `/qs newstart fresh` | With the prison or sewer start on: offer the prison intro again. Only on a fresh world: the Emperor alive, the prison doors closed. |
 | `/coop follow`, `/coop join`, `/coop revive`, `/coop giveup` | Same as the keys. |
 | `/coop calm` | Stop the fights in your area: each NPC fighting there stops, and guards stop chasing the players there. For a fight that went wrong, such as a quest giver turned hostile. |
 | `/coop calm <name>` | The same in that player's area, and their bounty goes to 0. Case and a final dot don't matter, and the start of a name is enough when only one player matches. |
@@ -206,7 +209,7 @@ replaces that folder, so keep a copy.
 | `GamePlugins` | the game's plugins | The order of the game's own plugins in `Plugins.txt`. Only matters for DLC items and NPC names. |
 | `StringsFile` | `""` | A hand-made file with the game's text. Empty: `coop-quest-sync-strings.json` in the server's folder (next to the state file), copied once from a `strings.json` next to the server DLL, or read from the game installed on the server computer when that works. |
 | `ArriveInsideDirectly` | `true` | Travel into a building or dungeon straight onto the spot (the console's `positioncell`). `false` goes to its door first (`coc`), then the spot. |
-| `StarterKitItems` | the kit | The starter kit for the sewer exit start: form id (hexadecimal, as the game's console shows it) and count, separated by commas, for example `"00000C0D:1,00017829:25"`. |
+| `StarterKitItems` | the kit | The starter kit for new characters: form id (hexadecimal, as the game's console shows it) and count, separated by commas, for example `"00000C0D:1,00017829:25"`. |
 | `GameFolder` | `""` | Where Oblivion Remastered is installed, to read its text from. Empty: found through Steam. |
 | `LearnTextFromPlayers` | `true` | Learn the game's text from the players' games (one `coop-quest-sync-strings.<language>.json` per language, next to the state file), for the web page and each player's chat lines in their language. |
 | `Language` | `"en"` | Language of the web page and of a hand-made `coop-quest-sync-strings.json` (`de`, `fr`, `es`, `it`...). Players' chat lines use each player's own game language. |
