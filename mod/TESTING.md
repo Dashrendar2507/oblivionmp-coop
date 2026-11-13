@@ -1,8 +1,8 @@
-# Co-op Quest Sync 0.6.6: every test still to do
+# Co-op Quest Sync 0.6.7: every test still to do
 
-0.6.6 adds fixes from your 2026-11-13 tests (Part 1) to the combined build: no endless load after Alt+G (0.6.4), a
-note on screen while you're down, `/coop calm near` that sticks, the voice stopping at once, and arriving inside a
-building straight on the spot. It's for OblivionMP **1.0.x** (your server is 1.0.1) and contains:
+0.6.7 adds fixes from your 2026-11-13 tests (Part 1) to the combined build: no endless load after Alt+G (0.6.4), a
+note on screen while you're down, `/coop calm near` that sticks, the voice stopping at once, arriving inside a
+building straight on the spot, and a calmer "Taking you back" on join (0.6.7, after the 12:14 crash). It's for OblivionMP **1.0.x** (your server is 1.0.1) and contains:
 
 * **0.5.4**: `/coop calm near` calms every NPC fighting within 15 m, `/coop calm <name>` works in dungeons and
   without the trailing dot, and the server learns the game's text from the players' games.
@@ -34,7 +34,7 @@ on). You host and play on the same computer, but they are still different folder
 | Local saves | **PC:** `%USERPROFILE%\Documents\My Games\Oblivion Remastered\Saved\SaveGames\` |
 | Plugins.txt | **PC:** `C:\Program Files (x86)\Steam\steamapps\common\Oblivion Remastered\OblivionRemastered\Content\Dev\ObvData\Data\Plugins.txt` |
 
-## Install 0.6.6
+## Install 0.6.7
 
 1. **Server:** stop the server. Delete `<server folder>\mods\CoopQuestSync\` and copy in the `CoopQuestSync`
    folder from the zip, so you get `<server folder>\mods\CoopQuestSync\manifest.json`. Don't touch
@@ -42,7 +42,7 @@ on). You host and play on the same computer, but they are still different folder
 2. **PC:** nothing to copy, but **the add-on changed**: on your first join a note in the top left corner asks you
    to restart the game. Quit and start it again once, so the new add-on runs. If `off`, `lite` or `off.txt` is in `%APPDATA%\ReadyM.Launcher\Oblivion\Mods\CoopQuestSyncUI\`, delete
    it. The end of `Plugins.txt` still reads `CoopQuestSync.esp` then `CoopQuestSyncDialogue.esp`.
-3. **Server:** start the server. The log's mod load order shows **`CoopQuestSync v0.6.6`**. Also `The game's text: <server folder>\coop-quest-sync-strings.json`
+3. **Server:** start the server. The log's mod load order shows **`CoopQuestSync v0.6.7`**. Also `The game's text: <server folder>\coop-quest-sync-strings.json`
    and `Quest admin page: http://localhost:9060/`.
 4. **Server:** on http://localhost:9060/, **Co-op settings** has both **Party > Travel to teammates any time** and
    **New players > New players start**. If either is missing, the old folder is still in place.
@@ -54,18 +54,35 @@ All in game on the **PC**, joined to your server, after the game restart from th
 Already fine on 2026-11-13: Alt+Y into the dungeon stays black (1.1), Alt+G no longer loads forever (1.2), and
 `/coop calm dashrendar2507.` works.
 
+**1.0 "Taking you back" on join (the 12:14 crash).** Save first. Stand somewhere inside the Aleswell inn, quit to
+the menu, and join again. On 2026-11-13 at 12:14 the game crashed here: OblivionMP's console crashed while it ran
+`coc AleswellInn` (the same crash inside OblivionMP as the 2026-11-07 ones), and the very same join at 11:50 went
+fine, so it doesn't happen every time. Two changes in 0.6.7:
+
+* The add-on now waits 8 s after the join's quest catch-up (was 3 s) and 4 s after a menu opens or closes (was 2 s)
+  before it runs a console command. That's my best guess at what makes it crash: the world is still settling. The
+  black screen stays up a few seconds longer on join.
+* That join used `coc` (door first) instead of `player.positioncell`. 0.6.6's server switched to `coc` for good, until
+  it restarted, whenever a positioncell trip didn't arrive within 15 s, and the add-on can hold a command back up to
+  30 s during a join. Now it waits 45 s and only switches for that one trip. **Server** log on join:
+  `travels into AleswellInn: asking their game to go there (player.positioncell)`.
+
+Join this way 3 or 4 times. If it crashes again, send **PC** `UE4SS.log` copied right after, and the **server** log.
+If it keeps crashing, untick **Put players back where they left** on http://localhost:9060/ (**Co-op settings**) for now: you then
+stay where the game puts you on join.
+
 **1.1 Arriving inside, straight on the spot.** `/coop test pin` inside the Aleswell inn (somewhere away from the
 door), walk outside, close the chat, `/coop test talk`, then **Alt+Y**. You now arrive directly on the pinned spot
 instead of at the door first, so the people by the door shouldn't greet you. **PC** `UE4SS.log` shows
 `ran player.positioncell ...`. If you end up at the door after all, the server log says `player.positioncell didn't
-take them into ...; using coc from now on` and it travels the old way: send me both logs.
+take them into ...; trying coc` and it travels the old way: send me both logs.
 
 **1.2 The down note, and OblivionMP's own rebirth.** Die (console: `player.modav health -1000`). Under OblivionMP's
 "You died / Press R to rebirth", a co-op note now says Alt+H (a teammate revives you), Alt+G (back with the party now)
 and the seconds left, counting down. Then wait without touching anything.
 
 On 2026-11-13 OblivionMP brought you back by itself after 9 s and 26 s. That doesn't come from the mod, and the part of
-OblivionMP I can read only does it on R, so it's in its native part (I'll ask ReadyM). 0.6.6 now treats it like Alt+G:
+OblivionMP I can read only does it on R, so it's in its native part (I'll ask ReadyM). 0.6.6 and later treat it like Alt+G:
 the screen goes black after OblivionMP's reload and you come back where you fell (or next to the party). Server log:
 `came back through OblivionMP's own rebirth; taking them back after its reload.` Tell me how many seconds it took.
 
@@ -245,8 +262,8 @@ the first join (the add-on installs itself, a note says so).
 
 ## Part 7: later, on OblivionMP 1.1.0
 
-Not now: 0.6.6 is built for 1.0 and **won't load on a 1.1.0 server**, and a 1.1 build won't load on 1.0.1. The move
-to SDK 1.1.0 is ready in its own pull request. When you upgrade the server, ask for a 0.6.6 build for 1.1 (the
+Not now: 0.6.7 is built for 1.0 and **won't load on a 1.1.0 server**, and a 1.1 build won't load on 1.0.1. The move
+to SDK 1.1.0 is ready in its own pull request. When you upgrade the server, ask for a 0.6.7 build for 1.1 (the
 earlier `0.6.1-sdk1.1` zip doesn't have the 0.5.4 and 0.6.2 fixes).
 
 1. **Server:** set up the 1.1.0 server as ReadyM describes: copy `saves`, `data`, `branding` and `config.json` from

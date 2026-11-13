@@ -200,8 +200,10 @@ end
 -- while the game closes a menu (OblivionMP shuts the quest pop-up during the join catch-up) crashed the game
 -- (2026-11-07, coc and StopCombat). Game thread.
 S.commandQueue = S.commandQueue or {}
-local QUIET_AFTER_SYNC = 3 -- seconds after the catch-up ends
-local QUIET_AFTER_MENU = 2 -- seconds after a menu opens or closes
+-- 3 and 2 s still saw a join's coc crash inside OblivionMP's console hook (2026-11-13 12:14, Aleswell), the same
+-- way as 2026-11-07; an identical join at 11:50 went fine. Longer quiet is a guess that the world is still settling.
+local QUIET_AFTER_SYNC = 8 -- seconds after the catch-up ends
+local QUIET_AFTER_MENU = 4 -- seconds after a menu opens or closes
 local COMMAND_MAX_WAIT = 30 -- run anyway after this long, so a stuck menu state can't hold commands forever
 
 local function takeCommands()

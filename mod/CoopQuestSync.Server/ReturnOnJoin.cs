@@ -47,11 +47,13 @@ public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents event
 {
     /// <summary>How long a player stays in an area before they are moved: the game must have finished loading it.</summary>
     private const float SettleSeconds = 4f;
-    /// <summary>How long to wait for the game to take the player into the building.</summary>
-    private const float CellTimeoutSeconds = 25f;
-    /// <summary>No sign of a positioncell trip after this long: the game may not know it, so coc instead (and from then on).</summary>
-    private const float DirectTimeoutSeconds = 15f;
-    private bool _directFailed;
+    /// <summary>How long to wait for the game to take the player into the building. Longer than the add-on may hold a
+    /// command back (30 s, while the join's quest catch-up or a menu runs), or the server gave up before the trip.</summary>
+    private const float CellTimeoutSeconds = 45f;
+    /// <summary>No sign of a positioncell trip after this long: coc instead, for this trip only. Longer than the add-on's
+    /// 30 s hold, so the positioncell has run by then: 0.6.6's 15 s sent a coc while it still waited (a second console
+    /// move right behind the first), and then used coc for every later trip until the server restarted.</summary>
+    private const float DirectTimeoutSeconds = 45f;
     private const float RecordEverySeconds = 2f;
     private const float SaveEverySeconds = 60f;
     /// <summary>Faster than this up or down (cm/s) is falling or jumping, not standing.</summary>
@@ -233,9 +235,8 @@ public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents event
                 {
                     s.Direct = false;
                     s.GoingSince = _clock;
-                    if (!_directFailed)
-                        logger.LogWarning("[QuestSync] {Player}: player.positioncell didn't take them into {Cell}; using coc from now on.", name, door);
-                    _directFailed = true;
+                    logger.LogWarning("[QuestSync] {Player}: player.positioncell didn't take them into {Cell} in {Seconds} s; trying coc.",
+                        name, door, DirectTimeoutSeconds);
                     rpc.SendGoToCell(id, door);
                 }
                 else if (_clock - s.GoingSince > CellTimeoutSeconds)
@@ -303,10 +304,10 @@ public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents event
             s.Going = spot;
             s.GoingSince = _clock;
             ScreenForMove(main.PlayerId, s);
-            s.Direct = config.ArriveInsideDirectly && !_directFailed;
+            s.Direct = config.ArriveInsideDirectly;
             rpc.SendGoToCell(main.PlayerId, s.Direct ? $"{cell} {GameXyz(spot)}" : cell);
-            logger.LogInformation("[QuestSync] {Player} {Why} {Cell}: asking their game to go there.",
-                name, s.Joining is null ? "left inside" : "travels into", cell);
+            logger.LogInformation("[QuestSync] {Player} {Why} {Cell}: asking their game to go there ({How}).",
+                name, s.Joining is null ? "left inside" : "travels into", cell, s.Direct ? "player.positioncell" : "coc");
             return;
         }
         if (WorldPlace(spot) is { } place)
