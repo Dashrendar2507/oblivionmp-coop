@@ -202,7 +202,7 @@ public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents event
                     continue;
                 // Never left the sewers (a new character, in the prison or choosing a start): the game's or the new
                 // start's place, not where this nickname last stood. Decided once the plugin has had time to say so.
-                if (view.Intro > 0 && sync.Players.ContainsKey(id))
+                if ((view.Intro > 0 || view.Fresh || view.StartedFresh) && sync.Players.ContainsKey(id))
                 {
                     if (!settled)
                         continue;
@@ -210,7 +210,9 @@ public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents event
                     s.Resolved = true;
                     if (s.Screen)
                         LowerScreen(id, s);
-                    logger.LogInformation("[QuestSync] {Player}: hasn't left the sewers, so not taken back to where they last played.", name);
+                    logger.LogInformation(view.Intro > 0
+                        ? "[QuestSync] {Player}: hasn't left the sewers, so not taken back to where they last played."
+                        : "[QuestSync] {Player}: a new character, so not taken back to where this nickname last played.", name);
                     continue;
                 }
                 if (!s.ScreenAsked)
@@ -480,7 +482,7 @@ public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents event
         if (main.IsDead)
             return "You can't travel while you are down.";
         if (sync.HoldsForIntro(view))
-            return "Finish the intro first: go out through the sewer gate.";
+            return view.Fresh ? "Make your character first." : "Finish the intro first: go out through the sewer gate.";
         var them = sync.Nickname(to);
         if (NearSpot(to, main) is not { } spot)
             return $"The server doesn't know where {them} is yet.";

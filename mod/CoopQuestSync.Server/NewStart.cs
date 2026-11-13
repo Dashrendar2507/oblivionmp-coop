@@ -52,7 +52,7 @@ public sealed partial class NewStart(IEntities entities, QuestTokenSync sync, In
             logger.LogWarning("[QuestSync] The plugin's tables have no new-player start: new players get the game's own start.");
             return;
         }
-        _kit = ParseKit(config.StarterKitItems);
+        _kit = ParseKit(config.StarterKitItems, logger);
         sync.Passed += OnPassed;
     }
 
@@ -234,7 +234,8 @@ public sealed partial class NewStart(IEntities entities, QuestTokenSync sync, In
             logger.LogInformation("[QuestSync] " + message, sync.Nickname(id));
     }
 
-    private List<(uint, int)> ParseKit(string text)
+    /// <summary>config.json StarterKitItems: "formid:count" pairs in hexadecimal, separated by commas.</summary>
+    internal static List<(uint FormId, int Count)> ParseKit(string text, ILogger logger)
     {
         var kit = new List<(uint, int)>();
         foreach (var part in text.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
