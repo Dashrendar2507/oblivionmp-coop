@@ -21,6 +21,7 @@ namespace CoopQuestSync.Client;
 public sealed partial class ConsoleBridge(IUserInterface ui, RestartNotice restart, ILogger logger)
 {
     private static readonly Regex CellId = new("^[A-Za-z0-9_]{1,64}$");
+    private static readonly Regex CellSpot = new("^([A-Za-z0-9_]{1,64}) (-?[0-9]{1,6}) (-?[0-9]{1,6}) (-?[0-9]{1,6})$");
     private static readonly Regex WorldPlace = new("^[A-Za-z0-9_]{1,64} -?[0-9]{1,4} -?[0-9]{1,4}$");
     private static readonly Regex RefId = new("^[0-9A-Fa-f]{1,8}$");
     /// <summary>Commands the server may ask for by name, with nothing of its own in them.</summary>
@@ -115,6 +116,13 @@ public sealed partial class ConsoleBridge(IUserInterface ui, RestartNotice resta
     /// <summary>Takes the player into an interior: <c>coc &lt;cell&gt;</c>.</summary>
     public void GoToCell(string cell)
     {
+        // "<cell> <x> <y> <z>": straight onto the spot inside, so the NPCs by the door don't greet the player first.
+        var m = CellSpot.Match(cell);
+        if (m.Success)
+        {
+            Write($"player.positioncell {m.Groups[2].Value} {m.Groups[3].Value} {m.Groups[4].Value} 0 {m.Groups[1].Value}");
+            return;
+        }
         if (!CellId.IsMatch(cell))
         {
             logger.LogWarning("[QuestSync] Ignored a cell name that isn't one: {Cell}", cell);

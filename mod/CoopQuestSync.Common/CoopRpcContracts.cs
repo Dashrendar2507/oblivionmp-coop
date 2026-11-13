@@ -71,6 +71,13 @@ public static partial class CoopRpcContracts
     /// <summary>A short message for the middle of the screen.</summary>
     [ServerToClient] public static partial void Notice(string text);
 
+    /// <summary>
+    /// The player is down: "&lt;seconds&gt;|&lt;text&gt;" for a note that stays on screen until they are back up (the
+    /// text's {s} counts down); an empty string takes it away. A 5 s notice was lost under OblivionMP's own "You died"
+    /// message (2026-11-13).
+    /// </summary>
+    [ServerToClient] public static partial void Down(string text);
+
     /// <summary>The player was revived, or is respawned: the game brings them back to life.</summary>
     [ServerToClient] public static partial void Resurrect();
 

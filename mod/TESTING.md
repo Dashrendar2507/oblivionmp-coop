@@ -1,6 +1,8 @@
-# Co-op Quest Sync 0.6.4: every test still to do
+# Co-op Quest Sync 0.6.5: every test still to do
 
-0.6.4 is 0.6.3 plus a fix for the endless load after Alt+G (your 2026-11-13 test, Part 1.2). 0.6.3 puts all the test work in one build, for OblivionMP **1.0.x** (your server is 1.0.1):
+0.6.5 adds fixes from your 2026-11-13 tests (Part 1) to the combined build: no endless load after Alt+G (0.6.4), a
+note on screen while you're down, `/coop calm near` that sticks, the voice stopping at once, and arriving inside a
+building straight on the spot. It's for OblivionMP **1.0.x** (your server is 1.0.1) and contains:
 
 * **0.5.4**: `/coop calm near` calms every NPC fighting within 15 m, `/coop calm <name>` works in dungeons and
   without the trailing dot, and the server learns the game's text from the players' games.
@@ -32,49 +34,59 @@ on). You host and play on the same computer, but they are still different folder
 | Local saves | **PC:** `%USERPROFILE%\Documents\My Games\Oblivion Remastered\Saved\SaveGames\` |
 | Plugins.txt | **PC:** `C:\Program Files (x86)\Steam\steamapps\common\Oblivion Remastered\OblivionRemastered\Content\Dev\ObvData\Data\Plugins.txt` |
 
-## Install 0.6.4
+## Install 0.6.5
 
 1. **Server:** stop the server. Delete `<server folder>\mods\CoopQuestSync\` and copy in the `CoopQuestSync`
    folder from the zip, so you get `<server folder>\mods\CoopQuestSync\manifest.json`. Don't touch
    `<server folder>\coop-quest-sync-state.json` or `<server folder>\coop-quest-sync-strings.json`.
-2. **PC:** nothing to copy. The add-on is the same as in 0.5.4 and 0.6.2, so no "restart the game" note should
-   appear. If `off`, `lite` or `off.txt` is in `%APPDATA%\ReadyM.Launcher\Oblivion\Mods\CoopQuestSyncUI\`, delete
+2. **PC:** nothing to copy, but **the add-on changed**: on your first join a note in the top left corner asks you
+   to restart the game. Quit and start it again once, so the new add-on runs. If `off`, `lite` or `off.txt` is in `%APPDATA%\ReadyM.Launcher\Oblivion\Mods\CoopQuestSyncUI\`, delete
    it. The end of `Plugins.txt` still reads `CoopQuestSync.esp` then `CoopQuestSyncDialogue.esp`.
-3. **Server:** start the server. The log's mod load order shows **`CoopQuestSync v0.6.4`**. Also `The game's text: <server folder>\coop-quest-sync-strings.json`
+3. **Server:** start the server. The log's mod load order shows **`CoopQuestSync v0.6.5`**. Also `The game's text: <server folder>\coop-quest-sync-strings.json`
    and `Quest admin page: http://localhost:9060/`.
 4. **Server:** on http://localhost:9060/, **Co-op settings** has both **Party > Travel to teammates any time** and
    **New players > New players start**. If either is missing, the old folder is still in place.
 
-## Part 1: the fixes from your 2026-11-12 test
+## Part 1: the fixes from your 2026-11-13 test
 
-All in game on the **PC**, joined to your server.
+All in game on the **PC**, joined to your server, after the game restart from the install.
 
-**1.1 Black screen inside the dungeon (Alt+Y).** Go into a building or dungeon, stand still a few seconds,
-`/coop test pin`, walk outside, close the chat, then `/coop test talk` and press **Alt+Y**. The screen stays black
-from the load until you stand on the pinned spot: no visible jump once inside.
+Already fine on 2026-11-13: Alt+Y into the dungeon stays black (1.1), Alt+G no longer loads forever (1.2), and
+`/coop calm dashrendar2507.` works.
 
-**1.2 Alt+G.** In a shop, stand still a few seconds, then die (console: `player.modav health -1000`). Press
-**Alt+G**. Expected: black screen, OblivionMP's reload (its loading screen), probably a second load into the shop,
-then you stand inside the shop a few steps from where you died. Not at your local save's spot any more.
-On 2026-11-13 (0.6.3) this loaded forever: the black screen was made in the middle of the reload. 0.6.4 waits for the
-reload to end first. If it still loads forever, do 1.4's check with **R** right away (in the same dungeon), and send
-**PC** `UE4SS.log` (lines with `Rebirth`, `QuickLoad`, `OnLoadFinished`).
+**1.1 Arriving inside, straight on the spot.** `/coop test pin` inside the Aleswell inn (somewhere away from the
+door), walk outside, close the chat, `/coop test talk`, then **Alt+Y**. You now arrive directly on the pinned spot
+instead of at the door first, so the people by the door shouldn't greet you. **PC** `UE4SS.log` shows
+`ran player.positioncell ...`. If you end up at the door after all, the server log says `player.positioncell didn't
+take them into ...; using coc from now on` and it travels the old way: send me both logs.
 
-**1.3 Revive.** Die again in the shop, then `/coop test revive`: same as 1.2, with "Ghost revived you...".
+**1.2 The down note.** Die (console: `player.modav health -1000`). Under OblivionMP's "You died / Press R to rebirth",
+a co-op note now says Alt+H (a teammate revives you), Alt+G (back with the party now) and the seconds left, counting
+down. **Don't press R or type an R in the chat while down.** That's why you were "rebirthed automatically" on
+2026-11-13: OblivionMP's R key reacts even while you type in the chat (for example `/coop test revive`), and that's
+OblivionMP's rebirth, without the trip back. Then press **Alt+G**: you come back in the shop or dungeon, a few steps
+from where you died, and the note goes away.
 
-**1.4 The endless load.** After 1.2 or 1.3, walk out of the shop and into another house. Last time this load never
-ended. If it hangs again, try once with OblivionMP's own **R** instead of Alt+G (die, R, enter a house). If R alone
-also hangs, it's OblivionMP's bug and I'll write it up for ReadyM.
+**1.3 Revive.** Die again, then type `/coop test heal` (the same as `/coop test revive`, but with no R in it): "Ghost
+revived you...", the black screen, OblivionMP's reload, and you stand where you fell.
 
-**1.5 Calm.** Save first. In the Aleswell dungeon, get both Serethi fighting you.
+**1.4 Calm near.** Save first. In the Aleswell dungeon, get the Serethi fighting you, then `/coop calm near`. On
+2026-11-13 they stopped for a few seconds and fought again; now `near` also runs `player.scaonactor` (what makes the
+name and area calms stick). They should stay calm.
 
-* `/coop calm near`: **both** stop, and the chat names both.
-* Get a guard to chase you, then `/coop calm <your name>`: the guard stops and your bounty is 0. Try it typed as
-  `dashrendar2507.`, then `dashrendar2507` (no dot), then `dash`: all three work.
-* `/coop calm` (all) already worked in the dungeon; no need to redo it.
+**1.5 Calm by the start of a name.** `/coop calm dash` crashed the game on 2026-11-13. It's not the name: the server
+found you and ran the same commands as the full name. The crash came inside the game, right after
+`player.scaonactor`, when the console ran `player.SetCrimeGold 0`, while Shagol gro-Bumph (who OblivionMP keeps twice
+in that dungeon, the bug I'll report to ReadyM) was still fighting you uncalmed. 0.6.5 clears the bounty first and
+runs `scaonactor` last. Save first, then try `/coop calm dash` once in the dungeon and once in a town with a guard
+chasing you. If it crashes again, send **PC** `UE4SS.log` copied right after.
 
-Send for Part 1: the **server log** (lines with `after the reload`, `Calm:`, `Combat:`) and **PC** `UE4SS.log`
-(lines with `rebirth`, `Back in the world`, `Travel screen`, `StopCombat`).
+**1.6 The voice stops at once.** `/coop test talk`, and press **Alt+U** in the middle of a spoken line: the voice
+stops right away. **PC** `UE4SS.log` shows `voice stopped with ...` the first time. If it keeps talking, send the
+lines with `could not stop a voice`.
+
+Send for Part 1: the **server log** (lines with `Calm:`, `Combat:`, `positioncell`, `after the reload`) and **PC**
+`UE4SS.log`.
 
 ## Part 2: travel to a teammate any time, alone
 
@@ -228,8 +240,8 @@ the first join (the add-on installs itself, a note says so).
 
 ## Part 7: later, on OblivionMP 1.1.0
 
-Not now: 0.6.4 is built for 1.0 and **won't load on a 1.1.0 server**, and a 1.1 build won't load on 1.0.1. The move
-to SDK 1.1.0 is ready in its own pull request. When you upgrade the server, ask for a 0.6.4 build for 1.1 (the
+Not now: 0.6.5 is built for 1.0 and **won't load on a 1.1.0 server**, and a 1.1 build won't load on 1.0.1. The move
+to SDK 1.1.0 is ready in its own pull request. When you upgrade the server, ask for a 0.6.5 build for 1.1 (the
 earlier `0.6.1-sdk1.1` zip doesn't have the 0.5.4 and 0.6.2 fixes).
 
 1. **Server:** set up the 1.1.0 server as ReadyM describes: copy `saves`, `data`, `branding` and `config.json` from

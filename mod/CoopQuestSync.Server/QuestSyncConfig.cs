@@ -59,6 +59,13 @@ public sealed partial class QuestSyncConfig
     public string Language { get; set; } = "en";
 
     /// <summary>
+    /// Travel into a building or dungeon straight onto the spot (the console's <c>player.positioncell</c>) instead of
+    /// its door first (<c>coc</c>) and then the spot: NPCs by the door no longer greet you on the way in (2026-11-13).
+    /// false goes back to coc.
+    /// </summary>
+    public bool ArriveInsideDirectly { get; set; } = true;
+
+    /// <summary>
     /// The starter kit for players who skip the intro (setting "Starter kit"): form id (hexadecimal, as the game's
     /// console shows it) and count, separated by commas. The default is an iron shortsword, an iron bow, 25 iron arrows,
     /// 5 lockpicks, 3 healing potions, a torch, a leather cuirass and leather boots.

@@ -38,6 +38,7 @@ public sealed partial class PartyService(IEntities entities, IServerEvents event
 
     private readonly Dictionary<PlayerId, Downed> _downed = new();
     private readonly Dictionary<PlayerId, bool> _wasDead = new();
+    private readonly HashSet<PlayerId> _downNoted = new();
 
     /// <summary>
     /// Where each player recently stood on solid ground, in their current area, so a respawn can avoid the place
@@ -96,6 +97,7 @@ public sealed partial class PartyService(IEntities entities, IServerEvents event
     {
         _downed.Remove(player);
         _wasDead.Remove(player);
+        _downNoted.Remove(player);
         _trails.Remove(player);
         _diedAt.Remove(player);
         _keysSent.Remove(player);
@@ -160,15 +162,27 @@ public sealed partial class PartyService(IEntities entities, IServerEvents event
                     logger.LogInformation("[QuestSync] {Player} is back on their feet.", sync.Nickname(id));
             }
 
+            // The down note on the player's screen: up while down, gone once back up (or brought back).
+            var noted = _downNoted.Contains(id);
+            if (_downed.ContainsKey(id) != noted)
+            {
+                if (noted)
+                {
+                    _downNoted.Remove(id);
+                    rpc.SendDown(id, "");
+                }
+                else if (_downed.TryGetValue(id, out var d))
+                {
+                    _downNoted.Add(id);
+                    rpc.SendDown(id, $"{(int)Math.Max(0, d.Until - _clock)}|You are down. A teammate next to you can revive you ({settings.Key("revive")}). "
+                        + $"{settings.Key("respawn")}: back with the party now, or in {{s}} s. Don't press R, even in the chat: that's OblivionMP's own rebirth.");
+                }
+            }
+
             if (_downed.TryGetValue(id, out var down))
             {
                 if (_clock >= down.Until)
                     Respawn(id, "time is up");
-                else if (_clock - down.LastReminder >= 15f)
-                {
-                    down.LastReminder = _clock;
-                    rpc.SendNotice(id, $"You are down. A teammate can revive you ({settings.Key("revive")} next to you). Back in {(int)(down.Until - _clock)} s, or {settings.Key("respawn")} to respawn now.");
-                }
             }
         }
 

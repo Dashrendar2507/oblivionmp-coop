@@ -202,9 +202,11 @@ public sealed partial class CombatService(IEntities entities, IServerEvents even
         {
             if (refs.Count > 0)
                 rpc.SendStopCombat(id, string.Join(' ', refs.Take(MaxRefs).Select(r => r.ToString("X8"))));
-            rpc.SendStopChase(id);
+            // The bounty before scaonactor: on 2026-11-13 the game crashed on the SetCrimeGold that came right after
+            // scaonactor had dropped the target of an NPC nobody had calmed.
             if (clearBountyOf == id)
                 rpc.SendClearBounty(id);
+            rpc.SendStopChase(id);
         }
         var bounty = "";
         if (clearBountyOf is { } who)
@@ -253,6 +255,9 @@ public sealed partial class CombatService(IEntities entities, IServerEvents even
         foreach (var (id, v) in sync.Players)
             if (v.Area is { } a && a.Equals(area))
                 rpc.SendStopCombat(id, refs);
+        // StopCombat alone only paused them (2026-11-13: they fought again within seconds): scaonactor makes them
+        // stop treating the player as an enemy, as the area and name calms do.
+        rpc.SendStopChase(sender);
         var names = picked.Select(n => data.NpcName(n.BaseId.FormId) ?? $"the NPC {n.RefId:X8}").ToList();
         logger.LogInformation("[QuestSync] Calm: {Npcs} ({Refs}) near {Player}.", string.Join(", ", names), refs, sync.Nickname(sender));
         return $"Calmed {string.Join(", ", names)}.";

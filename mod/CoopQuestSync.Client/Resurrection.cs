@@ -16,7 +16,7 @@ namespace CoopQuestSync.Client;
 /// to the party behind the travel screen.
 /// </summary>
 [Service]
-public sealed partial class Resurrection(IPlayers players, IInput input, IUserInterface ui, TravelScreen travel,
+public sealed partial class Resurrection(IPlayers players, IInput input, IUserInterface ui, TravelScreen travel, DownNote down,
     IDependencyContainer services, ILogger logger)
 {
     /// <summary>No load this long after the rebirth: there was none (or it was very quick).</summary>
@@ -67,6 +67,7 @@ public sealed partial class Resurrection(IPlayers players, IInput input, IUserIn
         _sawLoad = false;
         _watchFor = 0;
         _settled = 0;
+        down.Set("");       // gone before the reload, not during it
         travel.Hold();      // no travel page while the reload tears the world down
         me.ResurrectLocalPlayer();
         logger.LogInformation("[QuestSync] Brought back to life by the server{Waited}.", _told ? " (after the chat or menu closed)" : "");

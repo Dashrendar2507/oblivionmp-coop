@@ -35,7 +35,7 @@ public sealed partial class TestCommands(IChat chat, IEntities entities, QuestTo
     TeleportService teleport)
 {
     private const string Ghost = "Ghost";
-    private const string Usage = "/coop follow | join | revive | giveup | goto [name | lock | unlock] | accept [name], /coop calm [player | all | near], or /coop test talk [ask] | stop | stage <quest> <stage> | effects <quest> | revive | voice | pin | back | goto | askme | status | asghost on|off";
+    private const string Usage = "/coop follow | join | revive | giveup | goto [name | lock | unlock] | accept [name], /coop calm [player | all | near], or /coop test talk [ask] | stop | stage <quest> <stage> | effects <quest> | revive (or heal) | voice | pin | back | goto | askme | status | asghost on|off";
 
     private void Start() => chat.AddCommand("coop", Usage, Run);
 
@@ -149,6 +149,7 @@ public sealed partial class TestCommands(IChat chat, IEntities entities, QuestTo
             }
 
             case "revive":
+            case "heal":    // no R in it: OblivionMP's rebirth key fires even while typing in the chat (2026-11-13)
                 Reply(sender, party.TestRevive(sender, Ghost) ? "Ghost revived you." : "You are not down. Die first (console: kill), with \"When a player dies\" set to revive.");
                 break;
 

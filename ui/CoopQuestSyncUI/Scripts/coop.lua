@@ -39,6 +39,7 @@ local COMMAND_TAKEN = FOLDER .. "command.run"
 local ALLOWED = {
     "^coc [%w_]+$",                 -- into a building (back where you left, travel to a teammate)
     "^cow [%w_]+ %-?%d+ %-?%d+$",   -- to another world space
+    "^player%.positioncell %-?%d+ %-?%d+ %-?%d+ 0 [%w_]+$", -- into a building, straight onto the spot
     "^%x+%.StopCombat$",            -- /coop calm: an NPC stops fighting
     "^player%.scaonactor$",         -- /coop calm: guards stop chasing you
     "^player%.SetCrimeGold 0$",     -- /coop calm: your bounty goes to 0
@@ -310,7 +311,7 @@ function S.runCommands()
         end
         log("running " .. next.cmd .. " after " .. COMMAND_MAX_WAIT .. " s even though " .. busy)
     end
-    local moves = next.cmd:match("^coc ") or next.cmd:match("^cow ")
+    local moves = next.cmd:match("^coc ") or next.cmd:match("^cow ") or next.cmd:match("^player%.positioncell ")
     -- Only with a client that brings the world back (it writes fade-ok): an older one left it black for the whole
     -- FADE_MAX (2026-11-07).
     if moves and not next.faded and hasFile(FOLDER .. "fade-ok") then
@@ -416,17 +417,46 @@ local function postEvent(event, pawn)
     return false, table.concat(errors, " | ")
 end
 
+-- Stops the voice playing now. ExecuteActionOnPlayingID isn't in the remaster's Wwise (2026-11-13: "not found"), so
+-- the voice played on after Alt+U: try the calls that stop one event, keep the one that works.
 local function stopVoice()
     if not S.playingId or S.playingId == 0 then
         return
     end
-    local id = S.playingId
-    S.playingId = nil
-    local ok, err = pcall(function() statics():ExecuteActionOnPlayingID(0, id, 0, 0) end)
-    if not ok and not S.stopWarned then
+    local id, event = S.playingId, S.playingEvent
+    S.playingId, S.playingEvent = nil, nil
+    local tries = {
+        { "ExecuteActionOnEvent", function() statics():ExecuteActionOnEvent(event, 0, nil, 0, 0, id) end },
+        { "event:ExecuteAction", function() event:ExecuteAction(0, nil, id, 0, 0) end },
+        { "ExecuteActionOnPlayingID", function() statics():ExecuteActionOnPlayingID(0, id, 0, 0) end },
+    }
+    if S.stopHow then
+        for i, t in ipairs(tries) do
+            if t[1] == S.stopHow then
+                table.insert(tries, 1, table.remove(tries, i))
+                break
+            end
+        end
+    end
+    local errors = {}
+    for _, t in ipairs(tries) do
+        if t[1] ~= "event:ExecuteAction" and t[1] ~= "ExecuteActionOnEvent" or event then
+            local ok, err = pcall(t[2])
+            if ok then
+                if S.stopHow ~= t[1] then
+                    S.stopHow = t[1]
+                    log("voice stopped with " .. t[1])
+                end
+                return
+            end
+            errors[#errors + 1] = t[1] .. ": " .. tostring(err):gsub("\n.*", "")
+        end
+    end
+    if not S.stopWarned then
         S.stopWarned = true
-        log("could not stop a voice: " .. tostring(err):gsub("\n.*", ""))
-        describe("/Script/AkAudio.AkGameplayStatics:ExecuteActionOnPlayingID")
+        log("could not stop a voice: " .. table.concat(errors, " | "))
+        describe("/Script/AkAudio.AkGameplayStatics:ExecuteActionOnEvent")
+        describe("/Script/AkAudio.AkAudioEvent:ExecuteAction")
     end
 end
 
@@ -458,6 +488,7 @@ function S.playVoice(spec)
     local ok, how, id = postEvent(event, pawn)
     if ok then
         S.playingId = type(id) == "number" and id or nil
+        S.playingEvent = event
         log("voice " .. where .. " (" .. how .. ", playing id " .. tostring(id) .. ")")
     else
         log("could not play " .. where .. ": " .. how)

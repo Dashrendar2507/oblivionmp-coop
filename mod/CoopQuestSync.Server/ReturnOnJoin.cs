@@ -43,12 +43,15 @@ public sealed class ReturnSpot
 /// </summary>
 [Service]
 public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents events, QuestTokenSync sync, GameData data,
-    CoopRpc rpc, ILogger logger)
+    CoopRpc rpc, QuestSyncConfig config, ILogger logger)
 {
     /// <summary>How long a player stays in an area before they are moved: the game must have finished loading it.</summary>
     private const float SettleSeconds = 4f;
     /// <summary>How long to wait for the game to take the player into the building.</summary>
     private const float CellTimeoutSeconds = 25f;
+    /// <summary>No sign of a positioncell trip after this long: the game may not know it, so coc instead (and from then on).</summary>
+    private const float DirectTimeoutSeconds = 15f;
+    private bool _directFailed;
     private const float RecordEverySeconds = 2f;
     private const float SaveEverySeconds = 60f;
     /// <summary>Faster than this up or down (cm/s) is falling or jumping, not standing.</summary>
@@ -81,6 +84,8 @@ public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents event
         public bool Started;
         public ReturnSpot? Going;
         public float GoingSince;
+        /// <summary>The trip in was asked as positioncell (straight onto the spot): coc if that does nothing.</summary>
+        public bool Direct;
         public Vector3? Target;
         /// <summary>Where the game had put them before the move (the door, for a coc).</summary>
         public Vector3 MovedFrom;
@@ -224,6 +229,15 @@ public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents event
                     else
                         Place(main, name, s, going, going.Cell is null ? "back where you left" : "back inside");
                 }
+                else if (s.Direct && going.Cell is { } door && area != going.Area && _clock - s.GoingSince > DirectTimeoutSeconds)
+                {
+                    s.Direct = false;
+                    s.GoingSince = _clock;
+                    if (!_directFailed)
+                        logger.LogWarning("[QuestSync] {Player}: player.positioncell didn't take them into {Cell}; using coc from now on.", name, door);
+                    _directFailed = true;
+                    rpc.SendGoToCell(id, door);
+                }
                 else if (_clock - s.GoingSince > CellTimeoutSeconds)
                 {
                     s.Going = null;
@@ -289,7 +303,8 @@ public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents event
             s.Going = spot;
             s.GoingSince = _clock;
             ScreenForMove(main.PlayerId, s);
-            rpc.SendGoToCell(main.PlayerId, cell);
+            s.Direct = config.ArriveInsideDirectly && !_directFailed;
+            rpc.SendGoToCell(main.PlayerId, s.Direct ? $"{cell} {GameXyz(spot)}" : cell);
             logger.LogInformation("[QuestSync] {Player} {Why} {Cell}: asking their game to go there.",
                 name, s.Joining is null ? "left inside" : "travels into", cell);
             return;
@@ -380,6 +395,16 @@ public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents event
     /// "cow" arguments for an outdoor spot in another world space ("Tamriel 3 24"), or null for an interior.
     /// OblivionMP names an exterior area "L_" + the world space's editor id; the cell is worked out from the position.
     /// </summary>
+    /// <summary>
+    /// The spot in the game's own units for <c>player.positioncell</c>: "x y z", a little above the floor (the server
+    /// puts the player exactly on the spot once they are in).
+    /// </summary>
+    private static string GameXyz(ReturnSpot spot)
+    {
+        static int Clamp(float v) => (int)Math.Clamp(MathF.Round(v), -999999f, 999999f);
+        return $"{Clamp(spot.X / UnitCm)} {Clamp(-spot.Y / UnitCm)} {Clamp(spot.Z / UnitCm + 20)}";
+    }
+
     private static string? WorldPlace(ReturnSpot spot)
     {
         if (GameData.IsInterior(spot.Area) || !spot.Area.StartsWith("L_", StringComparison.Ordinal))
