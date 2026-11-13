@@ -79,14 +79,9 @@ file whether it's on the server or on the player's PC.
    [Releases](https://github.com/Dashrendar2507/oblivionmp-coop/releases). Stop the server, copy the zip's
    `CoopQuestSync` folder into the server's `mods\` folder (so you get `<server folder>\mods\CoopQuestSync\manifest.json`),
    and start the server.
-2. **Every player's PC:** add two lines to the end of the game's `Plugins.txt`, in
-   `...\Oblivion Remastered\OblivionRemastered\Content\Dev\ObvData\Data\` (on Steam, by default
-   `C:\Program Files (x86)\Steam\steamapps\common\Oblivion Remastered\`):
-   ```
-   CoopQuestSync.esp
-   CoopQuestSyncDialogue.esp
-   ```
-   Then join through the ReadyM Launcher as usual. The launcher downloads the mod and its plugins for you.
+2. **Every player's PC:** join through the ReadyM Launcher as usual. The launcher downloads the mod and adds its two
+   plugins to the game's plugin list for you while you play. Don't add them to `Plugins.txt` by hand: listed twice,
+   they break the quest sync.
 3. **Every player's PC, first join only:** the mod installs a small UE4SS add-on in
    `%APPDATA%\ReadyM.Launcher\Oblivion\Mods\CoopQuestSyncUI\` and a note asks you to **restart the game once**. After
    that, nothing else to do.
@@ -106,6 +101,9 @@ The important ones (full list in [docs/KNOWN-ISSUES.md](docs/KNOWN-ISSUES.md)):
   "rebirth" and fires even while you type in the chat; OblivionMP brings a dead player back by itself after some
   seconds; paying a fine to a guard can move you; and a console command (`coc`, used to put you back inside a
   building) occasionally crashes the game.
+* On joining, OblivionMP briefly shows "Your plugin load order differs from the server's, DLC areas will not
+  sync". The launcher puts the mod's plugins before `AltarDeluxe.esp`, which OblivionMP doesn't expect. The mod
+  works; the Deluxe content may not sync between players.
 * Every player needs **all** the game's official plugins, including the **Deluxe** ones (`AltarDeluxe.esp`). The
   remaster comes with all of them.
 * Friendly fire can't be turned off, and fights, followers and companions aren't shared: OblivionMP doesn't give

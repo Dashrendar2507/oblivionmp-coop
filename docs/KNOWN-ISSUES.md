@@ -49,6 +49,12 @@ Version 0.7.0 is the first built for OblivionMP 1.1.0, and it has had much less 
   more. The mod's add-on, the silent catch-up on join, the new-player start and getting back up after death haven't
   been tested much this way. Reports welcome, good or bad.
 
+* **"Your plugin load order differs from the server's, DLC areas will not sync"** shows briefly on every join. The
+  ReadyM Launcher adds the mod's two plugins to the game's list after `AltarESPMain.esp` and before
+  `AltarDeluxe.esp`, and OblivionMP then finds `AltarDeluxe.esp` in a different place than the server has it. The
+  mod's quest sync isn't affected. Content from the Deluxe plugin may not sync between players. This needs a fix in
+  the launcher; adding the plugins to `Plugins.txt` by hand doesn't help (it lists them twice and breaks the sync).
+
 ## Quests
 
 * **Quest scripts run in each player's game.** When a stage is shared, the game runs that stage's script for every
