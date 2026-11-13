@@ -13,6 +13,9 @@
 The game sees the letter too. If one of these letters does something in your game, the host can pick other letters
 under **Keys** on the web page; every player's game switches within a few seconds. **K** is OblivionMP's chat key.
 
+**R** is OblivionMP's own "rebirth" key, not the mod's. It works even while you type in the chat, so avoid words
+with an R in them while you're down (see [Death](#how-it-plays) below).
+
 ## How it plays
 
 * **Quests.** When anyone finishes a quest stage, you get it a few seconds later, with a line in chat. If you're in
@@ -20,16 +23,23 @@ under **Keys** on the web page; every player's game switches within a few second
 * **Joining.** You catch up on what the party did while you were away, silently: the add-on closes the game's
   "Quest Added" windows that the catch-up brings up. You also get your own progress
   back: OblivionMP doesn't keep the game's quests between sessions, so the mod sets them again every time you join.
-* **Conversations.** When a teammate talks to an NPC, you see what's said on an overlay, and you stand still until
-  they're done if you're in the same area. The overlay tells you when they open the barter, persuasion, training,
-  repair or spell screen, or pick a lock. Press **Alt+U** to leave or come back, and **Alt+Y** to travel to the
-  talker, so the party can gather for a quest without missing what's said.
-* **Death.** You go down instead of dying ("You are down..."). A teammate next to you presses **Alt+H** to bring you
-  back next to them. After 60 seconds, or when you press **Alt+G**, you respawn next to the party leader (or the
-  first other player by name, if the leader is the one down), wherever they are. If nobody else is playing, you come
-  back where you last stood on solid ground a few seconds before you died, so a fall doesn't kill you twice. Getting
-  back up uses OblivionMP's "rebirth", which reloads your own save first: the screen stays black through that load
-  and the trip back. Don't press **R** while down: that's the same rebirth without the trip back.
+* **Conversations.** When a teammate talks to an NPC, you see what's said on an overlay and hear the NPC's voice,
+  and you stand still until they're done if you're in the same area. The overlay tells you when they open the
+  barter, persuasion, training, repair or spell screen. Press **Alt+U** to leave or come back, and **Alt+Y** to
+  travel to the talker, so the party can gather for a quest without missing what's said.
+* **Tags over heads.** Above each player, a tag says when they're talking, bartering, persuading, training,
+  picking a lock, pickpocketing or down. Lockpicking and pickpocketing come from the add-on, which sees which of the
+  remaster's screens is open.
+* **Death.** You go down instead of dying: OblivionMP's "You died" message shows, with a note under it saying what
+  to do. A teammate next to you presses **Alt+H** to bring you back next to them. After 60 seconds, or when you press
+  **Alt+G**, you respawn next to the party leader (or the first other player by name, if the leader is the one
+  down), wherever they are. If nobody else is playing, you come back where you last stood on solid ground a few
+  seconds before you died, so a fall doesn't kill you twice. Getting back up uses OblivionMP's "rebirth", which
+  reloads your character: the screen stays black through that load and the trip back.
+* **OblivionMP's own rebirth.** OblivionMP brings a dead player back by itself after a while (between about 10 and
+  25 seconds in our tests), and **R** does the same at once, even while you type in the chat. The mod can't stop
+  either, so it treats them as a respawn: once that reload is over, it takes you to the party (or your last safe
+  spot), the same as Alt+G. A revive is only possible before that happens.
 * **New players.** A player who has never left the sewers gets a window on their first join: start in the prison
   with the game's own intro, or at the sewer exit with the intro skipped. The prison is only offered until someone
   has left the sewers on the server: the Emperor and the Blades are shared, so the intro can only play once per
@@ -38,11 +48,13 @@ under **Keys** on the web page; every player's game switches within a few second
   go out, as in the game. The party's quest progress reaches you once you're out of the sewers.
 * **Back where you left.** When you join, the server puts you back where you were when you left, inside buildings
   too. The screen goes black with "Taking you back to where you left..." until you stand in your spot, so you don't
-  see the jumps. Travelling to a teammate (Alt+Y) through a load does the same.
+  see the jumps. Into a building, you arrive straight on your spot rather than at its door. Travelling to a
+  teammate (Alt+Y, Alt+O) through a load does the same.
 * **Travel to a teammate any time.** Type `/coop goto <name>` (the start of the name is enough) to travel next to
   them, into their building or city too. After that, **Alt+O** takes you to the same teammate again; with only one
   other player online it needs no name at all. Not while you're down, talking or fighting, and once a minute (the
-  host can change both). The teammate sees "Alice is coming to you".
+  host can change both). The teammate sees "Alice is coming to you". A trip waits until your chat is closed ("Co-op:
+  close the chat to travel."), because a load with the chat open breaks OblivionMP's chat.
 * **Ask first.** Type `/coop goto lock` if you'd rather not have people pop up next to you: teammates then ask, and
   you see "Alice wants to come to you". Press **Alt+Y** or type `/coop accept` within 20 seconds to let them come;
   ignore it to say no. `/coop goto unlock` undoes it. The server remembers your choice.
@@ -91,6 +103,7 @@ reaches the stage always gets everything. These switches decide what everyone el
 | --- | --- | --- |
 | Show others' conversations to | Everyone | Everyone, same area only, or off. |
 | Watchers follow a conversation | Automatically | Or "when they press the follow key": a banner says who is talking and you choose. |
+| Watchers hear the voices | On | The NPC's voice with each line, from nowhere, while listening in. Needs the CoopQuestSyncUI add-on. |
 | Travel to a conversation | On | The join key (Alt+Y) takes a player to whoever is talking. Into another building or city, it needs the CoopQuestSyncUI add-on. |
 | Freeze watchers | Same area | Same area, everyone, or nobody. Players in combat are never frozen. |
 | Share rewards handed out in conversation | On | Gold or items a line gives. Not trades. |
@@ -109,7 +122,7 @@ reaches the stage always gets everything. These switches decide what everyone el
 | Seconds between trips | 60 | Per player, for `/coop goto` and Alt+O. 0 means no wait. |
 | No trips during a fight | On | A player in combat can't use `/coop goto`. |
 | Keys | U, Y, H, G, O | The letters for Alt+U, Alt+Y, Alt+H, Alt+G, Alt+O. |
-| Tags over heads | On | Talking, bartering, picking a lock, down. |
+| Tags over heads | On | Talking, bartering, persuading, picking a lock, pickpocketing, down. |
 | Level of spawns and loot | Server default (halfway) | Lowest player level, halfway, or highest player level. |
 | Difficulty, damage dealt / taken | Game default | Novice to Master. |
 | Friendly fire | Always on | OblivionMP can't tell mods who hit whom. |
@@ -158,8 +171,8 @@ Quests are named by their editor id (`MS93`, `MQ01`...). The web page shows each
 
 ### Testing alone
 
-The server can play a pretend teammate called "Ghost", so you can try the co-op features on your own. See
-[mod/TESTING.md](../mod/TESTING.md), "Test 1b", for a walkthrough.
+The server can play a pretend teammate called "Ghost", so you can try the co-op features on your own. These are
+admin commands. [mod/TESTING.md](../mod/TESTING.md) uses them in its walkthroughs.
 
 | Command | What it does |
 | --- | --- |
@@ -167,14 +180,19 @@ The server can play a pretend teammate called "Ghost", so you can try the co-op 
 | `/coop test stop` | End Ghost's conversation. |
 | `/coop test stage <quest> <stage>` | Ghost reaches a stage: you get it as if a teammate did it live. |
 | `/coop test effects <quest>` | List a quest's stages that have effects, and which. |
-| `/coop test revive` | Ghost revives you while you're down. |
+| `/coop test heal` | Ghost revives you while you're down. (`/coop test revive` works too, but its R triggers OblivionMP's rebirth while you type.) |
+| `/coop test voice` | Play one NPC line's voice, to check you hear the voices. |
 | `/coop test pin`, `/coop test back` | Remember where you stand, then go back there the way a join would. |
+| `/coop test goto` | Travel to where Ghost stands, the way `/coop goto` would. |
+| `/coop test askme` | Ghost asks to come to you, as with `/coop goto lock`. |
 | `/coop test status` | What the server knows about you. |
 | `/coop test asghost on\|off` | The server treats you like Ghost, a player who isn't an admin, so you can see the admin commands refused. Open to everyone. |
 
 ## config.json (server host, optional)
 
-Create `config.json` in `mods\CoopQuestSync\server\` to change these. Every entry is optional.
+On the **server**, create `<server folder>\mods\CoopQuestSync\server\config.json` (`<server folder>` is the one
+with `server.exe`) to change these, then restart the server. Every entry is optional, and an update of the mod
+replaces that folder, so keep a copy.
 
 | Setting | Default | Meaning |
 | --- | --- | --- |
@@ -186,7 +204,9 @@ Create `config.json` in `mods\CoopQuestSync\server\` to change these. Every entr
 | `IntervalSeconds` | `1` | How often the server checks the players' games. |
 | `StateFile` | `"coop-quest-sync-state.json"` | Where the shared progress and settings are kept. |
 | `GamePlugins` | the game's plugins | The order of the game's own plugins in `Plugins.txt`. Only matters for DLC items and NPC names. |
-| `StringsFile` | `""` | The game's text. Empty: `coop-quest-sync-strings.json` in the server's folder (next to the state file), made from the game on first start or copied once from a `strings.json` next to the server DLL. |
+| `StringsFile` | `""` | A hand-made file with the game's text. Empty: `coop-quest-sync-strings.json` in the server's folder (next to the state file), copied once from a `strings.json` next to the server DLL, or read from the game installed on the server computer when that works. |
+| `ArriveInsideDirectly` | `true` | Travel into a building or dungeon straight onto the spot (the console's `positioncell`). `false` goes to its door first (`coc`), then the spot. |
+| `StarterKitItems` | the kit | The starter kit for the sewer exit start: form id (hexadecimal, as the game's console shows it) and count, separated by commas, for example `"00000C0D:1,00017829:25"`. |
 | `GameFolder` | `""` | Where Oblivion Remastered is installed, to read its text from. Empty: found through Steam. |
 | `LearnTextFromPlayers` | `true` | Learn the game's text from the players' games (one `coop-quest-sync-strings.<language>.json` per language, next to the state file), for the web page and each player's chat lines in their language. |
 | `Language` | `"en"` | Language of the web page and of a hand-made `coop-quest-sync-strings.json` (`de`, `fr`, `es`, `it`...). Players' chat lines use each player's own game language. |

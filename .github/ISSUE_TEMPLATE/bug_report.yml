@@ -41,8 +41,14 @@ body:
         - Quest progress (sharing, catching up on join, rejoin)
         - Stage effects (teleports, fights, rewards...)
         - Conversation overlay / freeze
-        - Death, revive and respawn
+        - Death, revive and respawn (incl. OblivionMP's own rebirth)
         - Back where you left
+        - Travel to a teammate (/coop goto, Alt+O, Alt+Y)
+        - New-player start (prison intro or sewer exit)
+        - Calming fights (/coop calm)
+        - Tags over heads (talking, bartering, lockpicking, pickpocketing...)
+        - Game text, names or voices (web page, overlay, chat lines)
+        - Admin commands and who counts as an admin
         - Web admin page (port 9060)
         - Keys or chat commands
         - Installing / the UE4SS add-on
@@ -61,8 +67,17 @@ body:
     id: version
     attributes:
       label: Mod version
-      description: The `version` line in the server's `mods\CoopQuestSync\manifest.json`, or the zip name.
-      placeholder: "0.5.0"
+      description: The `version` line in `<server folder>\mods\CoopQuestSync\manifest.json` on the server, or the zip name.
+      placeholder: "0.7.0"
+    validations:
+      required: true
+
+  - type: input
+    id: oblivionmp
+    attributes:
+      label: OblivionMP server version
+      description: The server package's version, such as 1.1.0 (it's in the server folder's name, or the server log's list of mods).
+      placeholder: "1.1.0"
     validations:
       required: true
 
@@ -80,8 +95,9 @@ body:
     attributes:
       label: Server log
       description: |
-        From the session where it happened, with the `[QuestSync]` lines. Drag the file into this box, or paste a
-        short excerpt. Server host only; write "not the host" if you aren't.
+        On the server: from the session where it happened, with the `[QuestSync]` lines (the server console, or the
+        Terminal tab of the admin panel at http://localhost:9050). Drag the file into this box, or paste a short
+        excerpt. Server host only; write "not the host" if you aren't.
       render: text
     validations:
       required: true
@@ -91,8 +107,9 @@ body:
     attributes:
       label: UE4SS.log
       description: |
-        From `OblivionRemastered\Binaries\Win64\UE4SS.log`, copied before restarting the game (it's overwritten on
-        every start). Drag the file into this box.
+        On your PC: `<game folder>\OblivionRemastered\Binaries\Win64\UE4SS.log` (on Steam, by default
+        `C:\Program Files (x86)\Steam\steamapps\common\Oblivion Remastered\OblivionRemastered\Binaries\Win64\UE4SS.log`),
+        copied before restarting the game (it's overwritten on every start). Drag the file into this box.
     validations:
       required: true
 
@@ -101,8 +118,8 @@ body:
     attributes:
       label: Load order and other mods
       description: |
-        Attach your `Plugins.txt` (in `OblivionRemastered\Content\Dev\ObvData\Data\`), and list any other game or
-        server mods you use.
+        Attach your `Plugins.txt` (on your PC, in `<game folder>\OblivionRemastered\Content\Dev\ObvData\Data\`), and
+        list any other game or server mods you use.
     validations:
       required: true
 

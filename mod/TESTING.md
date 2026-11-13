@@ -21,7 +21,7 @@ on). You host and play on the same computer, but they are still different folder
 
 | What | Where |
 | --- | --- |
-| Server folder | **Server:** `C:\Users\Nicolas\Desktop\oblivion-server-win64-1.0.1\` (below: `<server folder>`) |
+| Server folder | **Server:** the folder with `server.exe`, for example `C:\OblivionMP\oblivion-server-win64-1.0.1\` (below: `<server folder>`) |
 | The mod on the server | **Server:** `<server folder>\mods\CoopQuestSync\` (`manifest.json`, `client\`, `server\`). Replaced on every update. |
 | Shared progress and settings | **Server:** `<server folder>\coop-quest-sync-state.json`. Keep it. |
 | The server's game text | **Server:** `<server folder>\coop-quest-sync-strings.json` (your hand-made one) and `<server folder>\coop-quest-sync-strings.<language>.json` (learned from the players). Never share them or put them in a zip. |

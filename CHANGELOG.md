@@ -1,35 +1,12 @@
 # Changelog
 
-## 0.5.4 (public test)
+## 0.7.0 (first public release, for OblivionMP 1.1)
 
-* **`/coop calm near` calms every NPC fighting within 15 m of you**, plus the closest one. It used to calm only the
-  closest: with two attackers, the other kept fighting and the calmed one joined back in.
+* **Built for OblivionMP 1.1.0** (SDK 1.1.0). It doesn't load on an OblivionMP 1.0.x server, and 0.6 and older don't
+  load on 1.1. Moving a server: see "Moving from an OblivionMP 1.0 server" in docs/INSTALL.md.
+* Includes everything from the 0.6 test builds below.
 
-## 0.5.3 (public test)
-
-* **`/coop calm` works in dungeons.** OblivionMP gives most NPCs inside dungeons no area on the server, so `/coop calm`,
-  `/coop calm near` and `/coop calm <name>` skipped them and only `/coop calm all` stopped the fight. Those NPCs now
-  count when they are within about 40 m of a player in that area (`near` keeps its 15 m). The log says how many were
-  taken this way.
-* **`/coop calm <name>` finds the player** without minding case or the dot at the end of a ReadyM name
-  (`dashrendar2507` finds `dashrendar2507.`), and with just the start of a name when only one player matches.
-
-## 0.5.2 (public test)
-
-* **The server learns the game's text from the players' games**, so nobody makes a file by hand. Each player's
-  client says which language its game runs in; for each language the server lacks, it asks one player of that
-  language for the text, 200 keys at a time, in the background once they're in the world, and their add-on looks it
-  up in the running game. Kept as `coop-quest-sync-strings.<language>.json` next to the state file. "X advanced ..."
-  chat lines now reach each player in their own game's language. `/coop test status` shows your game's language.
-  A host's own `coop-quest-sync-strings.json` still comes first. config.json: `LearnTextFromPlayers` (on). No add-on
-  change, so no game restart.
-
-* **Docs**: the README, install guide and known issues say why the server can't read the game's text from its files
-  on a standard Steam install (no `oo2core_9_win64.dll`, and the mod never downloads one) and list every log line
-  about it. `mod/TESTING.md` is rewritten, with a test for the server's text and the PC or server location of every
-  file.
-
-## 0.5.1 (public test)
+**From the 0.6 test builds**
 
 * **New players choose where to start**: a player who has never left the sewers gets the game's own message box on
   their first join: "In the prison: play the intro" or "At the sewer exit: skip the intro". The prison is only
@@ -60,6 +37,60 @@
   `/coop goto lock` makes teammates ask first: you see "Alice wants to come to you" and let them with Alt+Y or
   `/coop accept` within 20 s. Kept in the state file. Settings "Travel to teammates any time", "Seconds between
   trips", "No trips during a fight", and the Goto key.
+
+* **OblivionMP's own rebirth is a respawn.** OblivionMP gets a dead player up by itself after some seconds (and at
+  once with R, even while typing in the chat). The mod now notices it and, once its reload is over, takes the
+  player to the party or their last safe spot, as with Alt+G. While you're down, a note under OblivionMP's "You
+  died" message says what to do. `/coop test heal` is `/coop test revive` without an R in it.
+* **No endless load after Alt+G**: the travel screen no longer goes up while the rebirth's reload runs. After a
+  revive, the trip waits for that reload to settle (6 s), and a move the game ignored falls back to `coc`.
+* **A trip waits for the chat to close** ("Co-op: close the chat to travel."): a load with the chat open breaks
+  OblivionMP's chat. Cancelled after 40 s.
+* **Arrive inside on the spot**: travel into a building or dungeon goes straight to the spot with `positioncell`
+  instead of the door first, so NPCs by the door don't greet you on the way in. config.json `ArriveInsideDirectly`.
+* **Calmer join**: the add-on waits 8 s after the catch-up and 4 s after a menu before a console command, after a
+  `coc` crash on join; a trip that didn't land after 45 s tries another way.
+* **Lockpicking, pickpocketing and bartering shown again**: the remaster's own screens don't raise the original
+  game's menu numbers, so the add-on now tells the server which screen is open. Getting caught pickpocketing isn't
+  bartering, and a merchant's barter screen counts as bartering even after the remaster ends the talk.
+* `/coop calm near` keeps the NPCs calm; the voice stops at once when you leave a conversation.
+* **New-start fixes**: skipping the intro now finishes (kit, character menus), and a brand-new character with an old
+  nickname isn't taken to that nickname's last spot from the race menu.
+* A quest reset during a session can't be undone by a stage pushed for that quest in the same session.
+* Web page: the keys' description gets the full width.
+* **Docs** rewritten for the public release: every install step says whether it happens on the server or on a
+  player's PC, with the full path.
+
+## 0.5.4 (public test)
+
+* **`/coop calm near` calms every NPC fighting within 15 m of you**, plus the closest one. It used to calm only the
+  closest: with two attackers, the other kept fighting and the calmed one joined back in.
+
+## 0.5.3 (public test)
+
+* **`/coop calm` works in dungeons.** OblivionMP gives most NPCs inside dungeons no area on the server, so `/coop calm`,
+  `/coop calm near` and `/coop calm <name>` skipped them and only `/coop calm all` stopped the fight. Those NPCs now
+  count when they are within about 40 m of a player in that area (`near` keeps its 15 m). The log says how many were
+  taken this way.
+* **`/coop calm <name>` finds the player** without minding case or the dot at the end of a ReadyM name
+  (`dashrendar2507` finds `dashrendar2507.`), and with just the start of a name when only one player matches.
+
+## 0.5.2 (public test)
+
+* **The server learns the game's text from the players' games**, so nobody makes a file by hand. Each player's
+  client says which language its game runs in; for each language the server lacks, it asks one player of that
+  language for the text, 200 keys at a time, in the background once they're in the world, and their add-on looks it
+  up in the running game. Kept as `coop-quest-sync-strings.<language>.json` next to the state file. "X advanced ..."
+  chat lines now reach each player in their own game's language. `/coop test status` shows your game's language.
+  A host's own `coop-quest-sync-strings.json` still comes first. config.json: `LearnTextFromPlayers` (on). No add-on
+  change, so no game restart.
+
+* **Docs**: the README, install guide and known issues say why the server can't read the game's text from its files
+  on a standard Steam install (no `oo2core_9_win64.dll`, and the mod never downloads one) and list every log line
+  about it. `mod/TESTING.md` is rewritten, with a test for the server's text and the PC or server location of every
+  file.
+
+## 0.5.1 (public test)
 
 * **The game's text survives updates**: the server keeps it as `coop-quest-sync-strings.json` in its own folder,
   next to `coop-quest-sync-state.json`, instead of `strings.json` inside the mod's folder (an update wiped it and
