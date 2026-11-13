@@ -1,6 +1,6 @@
-# Co-op Quest Sync 0.6.5: every test still to do
+# Co-op Quest Sync 0.6.6: every test still to do
 
-0.6.5 adds fixes from your 2026-11-13 tests (Part 1) to the combined build: no endless load after Alt+G (0.6.4), a
+0.6.6 adds fixes from your 2026-11-13 tests (Part 1) to the combined build: no endless load after Alt+G (0.6.4), a
 note on screen while you're down, `/coop calm near` that sticks, the voice stopping at once, and arriving inside a
 building straight on the spot. It's for OblivionMP **1.0.x** (your server is 1.0.1) and contains:
 
@@ -34,7 +34,7 @@ on). You host and play on the same computer, but they are still different folder
 | Local saves | **PC:** `%USERPROFILE%\Documents\My Games\Oblivion Remastered\Saved\SaveGames\` |
 | Plugins.txt | **PC:** `C:\Program Files (x86)\Steam\steamapps\common\Oblivion Remastered\OblivionRemastered\Content\Dev\ObvData\Data\Plugins.txt` |
 
-## Install 0.6.5
+## Install 0.6.6
 
 1. **Server:** stop the server. Delete `<server folder>\mods\CoopQuestSync\` and copy in the `CoopQuestSync`
    folder from the zip, so you get `<server folder>\mods\CoopQuestSync\manifest.json`. Don't touch
@@ -42,7 +42,7 @@ on). You host and play on the same computer, but they are still different folder
 2. **PC:** nothing to copy, but **the add-on changed**: on your first join a note in the top left corner asks you
    to restart the game. Quit and start it again once, so the new add-on runs. If `off`, `lite` or `off.txt` is in `%APPDATA%\ReadyM.Launcher\Oblivion\Mods\CoopQuestSyncUI\`, delete
    it. The end of `Plugins.txt` still reads `CoopQuestSync.esp` then `CoopQuestSyncDialogue.esp`.
-3. **Server:** start the server. The log's mod load order shows **`CoopQuestSync v0.6.5`**. Also `The game's text: <server folder>\coop-quest-sync-strings.json`
+3. **Server:** start the server. The log's mod load order shows **`CoopQuestSync v0.6.6`**. Also `The game's text: <server folder>\coop-quest-sync-strings.json`
    and `Quest admin page: http://localhost:9060/`.
 4. **Server:** on http://localhost:9060/, **Co-op settings** has both **Party > Travel to teammates any time** and
    **New players > New players start**. If either is missing, the old folder is still in place.
@@ -60,12 +60,17 @@ instead of at the door first, so the people by the door shouldn't greet you. **P
 `ran player.positioncell ...`. If you end up at the door after all, the server log says `player.positioncell didn't
 take them into ...; using coc from now on` and it travels the old way: send me both logs.
 
-**1.2 The down note.** Die (console: `player.modav health -1000`). Under OblivionMP's "You died / Press R to rebirth",
-a co-op note now says Alt+H (a teammate revives you), Alt+G (back with the party now) and the seconds left, counting
-down. **Don't press R or type an R in the chat while down.** That's why you were "rebirthed automatically" on
-2026-11-13: OblivionMP's R key reacts even while you type in the chat (for example `/coop test revive`), and that's
-OblivionMP's rebirth, without the trip back. Then press **Alt+G**: you come back in the shop or dungeon, a few steps
-from where you died, and the note goes away.
+**1.2 The down note, and OblivionMP's own rebirth.** Die (console: `player.modav health -1000`). Under OblivionMP's
+"You died / Press R to rebirth", a co-op note now says Alt+H (a teammate revives you), Alt+G (back with the party now)
+and the seconds left, counting down. Then wait without touching anything.
+
+On 2026-11-13 OblivionMP brought you back by itself after 9 s and 26 s. That doesn't come from the mod, and the part of
+OblivionMP I can read only does it on R, so it's in its native part (I'll ask ReadyM). 0.6.6 now treats it like Alt+G:
+the screen goes black after OblivionMP's reload and you come back where you fell (or next to the party). Server log:
+`came back through OblivionMP's own rebirth; taking them back after its reload.` Tell me how many seconds it took.
+
+Then die again and press **Alt+G** before that happens: you come back a few steps from where you died, and the note
+goes away.
 
 **1.3 Revive.** Die again, then type `/coop test heal` (the same as `/coop test revive`, but with no R in it): "Ghost
 revived you...", the black screen, OblivionMP's reload, and you stand where you fell.
@@ -240,8 +245,8 @@ the first join (the add-on installs itself, a note says so).
 
 ## Part 7: later, on OblivionMP 1.1.0
 
-Not now: 0.6.5 is built for 1.0 and **won't load on a 1.1.0 server**, and a 1.1 build won't load on 1.0.1. The move
-to SDK 1.1.0 is ready in its own pull request. When you upgrade the server, ask for a 0.6.5 build for 1.1 (the
+Not now: 0.6.6 is built for 1.0 and **won't load on a 1.1.0 server**, and a 1.1 build won't load on 1.0.1. The move
+to SDK 1.1.0 is ready in its own pull request. When you upgrade the server, ask for a 0.6.6 build for 1.1 (the
 earlier `0.6.1-sdk1.1` zip doesn't have the 0.5.4 and 0.6.2 fixes).
 
 1. **Server:** set up the 1.1.0 server as ReadyM describes: copy `saves`, `data`, `branding` and `config.json` from

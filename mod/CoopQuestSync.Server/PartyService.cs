@@ -159,7 +159,15 @@ public sealed partial class PartyService(IEntities entities, IServerEvents event
             else if (!dead && was)
             {
                 if (_downed.Remove(id))
-                    logger.LogInformation("[QuestSync] {Player} is back on their feet.", sync.Nickname(id));
+                {
+                    // Up while still down for us: OblivionMP's own rebirth (R, or on its own after a while, 2026-11-13),
+                    // which reloads the player's save. Take them back as a respawn would, once that reload is over.
+                    var anchor = Anchor(id);
+                    var area = _trails.TryGetValue(id, out var trail) ? trail.Area : null;
+                    travel.AfterRebirth(id, anchor, area, SafeSpot(id),
+                        anchor is { } a ? $"Back next to {sync.Nickname(a)}..." : "Back where you fell...");
+                    logger.LogInformation("[QuestSync] {Player} came back through OblivionMP's own rebirth; taking them back after its reload.", sync.Nickname(id));
+                }
             }
 
             // The down note on the player's screen: up while down, gone once back up (or brought back).

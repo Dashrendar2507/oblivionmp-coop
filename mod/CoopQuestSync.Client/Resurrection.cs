@@ -42,8 +42,26 @@ public sealed partial class Resurrection(IPlayers players, IInput input, IUserIn
         _told = false;
     }
 
+    private bool _wasDead;
+
     private void Update()
     {
+        // Back up without the server asking: OblivionMP's own rebirth (its R key, or on its own after a while,
+        // 2026-11-13) heals and reloads the save. Watch that reload like ours, so the server takes the player back
+        // after it, and keep the travel page away from the reload.
+        var deadNow = players.LocalMainCharacter is { IsDead: true };
+        if (_wasDead && !deadNow && players.LocalMainCharacter is not null && !_watching && !_pending)
+        {
+            down.Set("");
+            travel.Hold();
+            _watching = true;
+            _sawLoad = false;
+            _watchFor = 0;
+            _settled = 0;
+            logger.LogInformation("[QuestSync] OblivionMP's own rebirth brought this player back; watching its reload.");
+        }
+        if (players.LocalMainCharacter is not null)
+            _wasDead = deadNow;
         WatchReload(Time.DeltaTime);
         if (!_pending)
             return;

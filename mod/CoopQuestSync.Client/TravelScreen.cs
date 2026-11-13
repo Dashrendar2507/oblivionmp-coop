@@ -130,7 +130,7 @@ public sealed partial class TravelScreen(CefHost cef, IPlayers players, IInput i
             Lift();
             return;
         }
-        if (_inWorld < InWorldSeconds || _held)
+        if (_inWorld < InWorldSeconds || _held || players.LocalMainCharacter is null)
             return;
         if (_fresh)
         {
