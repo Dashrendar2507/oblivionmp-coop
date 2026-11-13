@@ -74,6 +74,8 @@ Version 0.7.0 is the first built for OblivionMP 1.1.0, and it has had much less 
   characters" clears the preset's bag and opens the character menus, but the preset's quest stages (Deliver the
   Amulet started, the Knights of the Nine prophet, MS47...) stay in the new player's own journal: the game can't
   un-set a quest stage. They're kept out of the party's progress.
+* **No prison intro on 1.1.** The preset world save already has the tutorial done, and the Emperor and the prison
+  are shared world state, so the intro can't be replayed. New characters start at the sewer exit instead.
 * **The 1.0 prison or sewer start is off.** It was built for OblivionMP 1.0, where a new player started in the
   prison. It may come back when OblivionMP lets servers choose how new characters start.
 * **A character only counts as new** when the server has no player save for them when they join. To set someone
