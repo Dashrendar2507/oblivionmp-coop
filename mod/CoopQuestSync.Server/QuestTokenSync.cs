@@ -83,6 +83,23 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
     /// </summary>
     public SortedSet<string> GotoLocked { get; } = new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// ReadyM accounts (N format) whose character is brand new on this server and still waits for its first-join
+    /// setup (<see cref="FreshCharacter"/>). Kept in the state file, so a player who leaves before it ran gets it next time.
+    /// </summary>
+    public SortedSet<string> NewCharacters { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>ReadyM accounts (N format) that have joined this server since 0.7.0. See <see cref="PlayerSaves"/>.</summary>
+    public SortedSet<string> KnownAccounts { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Stages a brand-new character already has when they first join: OblivionMP 1.1 starts everyone from the same
+    /// world save, with a few quests under way. Everyone has them, so they are never shared or announced.
+    /// </summary>
+    public HashSet<QuestStage> PresetStages { get; } = new();
+
+    private readonly Dictionary<PlayerId, string> _accounts = new();
+
     /// <summary>Saves the state file on the next pass.</summary>
     public void MarkDirty() => _dirty = true;
 
@@ -156,6 +173,13 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
         public bool IntroHeld;
         /// <summary>The language the player's game runs in ("fr"), from their client; null until it says.</summary>
         public string? Language;
+        /// <summary>
+        /// A brand-new character waiting for the first-join setup (<see cref="FreshCharacter"/>). The party's progress
+        /// waits until it ran, and every stage they report meanwhile is the preset's (<see cref="PresetStages"/>).
+        /// </summary>
+        public bool Fresh;
+        /// <summary>Set up as a new character during this session: not taken back to where the nickname last stood.</summary>
+        public bool StartedFresh;
     }
 
     /// <summary>The language <paramref name="id"/>'s game runs in, or null (then the page's text is used).</summary>
@@ -206,9 +230,45 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
         SaveState();
     }
 
-    private void OnPlayerConnected(Player joined, Guid _) => _players[joined.PlayerId] = new PlayerView();
+    private void OnPlayerConnected(Player joined, Guid readyMId)
+    {
+        var view = _players[joined.PlayerId] = new PlayerView();
+        if (readyMId == Guid.Empty)
+            return;
+        var account = readyMId.ToString("N");
+        _accounts[joined.PlayerId] = account;
+        var known = KnownAccounts.Contains(account);
+        if (KnownAccounts.Add(account))
+            _dirty = true;
+        if (!Settings.NewCharacterSetup)
+            return;
+        if (!NewCharacters.Contains(account) && PlayerSaves.IsBrandNew(readyMId, known, logger))
+        {
+            NewCharacters.Add(account);
+            _dirty = true;
+        }
+        view.Fresh = NewCharacters.Contains(account);
+        if (view.Fresh)
+            logger.LogInformation("[QuestSync] Player {Account}: a new character. Setting it up once they are in (menus, starter kit).", account);
+    }
 
-    private void OnPlayerDisconnected(Player gone, Guid _, LiteNetLib.DisconnectReason __) => _players.Remove(gone.PlayerId);
+    private void OnPlayerDisconnected(Player gone, Guid _, LiteNetLib.DisconnectReason __)
+    {
+        _players.Remove(gone.PlayerId);
+        _accounts.Remove(gone.PlayerId);
+    }
+
+    /// <summary>The first-join setup ran (or isn't wanted): the party's progress reaches the player from now on.</summary>
+    public void CharacterSetUp(PlayerId id, bool done)
+    {
+        if (_players.TryGetValue(id, out var view))
+        {
+            view.Fresh = false;
+            view.StartedFresh = done;
+        }
+        if (_accounts.TryGetValue(id, out var account) && NewCharacters.Remove(account))
+            _dirty = true;
+    }
 
     private void OnPlayerJoinedArea(PlayerId playerId, AreaId area) => View(playerId).Area = area;
 
@@ -385,6 +445,22 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
         var sharedChanged = false;
         foreach (var (from, stage, live) in newlyDone)
         {
+            if (_players.TryGetValue(from, out var fresh) && fresh.Fresh)
+            {
+                // The party's progress waits for a fresh character, so whatever they have came with the preset start.
+                if (Map.IsShared(stage.Quest) && PresetStages.Add(stage))
+                {
+                    _dirty = true;
+                    logger.LogInformation("[QuestSync] {Stage} comes with OblivionMP's start (a new character has it): never shared.", stage);
+                }
+                if (Shared.TryGetValue(stage.Quest, out var had) && had.Remove(stage.Stage))
+                {
+                    if (had.Count == 0)
+                        Shared.Remove(stage.Quest);
+                    _dirty = true;
+                }
+                continue;
+            }
             if (SourcePlayer is not null && !string.Equals(Nickname(from), SourcePlayer, StringComparison.OrdinalIgnoreCase))
                 continue;
             if (AddShared(stage))
@@ -413,7 +489,9 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
                     if ((joining || sharedChanged || view.PendingPush) && !view.IntroHeld)
                     {
                         view.IntroHeld = true;
-                        logger.LogInformation("[QuestSync] {Player}: still in the intro; the party's progress waits until they leave the sewers.", Nickname(main.PlayerId));
+                        logger.LogInformation(view.Fresh
+                            ? "[QuestSync] {Player}: a new character; the party's progress waits until it is set up."
+                            : "[QuestSync] {Player}: still in the intro; the party's progress waits until they leave the sewers.", Nickname(main.PlayerId));
                     }
                     view.PendingPush = false;
                     continue;
@@ -422,7 +500,7 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
                 {
                     view.IntroHeld = false;
                     joining = true;
-                    logger.LogInformation("[QuestSync] {Player}: out of the sewers; catching up with the party.", Nickname(main.PlayerId));
+                    logger.LogInformation("[QuestSync] {Player}: catching up with the party.", Nickname(main.PlayerId));
                 }
                 if (!(joining || sharedChanged || view.PendingPush))
                     continue;
@@ -454,12 +532,13 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
 
     /// <summary>
     /// Whether the party's progress waits for this player: they are in the prison intro, or never left the sewers and
-    /// are choosing or taking a start (<see cref="NewStart"/>). A player who never left the sewers while the mod leaves
+    /// are choosing or taking a start (<see cref="NewStart"/>), or are a new character not set up yet
+    /// (<see cref="FreshCharacter"/>). A player who never left the sewers while the mod leaves
     /// the start to the game ("off") and no intro runs is not held: nothing would ever end the wait.
     /// </summary>
     public bool HoldsForIntro(PlayerView view)
     {
-        if (view.Intro == 1)
+        if (view.Fresh || view.Intro == 1)
             return true;
         if (view.Intro != 2)
             return false;
@@ -602,10 +681,13 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
             logger.LogWarning("[QuestSync] {Player}: could not take {FormId:X8} x{Count}", Nickname(main.PlayerId), formId, count);
     }
 
-    /// <summary>Adds a stage to the shared progress. Stages of local-only quests (the tutorial) are never shared.</summary>
+    /// <summary>
+    /// Adds a stage to the shared progress. Stages of local-only quests (the tutorial) and the stages every character
+    /// starts with (<see cref="PresetStages"/>) are never shared.
+    /// </summary>
     public bool AddShared(QuestStage stage)
     {
-        if (!Map.IsShared(stage.Quest))
+        if (!Map.IsShared(stage.Quest) || PresetStages.Contains(stage))
             return false;
         if (!Shared.TryGetValue(stage.Quest, out var set))
             Shared[stage.Quest] = set = new SortedSet<int>();
@@ -772,7 +854,7 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
             {
                 id = id.ToString(),
                 name = Nickname(id),
-                phase = view.ModIndex is null ? "NoPlugin" : view.CatchingUp ? "CatchingUp" : view.Phase == Phase.Ready && HoldsForIntro(view) ? "Intro" : view.Phase.ToString(),
+                phase = view.ModIndex is null ? "NoPlugin" : view.Fresh ? "Fresh" : view.CatchingUp ? "CatchingUp" : view.Phase == Phase.Ready && HoldsForIntro(view) ? "Intro" : view.Phase.ToString(),
                 intro = view.Intro,
                 stages = view.Stages.GroupBy(s => s.Quest).ToDictionary(g => g.Key, g => g.Select(s => s.Stage).Order().ToArray()),
                 area = view.Area is { } a ? GameData.AreaKey(a) : null,
@@ -794,6 +876,7 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
             shared = Shared.ToDictionary(kv => kv.Key, kv => kv.Value.ToArray()),
             reset = ResetQuests.ToArray(),
             sewersLeft = SewersLeft,
+            preset = PresetStages.GroupBy(s => s.Quest).ToDictionary(g => g.Key, g => g.Select(s => s.Stage).Order().ToArray()),
             access = AccessInfo?.Invoke(),
         }, CoopSettings.Json);
     }
@@ -810,6 +893,9 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
         public Dictionary<string, ReturnSpot>? Outdoors { get; set; }
         public bool? SewersLeft { get; set; }
         public string[]? GotoLocked { get; set; }
+        public string[]? NewCharacters { get; set; }
+        public string[]? KnownAccounts { get; set; }
+        public Dictionary<string, int[]>? PresetStages { get; set; }
     }
 
     private void LoadState()
@@ -825,6 +911,14 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
                 state = JsonSerializer.Deserialize<StateFile>(text) ?? new();
             else // 0.2 and 0.3 saved only the shared stages
                 state = new StateFile { Shared = JsonSerializer.Deserialize<Dictionary<string, int[]>>(text) ?? new() };
+            foreach (var (quest, stages) in state.PresetStages ?? new())
+                if (Map.TryNormalizeQuest(quest, out var name))
+                    foreach (var s in stages)
+                        PresetStages.Add(new QuestStage(name, s));
+            foreach (var account in state.NewCharacters ?? [])
+                NewCharacters.Add(account);
+            foreach (var account in state.KnownAccounts ?? [])
+                KnownAccounts.Add(account);
             foreach (var (quest, stages) in state.Shared)
                 if (Map.TryNormalizeQuest(quest, out var name))
                     foreach (var s in stages)
@@ -871,6 +965,9 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
                 Outdoors = Outdoors,
                 SewersLeft = SewersLeft,
                 GotoLocked = GotoLocked.ToArray(),
+                NewCharacters = NewCharacters.ToArray(),
+                KnownAccounts = KnownAccounts.ToArray(),
+                PresetStages = PresetStages.GroupBy(s => s.Quest).ToDictionary(g => g.Key, g => g.Select(s => s.Stage).Order().ToArray()),
             };
             var tmp = StatePath + ".tmp";
             File.WriteAllText(tmp, JsonSerializer.Serialize(state, new JsonSerializerOptions { WriteIndented = true }));

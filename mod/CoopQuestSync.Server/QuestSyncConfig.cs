@@ -39,8 +39,9 @@ public sealed partial class QuestSyncConfig
     public string StateFile { get; set; } = "coop-quest-sync-state.json";
 
     /// <summary>
-    /// The players' load order, as in the game's Plugins.txt (the plugins before ours). Only used to find items and
-    /// NPCs of the DLC and the remaster's own plugins; vanilla ones work whatever this says.
+    /// The players' load order, as in the game's Plugins.txt. Only used to find items and NPCs of the DLC and the
+    /// remaster's own plugins; vanilla ones work whatever this says. Without CoopQuestSync.esp in the list, the server
+    /// puts the mod's two plugins right after AltarESPMain.esp, where the ReadyM Launcher adds them.
     /// </summary>
     public string GamePlugins { get; set; } =
         "Oblivion.esm,DLCBattlehornCastle.esp,DLCFrostcrag.esp,DLCHorseArmor.esp,DLCMehrunesRazor.esp,DLCOrrery.esp," +

@@ -188,7 +188,7 @@ function render() {
 }
 
 function phaseText(p) {
-  return { Ready: "in sync", Intro: "new: in the intro (progress waits)", CatchingUp: "catching up", Restoring: "restoring progress", Handshake: "joining", NoPlugin: "plugin not found" }[p] || p;
+  return { Ready: "in sync", Intro: "new: in the intro (progress waits)", Fresh: "new character: being set up (progress waits)", CatchingUp: "catching up", Restoring: "restoring progress", Handshake: "joining", NoPlugin: "plugin not found" }[p] || p;
 }
 
 function row(q) {
@@ -316,11 +316,12 @@ function renderSettings() {
     ${srow("Friendly fire", "Always on: OblivionMP can't tell mods who hit whom.", `<span class="edid">On</span>`)}
   </div>
   <div class="sgroup"><h3>New players</h3>
-    ${srow("New players start", "Ask: the prison intro or the sewer exit. The party's progress reaches them once they leave the sewers.", sel("newStart", choices.newStart, st.newStart))}
+    ${srow("Set up new characters", "OblivionMP starts everyone as the same character. On a new character's first join: empty bag, starter kit, race, class and birthsign menus. The quests that start comes with aren't shared.", chk("newCharacterSetup", st.newCharacterSetup))}
+    ${srow("Prison or sewer start", "Off (Game's own) on OblivionMP 1.1, which skips the prison. Ask: the prison intro or the sewer exit. The party's progress reaches them once they leave the sewers.", sel("newStart", choices.newStart, st.newStart))}
     ${srow("Offer the prison intro", "Fresh world: until someone has left the sewers. The Emperor is shared, so the intro plays once.", sel("prisonStart", choices.prisonStart, st.prisonStart))}
     ${srow("Prison intro here", state.sewersLeft ? "Someone has left the sewers. Reset only on a fresh world." : "Nobody has left the sewers yet.",
       state.sewersLeft ? `<button class="mini" data-prison-fresh title="Mark the prison intro as not played">Played: reset</button>` : `<span class="edid">Not played</span>`)}
-    ${srow("Starter kit", "For the sewer exit start: sword, bow, arrows, lockpicks, potions, torch, leather armour (config.json StarterKitItems).", chk("starterKit", st.starterKit))}
+    ${srow("Starter kit", "For new characters (and the sewer exit start): sword, bow, arrows, lockpicks, potions, torch, leather armour (config.json StarterKitItems).", chk("starterKit", st.starterKit))}
     ${srow("Take back spare amulets", "Each new player gets one. Once Jauffre has it, the other copies go.", chk("takeSpareAmulets", st.takeSpareAmulets))}
   </div>
   <div class="sgroup"><h3>Commands</h3>

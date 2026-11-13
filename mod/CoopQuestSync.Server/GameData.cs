@@ -19,6 +19,9 @@ namespace CoopQuestSync.Server;
 [Service]
 public sealed partial class GameData(QuestSyncConfig config, ILogger logger)
 {
+    /// <summary>The mod's plugins, as the launcher adds them to the players' load order.</summary>
+    private const string PluginName = "CoopQuestSync.esp", DialoguePluginName = "CoopQuestSyncDialogue.esp";
+
     /// <summary>The quest tokens table (tokens.json).</summary>
     public TokenMap Map { get; } = TokenMap.LoadEmbedded();
 
@@ -57,6 +60,13 @@ public sealed partial class GameData(QuestSyncConfig config, ILogger logger)
         _loaded = true;
         var map = Map;
         var order = config.GamePlugins.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+        // The ReadyM Launcher (0.32+) adds our two plugins to the players' Plugins.txt itself, right after
+        // AltarESPMain.esp, so AltarDeluxe.esp and AltarESPLocal.esp come after ours (2026-11-13, OblivionMP 1.1.0).
+        if (!order.Contains(PluginName, StringComparer.OrdinalIgnoreCase))
+        {
+            var main = order.FindIndex(p => p.Equals("AltarESPMain.esp", StringComparison.OrdinalIgnoreCase));
+            order.InsertRange(main < 0 ? order.Count : main + 1, [PluginName, DialoguePluginName]);
+        }
         _toGame = new int[map.Masters.Count];
         for (var i = 0; i < map.Masters.Count; i++)
         {

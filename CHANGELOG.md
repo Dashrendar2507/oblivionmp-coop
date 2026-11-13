@@ -4,6 +4,15 @@
 
 * **Built for OblivionMP 1.1.0** (SDK 1.1.0). It doesn't load on an OblivionMP 1.0.x server, and 0.6 and older don't
   load on 1.1. Moving a server: see "Moving from an OblivionMP 1.0 server" in docs/INSTALL.md.
+* **New characters are set up on their first join.** OblivionMP 1.1 starts every new character as the same preset
+  (a level 1 Dunmer near Aleswell, with that character's gear and a few quests under way). A character with no save
+  on the server yet gets an empty bag except the starter kit, then the race, class and birthsign menus. The quest
+  stages that preset comes with are never shared or announced, and the party's progress reaches the new player once
+  the setup has run. Setting "Set up new characters" (on), with "Starter kit".
+* **The prison / sewer exit start is off by default** ("New players start: Game's own"): OblivionMP 1.1 starts
+  every player from its own world save, not in the prison. It stays on the settings page for when the SDK allows it.
+* Our plugins go right after AltarESPMain.esp in the server's load order, where the ReadyM Launcher (0.32+) puts
+  them, so DLC and Altar items keep their ids.
 * Includes everything from the 0.6 test builds below.
 
 **From the 0.6 test builds**
