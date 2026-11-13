@@ -2,6 +2,7 @@ using System.Numerics;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using OblivionMp.Sdk.Common.Archetypes;
+using ReadyM.Relay.Common.Oblivion.ECS.Values;
 using ReadyM.Api.Idents;
 using ReadyM.Relay.Server.Sdk.Ecs;
 using ReadyM.Relay.Server.Sdk.Events;
@@ -58,13 +59,15 @@ public sealed partial class ConversationRelay(IEntities entities, IServerEvents 
     private readonly Dictionary<PlayerId, Talk> _talks = new();
     private readonly Dictionary<PlayerId, uint> _dialogueSlot = new();
     private readonly Dictionary<PlayerId, string> _activity = new();
+    /// <summary>The menu the player's add-on recognised (lockpicking), for menus the dialogue plugin can't see.</summary>
+    private readonly Dictionary<PlayerId, string> _addonMenu = new();
 
     /// <summary>What a player is doing in each menu the dialogue plugin reports, as the others read it.</summary>
     private static readonly Dictionary<string, string> Activities = new()
     {
         ["barter"] = "bartering", ["persuade"] = "persuading", ["training"] = "training", ["repair"] = "repairing",
         ["spells"] = "buying spells", ["recharge"] = "recharging", ["spellmaking"] = "making a spell",
-        ["enchanting"] = "enchanting", ["lockpick"] = "picking a lock",
+        ["enchanting"] = "enchanting", ["lockpick"] = "picking a lock", ["pickpocket"] = "pickpocketing",
     };
     private float _elapsed;
     private float _clock;
@@ -91,6 +94,7 @@ public sealed partial class ConversationRelay(IEntities entities, IServerEvents 
         events.OnPlayerDisconnected += OnPlayerDisconnected;
         rpc.FollowToggled += ToggleFollow;
         rpc.JoinRequested += Join;
+        rpc.MenuKindReported += OnMenuKind;
         travel.Arrived += OnArrived;
         sync.SettingsChanged += () => { foreach (var talker in _talks.Keys.ToList()) End(talker); };
     }
@@ -100,6 +104,7 @@ public sealed partial class ConversationRelay(IEntities entities, IServerEvents 
         events.OnPlayerDisconnected -= OnPlayerDisconnected;
         rpc.FollowToggled -= ToggleFollow;
         rpc.JoinRequested -= Join;
+        rpc.MenuKindReported -= OnMenuKind;
         travel.Arrived -= OnArrived;
     }
 
@@ -107,6 +112,7 @@ public sealed partial class ConversationRelay(IEntities entities, IServerEvents 
     {
         _dialogueSlot.Remove(player);
         _activity.Remove(player);
+        _addonMenu.Remove(player);
         _ghosts.Remove(player);
         if (_talks.ContainsKey(player))
             End(player);
@@ -334,13 +340,24 @@ public sealed partial class ConversationRelay(IEntities entities, IServerEvents 
         }
     }
 
+    private void OnMenuKind(PlayerId player, string kind)
+    {
+        if (kind.Length == 0 || !Activities.ContainsKey(kind))
+            _addonMenu.Remove(player);
+        else
+            _addonMenu[player] = kind;
+    }
+
     /// <summary>Notes the menu a player has open and tells whoever watches their conversation.</summary>
     private void SetActivity(MainCharacter main, string? menu)
     {
         var id = main.PlayerId;
-        // The barter screen is the game's container screen: outside a conversation it is a chest, not a merchant.
+        // The barter screen is the game's container screen: outside a conversation it is a chest, or, sneaking, the
+        // pockets of the one they sneak up on (looting a chest while sneaking counts too, the game can't tell us which).
         if (menu == "barter" && !main.InDialogue)
-            menu = null;
+            menu = main.CharacterStateFlags.HasFlag(CharacterStateFlags.IsSneaking) ? "pickpocket" : null;
+        if (menu is null && _addonMenu.TryGetValue(id, out var seen))
+            menu = seen;
         var doing = menu is not null && Activities.TryGetValue(menu, out var label) ? label : null;
         _activity.TryGetValue(id, out var was);
         if (doing == was)

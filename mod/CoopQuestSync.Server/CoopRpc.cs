@@ -18,6 +18,7 @@ public sealed partial class CoopRpc
     public event Action<PlayerId>? JoinRequested;
     public event Action<PlayerId>? GotoRequested;
     public event Action<PlayerId>? RebornLoaded;
+    public event Action<PlayerId, string>? MenuKindReported;
     public event Action<PlayerId, string>? TextLanguageReported;
     public event Action<PlayerId, string>? TextFoundReceived;
 
@@ -41,6 +42,8 @@ public sealed partial class CoopRpc
     partial void OnTravelToFriend(RpcContext context) => GotoRequested?.Invoke(context.Sender);
 
     partial void OnRebirthLoaded(RpcContext context) => RebornLoaded?.Invoke(context.Sender);
+
+    partial void OnMenuKind(RpcContext context, string kind) => MenuKindReported?.Invoke(context.Sender, kind);
 
     partial void OnToggleFollow(RpcContext context) => FollowToggled?.Invoke(context.Sender);
 

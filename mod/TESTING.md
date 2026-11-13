@@ -1,8 +1,8 @@
-# Co-op Quest Sync 0.6.10: every test still to do
+# Co-op Quest Sync 0.6.11: every test still to do
 
-0.6.10 adds fixes from your 2026-11-13 tests (Part 1) to the combined build: no endless load after Alt+G (0.6.4), a
+0.6.11 adds fixes from your 2026-11-13 tests (Part 1) to the combined build: no endless load after Alt+G (0.6.4), a
 note on screen while you're down, `/coop calm near` that sticks, the voice stopping at once, arriving inside a
-building straight on the spot, and a calmer "Taking you back" on join (0.6.7, after the 12:14 crash), no long black screen after a revive (0.6.8/0.6.9), and no load with the chat open (0.6.10). It's for OblivionMP **1.0.x** (your server is 1.0.1) and contains:
+building straight on the spot, and a calmer "Taking you back" on join (0.6.7, after the 12:14 crash), no long black screen after a revive (0.6.8/0.6.9), no load with the chat open (0.6.10), and lockpicking and pickpocketing shown to the others (0.6.11). It's for OblivionMP **1.0.x** (your server is 1.0.1) and contains:
 
 * **0.5.4**: `/coop calm near` calms every NPC fighting within 15 m, `/coop calm <name>` works in dungeons and
   without the trailing dot, and the server learns the game's text from the players' games.
@@ -34,16 +34,14 @@ on). You host and play on the same computer, but they are still different folder
 | Local saves | **PC:** `%USERPROFILE%\Documents\My Games\Oblivion Remastered\Saved\SaveGames\` |
 | Plugins.txt | **PC:** `C:\Program Files (x86)\Steam\steamapps\common\Oblivion Remastered\OblivionRemastered\Content\Dev\ObvData\Data\Plugins.txt` |
 
-## Install 0.6.10
+## Install 0.6.11
 
 1. **Server:** stop the server. Delete `<server folder>\mods\CoopQuestSync\` and copy in the `CoopQuestSync`
    folder from the zip, so you get `<server folder>\mods\CoopQuestSync\manifest.json`. Don't touch
    `<server folder>\coop-quest-sync-state.json` or `<server folder>\coop-quest-sync-strings.json`.
-2. **PC:** nothing to copy. The add-on is the same as 0.6.7's: if you already restarted the game once on 0.6.7, no
-   restart is needed. Coming from 0.6.6 or older, a note in the top left corner asks you to restart the game on your
-   first join: quit and start it again once, so the new add-on runs. If `off`, `lite` or `off.txt` is in `%APPDATA%\ReadyM.Launcher\Oblivion\Mods\CoopQuestSyncUI\`, delete
-   it. The end of `Plugins.txt` still reads `CoopQuestSync.esp` then `CoopQuestSyncDialogue.esp`.
-3. **Server:** start the server. The log's mod load order shows **`CoopQuestSync v0.6.10`**. Also `The game's text: <server folder>\coop-quest-sync-strings.json`
+2. **PC:** nothing to copy, but **the add-on changed** (0.6.11): on your first join a note in the top left corner asks
+   you to restart the game. Quit and start it again once, so the new add-on runs.
+3. **Server:** start the server. The log's mod load order shows **`CoopQuestSync v0.6.11`**. Also `The game's text: <server folder>\coop-quest-sync-strings.json`
    and `Quest admin page: http://localhost:9060/`.
 4. **Server:** on http://localhost:9060/, **Co-op settings** has both **Party > Travel to teammates any time** and
    **New players > New players start**. If either is missing, the old folder is still in place.
@@ -181,7 +179,13 @@ If the log says `<you>'s game didn't send the text asked for in 45 s`, check tha
    appeared, it closed by itself (**PC** `UE4SS.log`: `closed the Quest Added pop-up`). Tell me if you had to close
    one by hand.
 2. **Menus.** Talk to a merchant and open Barter: the server log shows `<you> is bartering.`, then
-   `<you> stopped bartering.`. Then pick a lock: `is picking a lock.`. (Persuasion already worked.)
+   `<you> stopped bartering.`. (Persuasion already worked.)
+   * **Lockpicking (0.6.11).** On 2026-11-13 it never showed: the remaster's lockpicking doesn't reach the old game's
+     menu that the dialogue plugin watches. The add-on now looks at the game's open screens instead. Pick a lock for a
+     few seconds: server log `is picking a lock.`. Either way, **PC** `UE4SS.log` now has `open screens: ...` lines
+     each time a menu opens: send me the one from the lockpicking, even if it worked.
+   * **Pickpocketing (new).** Sneak up on someone and open their pockets: `is pickpocketing.`. The game uses the same
+     screen for pockets and chests, so a chest opened while sneaking also says pickpocketing.
 3. **Voices.** Talk to any NPC yourself for a line or two first. Then `/coop test voice`: a voice line plays and the
    chat says which. Then `/coop test talk`: Ghost's lines come with their voices. Alt+U stops the voice;
    `/coop test talk ask` (the banner) never plays one. Silent? Send **PC** `UE4SS.log` (lines with `voice`).
@@ -274,8 +278,8 @@ the first join (the add-on installs itself, a note says so).
 
 ## Part 7: later, on OblivionMP 1.1.0
 
-Not now: 0.6.10 is built for 1.0 and **won't load on a 1.1.0 server**, and a 1.1 build won't load on 1.0.1. The move
-to SDK 1.1.0 is ready in its own pull request. When you upgrade the server, ask for a 0.6.10 build for 1.1 (the
+Not now: 0.6.11 is built for 1.0 and **won't load on a 1.1.0 server**, and a 1.1 build won't load on 1.0.1. The move
+to SDK 1.1.0 is ready in its own pull request. When you upgrade the server, ask for a 0.6.11 build for 1.1 (the
 earlier `0.6.1-sdk1.1` zip doesn't have the 0.5.4 and 0.6.2 fixes).
 
 1. **Server:** set up the 1.1.0 server as ReadyM describes: copy `saves`, `data`, `branding` and `config.json` from

@@ -126,4 +126,10 @@ public static partial class CoopRpcContracts
     /// world, so the server can take them to the party.
     /// </summary>
     [ClientToServer] public static partial void RebirthLoaded();
+
+    /// <summary>
+    /// A menu the add-on recognised in the game's own screens ("lockpick"), or "" when it closed. For menus the dialogue
+    /// plugin's MenuMode can't see: the remaster's lockpicking never reached it (2026-11-13).
+    /// </summary>
+    [ClientToServer] public static partial void MenuKind(string kind);
 }

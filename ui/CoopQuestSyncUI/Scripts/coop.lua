@@ -750,6 +750,68 @@ end
 
 -- Menus ----------------------------------------------------------------------------------------------------------
 
+-- Which screen is open, for the ones the dialogue plugin's MenuMode can't see: the remaster's lockpicking never
+-- reached it (2026-11-13). While a menu is open, once a second: the game's activated CommonUI screens. Their class
+-- names go to the log when they change (to learn the remaster's names), and a lockpicking one writes "lockpick" to
+-- menu-kind, which the client passes to the server. Game thread.
+local KIND_FILE = FOLDER .. "menu-kind"
+local KIND_EVERY = 1
+os.remove(KIND_FILE)
+
+function S.menuKindCheck()
+    if not S.menuOpen then
+        if S.menuKind then
+            os.remove(KIND_FILE)
+            S.menuKind = nil
+        end
+        S.menuClasses = nil
+        return
+    end
+    if S.kindAt and os.clock() - S.kindAt < KIND_EVERY then
+        return
+    end
+    S.kindAt = os.clock()
+    local names, seen = {}, {}
+    local all = FindAllOf("CommonActivatableWidget") or {}
+    for _, w in ipairs(all) do
+        pcall(function()
+            if w:IsValid() and w:IsActivated() then
+                local n = w:GetClass():GetFName():ToString()
+                if not seen[n] then
+                    seen[n] = true
+                    names[#names + 1] = n
+                end
+            end
+        end)
+    end
+    table.sort(names)
+    local list = table.concat(names, ", ", 1, math.min(#names, 15))
+    if list ~= S.menuClasses then
+        S.menuClasses = list
+        log("open screens: " .. (list == "" and "(none found among " .. #all .. ")" or list))
+    end
+    local kind = ""
+    for _, n in ipairs(names) do
+        local l = n:lower()
+        if l:find("lockpick", 1, true) or l:find("lock_pick", 1, true) then
+            kind = "lockpick"
+        end
+    end
+    if kind ~= (S.menuKind or "") then
+        S.menuKind = kind ~= "" and kind or nil
+        if kind == "" then
+            os.remove(KIND_FILE)
+        else
+            local f = io.open(KIND_FILE, "w")
+            if f then
+                f:write(kind)
+                f:close()
+            end
+            log("menu kind: " .. kind)
+        end
+    end
+end
+
 -- A menu (map, inventory, journal...) shows the mouse cursor; walking around doesn't. Game thread.
 function S.menuCheck()
     local pc = playerController()
@@ -847,6 +909,11 @@ function S.gameJob()
     if not S.lite and os.clock() - S.lastMenu >= MENU_EVERY then
         S.lastMenu = os.clock()
         pcall(S.menuCheck)
+        local okKind, errKind = pcall(S.menuKindCheck)
+        if not okKind and not S.kindErrLogged then
+            S.kindErrLogged = true
+            log("menu kind: " .. tostring(errKind))
+        end
         pcall(S.questAddedCheck)
     end
     for _, step in ipairs({ S.fadeCheck, S.runCommands, S.runVoice, S.runText }) do
