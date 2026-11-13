@@ -185,9 +185,10 @@ If the log says `<you>'s game didn't send the text asked for in 45 s`, check tha
 3. **Voices.** Talk to any NPC yourself for a line or two first. Then `/coop test voice`: a voice line plays and the
    chat says which. Then `/coop test talk`: Ghost's lines come with their voices. Alt+U stops the voice;
    `/coop test talk ask` (the banner) never plays one. Silent? Send **PC** `UE4SS.log` (lines with `voice`).
-4. **Stage effects.** `/coop test effects MS93` lists stages with effects (`20: teleport/items`). Pick a quest you
-   haven't started, `/coop test stage <quest> <stage>` on a teleport stage: you get it as if live. Then on the page
-   turn **Live > Teleport** off and try another teleport stage: you get the stage but stay put. Turn it back on.
+4. **Stage effects.** Save first (these stages move you into a quest's dream world). `/coop test effects MS05` lists
+   its stages with effects (`70: teleport/...`; MS93 has none, the 0.6.9 doc was wrong). `/coop test stage MS05 70`:
+   you get it as if live, and the game moves you. Load your save. Then on the page turn **Live > Teleport** off and
+   `/coop test stage MS05 72`: you get the stage but stay put. Turn it back on and load your save again.
 5. **Not an admin.** `/coop test asghost on`: `/qs auto off` and `/coop test status` are refused with "Only server
    admins can use ...", `/qs whoami` and `/coop follow` still work, and the page shows **testing as Ghost (not
    admin)**. `/coop test asghost off` gives your rights back.
