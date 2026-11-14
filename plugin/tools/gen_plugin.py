@@ -255,13 +255,14 @@ CONTROL_SCRIPT = "\r\n".join([
 # never runs Charactergen's stage scripts: those kill and move the Emperor and the Blades, who are shared NPCs.
 START_TOPICS = ["AmuletofKingsTopic", "WeynonPrioryTopic", "OrderofTalosTopic", "JauffreTopic", "UrielSeptimTopic"]
 START_ASK = "Welcome to the co-op server! Where do you want to start?"
-START_PRISON_BUTTON = "In the prison: play the intro"
-START_SKIP_BUTTON = "At the sewer exit: skip the intro"
+# Short, plain button labels: the remaster showed "[NL]" in the longer ones with a colon (2026-11-14).
+START_PRISON_BUTTON = "Play the prison intro"
+START_SKIP_BUTTON = "Skip to the sewer exit"
 START_INFO = ("Welcome to the co-op server! You start at the sewer exit with the Amulet of Kings, "
               "and make your character there.")
 NEW_START_SCRIPT = "\r\n".join([
     "scn CQSNewStartScript", "float fQuestDelayTime", "short state", "short button", "short offer", "short want",
-    "short have", "short waited",
+    "short have", "short waited", "float px", "float py", "float lastx", "float lasty",
     "begin GameMode",
     "set fQuestDelayTime to 0.5",
     # CQSIntro: 1 in the prison intro, 2 when the player never left the sewers but no intro runs, 0 once out.
@@ -280,7 +281,8 @@ NEW_START_SCRIPT = "\r\n".join([
     "endif",
     "if state == 0",
     "set offer to player.GetItemCount CQSStartOffer",
-    # Not over another menu: the 2026-11-14 window came up over the Esc menu, which then stayed open under it.
+    # Not over another menu: the 2026-11-14 window came up over the Esc menu, which then stayed open under it. (Under
+    # OblivionMP, MenuMode stays 0 while a message box is open; whether it sees the Esc menu is untested.)
     "if offer > 0 && want > 0 && player.GetItemCount CQSStartDone == 0 && player.GetItemCount CQSStartPrison == 0 && MenuMode == 0",
     "if offer == 1",
     f'MessageBox "{START_ASK}", "{START_PRISON_BUTTON}", "{START_SKIP_BUTTON}"',
@@ -289,11 +291,14 @@ NEW_START_SCRIPT = "\r\n".join([
     "endif",
     "set state to 1",
     "set waited to 0",
+    "set lastx to player.GetPos X",
+    "set lasty to player.GetPos Y",
     "endif",
     "elseif state == 1",
-    # OblivionMP doesn't pause the game for a message box, so this runs while the box is open (2026-11-14: the box
-    # closed and came back after 5 s). Only time with no menu open counts: 10 s of that without an answer means the box
-    # was lost (a load), so it is shown again.
+    # OblivionMP doesn't pause the game for a message box, so this runs while the box is open, and MenuMode stays 0
+    # (2026-11-14: a timer showed the box again under the open one, so it came straight back after the first click).
+    # The player can't walk while the box is up, so the box counts as lost (a load) only once the player has walked
+    # for about 3 s (6 runs with a move of more than 20 units; a teleport is one run) without answering.
     "set button to GetButtonPressed",
     "if button >= 0",
     "if offer == 1 && button == 0",
@@ -302,15 +307,22 @@ NEW_START_SCRIPT = "\r\n".join([
     "else",
     "set state to 3",
     "endif",
-    "elseif MenuMode == 0",
+    "else",
+    "set px to player.GetPos X",
+    "set py to player.GetPos Y",
+    "if px - lastx > 20 || lastx - px > 20 || py - lasty > 20 || lasty - py > 20",
     "set waited to waited + 1",
-    "if waited > 20",
+    "endif",
+    "set lastx to px",
+    "set lasty to py",
+    "if waited >= 6",
     "set state to 0",
     "endif",
     "endif",
     "elseif state == 3",
     # Only once every menu is closed: the move's load with the Esc menu still open under the window left the game's
-    # menus half shut, and the race menu then came up as its camera alone (2026-11-14).
+    # menus half shut, and the race menu then came up as its camera alone (2026-11-14). (See above: untested whether
+    # MenuMode sees the Esc menu under OblivionMP.)
     "if MenuMode == 0",
     "set state to 2",
     # A save from before the fix below can still be at state 3 after going out: no skip then.

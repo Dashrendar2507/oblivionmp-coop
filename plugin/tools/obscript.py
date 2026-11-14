@@ -7,7 +7,7 @@ parentheses, numbers, local variables and known functions (optionally ref.Func).
 """
 import re, struct
 
-# opcode, parameter kinds ('ref' = form reference, 'int' = integer)
+# opcode, parameter kinds ('ref' = form reference, 'int' = integer, 'axis' = X, Y or Z)
 FUNCS = {
     "getstage":      (0x103A, ["ref"]),
     "getstagedone":  (0x103B, ["ref", "int"]),
@@ -20,6 +20,7 @@ FUNCS = {
     "moveto":        (0x109E, ["ref"]),
     "addtopic":      (0x1058, ["ref"]),
     "getbuttonpressed": (0x101F, None),
+    "getpos":        (0x1006, ["axis"]),   # the axis is one byte, the letter itself
     # an optional menu type: the game writes an empty parameter list (a zero count) when there is none
     "menumode":      (0x1024, []),
     # no parameter block at all: just opcode and a zero length
@@ -82,6 +83,10 @@ class Script:
         for k, a in zip(kinds, args):
             if k == "ref":
                 out += b"\x72" + struct.pack("<H", self.ref_index(a))
+            elif k == "axis":
+                if a.upper() not in ("X", "Y", "Z"):
+                    raise CompileError(f"expected an axis, got {a}")
+                out += a.upper().encode()
             else:
                 out += b"\x6e" + struct.pack("<i", int(a))
         return out
