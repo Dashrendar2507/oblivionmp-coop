@@ -74,8 +74,11 @@ The server host opens **http://localhost:9060/** on the server computer (see
   "Anyone" is the default.
 * **Quests**: every quest with its stages and journal text, and which player has which stage. Search by name or
   journal text, and filter by "started by anyone", "in shared progress" or "all quests". Open a quest to:
-  * **Give to everyone**: push a stage to every player,
-  * **Reset this quest**: take it back from everyone.
+  * **Give to everyone**: push a stage to every player. It reaches everyone in game within a few seconds; a
+    player still in the prison intro gets it when they leave the sewers.
+  * **Reset this quest**: take it back from everyone. It leaves the shared progress at once, but the game can't
+    undo a quest stage while it runs: a player who already has the quest keeps it in their journal until they
+    rejoin (they get a chat line saying so). Stages given again, or reached from then on, count as usual.
 * **Reset all shared progress**: start the playthrough over.
 * **Co-op settings**: every switch below. Changes apply at once and are kept across server restarts.
 

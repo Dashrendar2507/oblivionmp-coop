@@ -204,7 +204,7 @@ function row(q) {
       const marks = (q.sync ? [`<span class="mark ${shared.has(s.stage) ? "on" : ""}">shared</span>`] : [])
         .concat(state.players.map(p => `<span class="mark ${stagesOf(p.stages, q.editorId).has(s.stage) ? "on" : ""}">${esc(p.name)}</span>`));
       const btn = q.sync && !shared.has(s.stage)
-        ? `<button class="primary" data-push="${esc(q.editorId)}" data-stage="${s.stage}" title="Add to shared progress and give it to every player in game">Give to everyone</button>` : `<span></span>`;
+        ? `<button class="primary" data-push="${esc(q.editorId)}" data-stage="${s.stage}" title="Add to shared progress and give it to every player in game now (players in the prison intro get it when they leave the sewers)">Give to everyone</button>` : `<span></span>`;
       const fx = (s.effects || []).map(c => `<span class="mark fx" title="This stage's script has a ${esc(FX[c] || c)} effect">${esc(FX[c] || c)}</span>`).join(" ");
       return `<div class="stage"><span class="num">${s.stage}</span>
         <span>${esc(s.text || (state.hasText ? "(no journal entry)" : "(journal text needs strings.json)"))}${fx ? `<br>${fx}` : ""}</span>
@@ -220,8 +220,9 @@ $("rows").addEventListener("click", e => {
   if (push) { act({ action: "push", quest: push.dataset.push, stage: Number(push.dataset.stage) }); return; }
   const reset = e.target.closest("[data-reset]");
   if (reset) {
-    if (confirm("Reset this quest?\n\nIt leaves the shared progress, and its hidden tokens are taken from everyone in game. "
-      + "The game can't undo a quest while someone is playing, so each player keeps it until they rejoin."))
+    if (confirm("Reset this quest?\n\nIt leaves the shared progress now, and its hidden tokens are taken from everyone in game. "
+      + "The game can't undo a quest stage while it runs, so a player who already has it keeps it in their journal until they rejoin "
+      + "(they get a chat line saying so). Stages you give again, or that they reach from now on, count as usual."))
       act({ action: "reset-quest", quest: reset.dataset.reset });
     return;
   }
@@ -237,8 +238,8 @@ $("calmAll").addEventListener("click", () => {
   if (confirm("Stop every fight where a player is, and the guards' chase?")) act({ action: "calm" });
 });
 $("resetAll").addEventListener("click", () => {
-  if (confirm("Reset every shared quest?\n\nThe shared progress is cleared and the hidden tokens are taken from everyone, including players who join later. "
-    + "The game can't undo quests while someone is playing, so each player keeps their quests until they rejoin."))
+  if (confirm("Reset every shared quest?\n\nThe shared progress is cleared now and the hidden tokens are taken from everyone, including players who join later. "
+    + "The game can't undo a quest stage while it runs, so each player keeps their quests in their journal until they rejoin."))
     act({ action: "reset-all" });
 });
 const FX = { teleport: "Teleport", combat: "Combat", items: "Items", status: "Status", ranks: "Faction ranks", cutscene: "Cut scene" };

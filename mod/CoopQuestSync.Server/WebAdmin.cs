@@ -212,8 +212,8 @@ public sealed partial class WebAdmin(QuestTokenSync sync, GameData data, QuestSy
                         if (only is null)
                             return;
                     }
-                    var count = sync.AdminPush(new QuestStage(name, stage), only);
-                    logger.LogInformation("[QuestSync] Web: pushed {Quest} {Stage} to {Count} player(s).", name, stage, count);
+                    var result = sync.AdminPush(new QuestStage(name, stage), only);
+                    logger.LogInformation("[QuestSync] Web: gave {Quest} {Stage} {Result}.", name, stage, result);
                 });
                 break;
             }

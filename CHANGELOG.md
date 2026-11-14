@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.8.1
+
+* **Giving a stage on the web page right after resetting its quest works.** It reached nobody ("pushed MQ02 10 to
+  0 player(s)"): after a reset, the server kept taking every token of that quest from players in game until they
+  rejoined, including the ones an admin gave again. Now only the stages their game already had stay taken; a stage
+  an admin gives (page, `/qs push`) or that they reach from then on counts at once.
+* **Giving a stage to everyone waits for players in the prison intro.** They get it with the rest of the party's
+  progress when they leave the sewers, as with auto sync, instead of in the prison (MQ02 stages end the intro). The
+  log says who got it now and who waits.
+* **Resetting a quest says what happens in game.** It is out of the shared progress at once; a player whose game
+  has stages of it gets a chat line that their journal keeps it until they rejoin (nothing in the game can undo a
+  quest stage while it runs). The server log names them, or says nobody in game had it.
+
 ## 0.8.0 (first public release, for OblivionMP 1.1)
 
 The 0.7.0 test builds were never released; everything in them is here.
