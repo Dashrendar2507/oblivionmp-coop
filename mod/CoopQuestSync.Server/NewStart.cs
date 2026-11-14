@@ -41,6 +41,10 @@ public sealed partial class NewStart(IEntities entities, QuestTokenSync sync, In
     private static readonly QuestStage AmuletDelivered = new("MQ02", 50);
 
     private readonly Dictionary<PlayerId, string> _told = new();
+    /// <summary>Players seen in the sewers (or the prison) on this server, and whether they took the intro skip.</summary>
+    private readonly Dictionary<PlayerId, bool> _inSewers = new();
+    /// <summary>The server had no saved world when the mod started: nobody has played the intro in this one.</summary>
+    private bool _newWorld;
     private List<(uint FormId, int Count)>? _kit;
 
     private TokenMap Map => sync.Map;
@@ -53,6 +57,7 @@ public sealed partial class NewStart(IEntities entities, QuestTokenSync sync, In
             return;
         }
         _kit = ParseKit(config.StarterKitItems, logger);
+        _newWorld = PlayerSaves.WorldIsNew() == true;
         sync.Passed += OnPassed;
     }
 
@@ -61,6 +66,16 @@ public sealed partial class NewStart(IEntities entities, QuestTokenSync sync, In
     /// <summary>After every pass over the inventories, on the game loop.</summary>
     private void OnPassed()
     {
+        if (_newWorld)
+        {
+            _newWorld = false;
+            if (sync.SewersLeft)
+            {
+                sync.SewersLeft = false;
+                sync.MarkDirty();
+                logger.LogInformation("[QuestSync] The server made a new world: the prison intro can be played again.");
+            }
+        }
         foreach (var main in entities.Query<MainCharacter>())
         {
             var id = main.PlayerId;
@@ -71,13 +86,18 @@ public sealed partial class NewStart(IEntities entities, QuestTokenSync sync, In
             var done = Count(view, Map.StartDoneLocalId);
             var kit = Count(view, Map.StartKitLocalId);
 
+            if (view.Intro > 0)
+                _inSewers[id] = done > 0;
             if (view.Intro == 0)
             {
-                if (!sync.SewersLeft)
+                // Out of the sewers after playing the intro here: the shared Emperor and Blades have played their part.
+                // Not for a character that was already out when it joined (OblivionMP's preset start), nor for one
+                // who took the skip (the prison was never played).
+                if (_inSewers.Remove(id, out var skipped) && !skipped && !sync.SewersLeft)
                 {
                     sync.SewersLeft = true;
                     sync.MarkDirty();
-                    logger.LogInformation("[QuestSync] {Player} is out of the sewers: from now on, new players start at the sewer exit.", sync.Nickname(id));
+                    logger.LogInformation("[QuestSync] {Player} played the intro and left the sewers: from now on, new players start at the sewer exit.", sync.Nickname(id));
                 }
                 if (offer > 0)
                     sync.Take(main, slot << 24 | Map.StartOfferLocalId, offer);
@@ -114,6 +134,8 @@ public sealed partial class NewStart(IEntities entities, QuestTokenSync sync, In
         }
         foreach (var id in _told.Keys.Where(id => !sync.Players.ContainsKey(id)).ToList())
             _told.Remove(id);
+        foreach (var id in _inSewers.Keys.Where(id => !sync.Players.ContainsKey(id)).ToList())
+            _inSewers.Remove(id);
     }
 
     /// <summary>CQSStartOffer's count: 0 no window, 1 the prison or the sewer exit, 2 the sewer exit only.</summary>

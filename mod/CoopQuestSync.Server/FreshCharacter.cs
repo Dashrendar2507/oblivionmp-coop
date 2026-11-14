@@ -99,6 +99,15 @@ public sealed partial class FreshCharacter(IEntities entities, QuestTokenSync sy
             if (now - since < Settle)
                 continue;
             _inWorldSince.Remove(id);
+            if (view.Intro > 0 && main.Level <= 1)
+            {
+                sync.TakePresetStages(view);
+                // The server's start save is the game's own start (the prison): nothing to undo. The new-player start
+                // (NewStart) offers the prison intro or the sewer exit, and the game makes the character.
+                logger.LogInformation("[QuestSync] {Player}: a new character in the game's own intro (the server starts players in the prison). The new-player start takes over.", sync.Nickname(id));
+                sync.CharacterSetUp(id, done: false);
+                continue;
+            }
             SetUp(main, view);
         }
         foreach (var id in _inWorldSince.Keys.Where(id => !sync.Players.ContainsKey(id)).ToList())
@@ -118,6 +127,7 @@ public sealed partial class FreshCharacter(IEntities entities, QuestTokenSync sy
             sync.CharacterSetUp(id, done: false);
             return;
         }
+        sync.TakePresetStages(view);
 
         var kit = sync.Settings.StarterKit ? _kit : [];
         var keep = new Dictionary<uint, int>();
