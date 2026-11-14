@@ -70,6 +70,7 @@ public sealed partial class PartyService(IEntities entities, IServerEvents event
     {
         rpc.ReviveRequested += OnReviveRequested;
         rpc.GiveUpRequested += OnGiveUp;
+        rpc.RebornLoaded += OnRebornLoaded;
         sync.SettingsChanged += ApplySessionRules;
         sync.PlayerExtras = id =>
         {
@@ -89,6 +90,7 @@ public sealed partial class PartyService(IEntities entities, IServerEvents event
     {
         rpc.ReviveRequested -= OnReviveRequested;
         rpc.GiveUpRequested -= OnGiveUp;
+        rpc.RebornLoaded -= OnRebornLoaded;
         events.OnPlayerDisconnected -= OnPlayerDisconnected;
         events.OnWorldCreated -= OnWorldCreated;
     }
@@ -147,6 +149,13 @@ public sealed partial class PartyService(IEntities entities, IServerEvents event
                 _keysSent[id] = (keys, _clock);
             }
             var dead = main.IsDead;
+            if (dead && !_wasDead.ContainsKey(id))
+            {
+                // Dead on the server when they join: OblivionMP saved them dead (see ReviveOnServer). The join's load
+                // has them up in their game, but the server's 0 health keeps the game's menus shut, game after game.
+                ReviveOnServer(id, "joined dead: OblivionMP saved them after a rebirth it never applied");
+                dead = main.IsDead;
+            }
             var was = _wasDead.GetValueOrDefault(id);
             _wasDead[id] = dead;
 
@@ -296,6 +305,44 @@ public sealed partial class PartyService(IEntities entities, IServerEvents event
             anchor is { } a ? $"Respawning next to {sync.Nickname(a)}..." : "Respawning...");
         rpc.SendResurrect(id);
         logger.LogInformation("[QuestSync] {Player} respawns ({Why}).", sync.Nickname(id), why);
+    }
+
+    /// <summary>
+    /// Gives a dead player their health back on the server. OblivionMP 1.1's rebirth (its R key, and the SDK's
+    /// ResurrectLocalPlayer that our revive uses) heals through a HealthChanged event that its own server refuses
+    /// for a dead player unless the event names them as its source ("Entity is dead, ignoring health"). So the server
+    /// kept them at 0 health and saved them that way, and from then on the game's menus (Esc, inventory) never opened
+    /// for that character, even after restarts (2026-11-14: the saved player file had Hp 0 of HpBase 83).
+    /// </summary>
+    private void ReviveOnServer(PlayerId id, string why)
+    {
+        if (!entities.TryLookup(id, out MainCharacter main) || !main.IsDead)
+            return;
+        main.Hp = main.HpBase;
+        logger.LogInformation("[QuestSync] {Player}: back to {Hp} health on the server ({Why}).", sync.Nickname(id), main.HpBase, why);
+    }
+
+    /// <summary>
+    /// The player's game is back from a rebirth: ours (revive, respawn), or OblivionMP's own (its R key, or its own
+    /// timer). The server doesn't apply the rebirth's heal itself (see <see cref="ReviveOnServer"/>), so it does it
+    /// now. Not when the revive is sent: the client only calls the rebirth while it still sees itself dead.
+    /// </summary>
+    private void OnRebornLoaded(PlayerId id)
+    {
+        if (_downed.Remove(id))
+        {
+            // OblivionMP's own rebirth while down for us: take them back as a respawn would.
+            ReviveOnServer(id, "OblivionMP's own rebirth");
+            _wasDead[id] = false;
+            var anchor = Anchor(id);
+            var area = _trails.TryGetValue(id, out var trail) ? trail.Area : null;
+            travel.AfterRebirth(id, anchor, area, SafeSpot(id),
+                anchor is { } a ? $"Back next to {sync.Nickname(a)}..." : "Back where you fell...");
+            travel.MarkRebornLoaded(id);
+            logger.LogInformation("[QuestSync] {Player} came back through OblivionMP's own rebirth; taking them back.", sync.Nickname(id));
+            return;
+        }
+        ReviveOnServer(id, "back from the rebirth");
     }
 
     /// <summary>Records where the player stands, every second, when they are on the ground in their area.</summary>
