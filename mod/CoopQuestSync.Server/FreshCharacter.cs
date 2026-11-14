@@ -39,8 +39,11 @@ public sealed partial class FreshCharacter(IEntities entities, QuestTokenSync sy
 
     /// <summary>Players on their way to the sewer exit: when they left, and since when they stand there.</summary>
     private readonly Dictionary<PlayerId, (DateTime Left, DateTime? There)> _travelling = new();
-    /// <summary>In the world this long before the setup: the load and the plugin's first look settle first.</summary>
-    private static readonly TimeSpan Settle = TimeSpan.FromSeconds(8);
+    /// <summary>
+    /// Ready this long before the setup. Ready already comes about 10 s after the load (the plugin's handshake, then the
+    /// wait for a restore), so this only lets the last inventory read land. It was 8 s: the welcome came about 18 s in.
+    /// </summary>
+    private static readonly TimeSpan Settle = TimeSpan.FromSeconds(2);
 
     private readonly Dictionary<PlayerId, DateTime> _inWorldSince = new();
     private List<(uint FormId, int Count)> _kit = [];
