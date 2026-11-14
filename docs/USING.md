@@ -45,7 +45,9 @@ with an R in them while you're down (see [Death](#how-it-plays) below).
   save on the server; the mod puts a save made in the prison cell there each time the server starts (setting "Start
   in the prison"). The new player makes their character the game's own way, and on arrival the game's own window
   asks: **play the prison intro**, or **skip to the sewer exit** (with the Amulet of Kings, a starter kit and the
-  race, class and birthsign menus). The Emperor and the prison are shared by everyone, so the intro plays once per
+  race, class and birthsign menus, which open once you've stood at the sewer exit for a few seconds). The window
+  stays up until you click; it waits for other menus (such as Esc) to close first, and if a load closes it before
+  you answer, it comes back once you walk a few steps. The Emperor and the prison are shared by everyone, so the intro plays once per
   world: once someone has played it and left the sewers, later newcomers start at the sewer exit. The party's
   progress reaches a new player once they've left the sewers, and nobody can travel to a teammate before that.
 

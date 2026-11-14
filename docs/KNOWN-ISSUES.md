@@ -90,6 +90,9 @@ Version 0.7.0 is the first built for OblivionMP 1.1.0, and it has had much less 
 * **The prison intro plays once per world.** The Emperor, the Blades and the prison doors are shared world state.
   Once someone has played the intro and left the sewers, later new characters start at the sewer exit. A new server
   world offers the prison again.
+* **"[NL]" in the start window without the add-on.** The remaster puts "[NL]" in front of plugin text its own
+  string tables don't have. The CoopQuestSyncUI add-on takes it off the start window; with the add-on off, the
+  question and both buttons show it.
 * **Characters already saved on the server don't change.** Only new characters start from the prison save.
 * **With OblivionMP's own start save** ("Start in the prison" off), every new character is the same ready-made one.
   The mod's "Set up new characters" clears its bag and opens the character menus, but its quest stages (Deliver the
