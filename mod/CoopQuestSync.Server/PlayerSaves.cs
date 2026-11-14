@@ -66,6 +66,11 @@ internal static class PlayerSaves
             if (File.Exists(Path.Combine(saves, "world.sav")) || Directory.Exists(Path.Combine(saves, "players")))
                 return _saves = saves;
         }
+        // No saves yet (a fresh server, or an admin deleted the saves folder, 2026-11-14): the server's folder is the one
+        // with the mods folder that holds this mod, and its saves will go there. Not kept, so a real folder wins later.
+        foreach (var place in places)
+            if (Directory.Exists(Path.Combine(place, "mods", "CoopQuestSync")))
+                return Path.Combine(place, "saves");
         return null;
     }
 }

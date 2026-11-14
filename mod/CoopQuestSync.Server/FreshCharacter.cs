@@ -142,6 +142,10 @@ public sealed partial class FreshCharacter(IEntities entities, QuestTokenSync sy
         }
         // The server changed the bag itself: nothing here was picked up in the game.
         view.SkipItemDiff = true;
+        // Where an earlier character with this nickname last stood means nothing to this one (2026-11-14: a new
+        // character on a wiped server was taken back into the Aleswell inn).
+        if (sync.Returns.Remove(name) | sync.Outdoors.Remove(name))
+            sync.MarkDirty();
         _kitGiven[id] = kit.Count > 0;
         if (sync.Settings.NewCharacterAtSewers && travel.SendTo(id, SewerExit, "Welcome! Taking you to the sewer exit..."))
         {
