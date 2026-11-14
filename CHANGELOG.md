@@ -34,7 +34,8 @@
   "New players start" is now "Ask" by default.
 * The start window stays up until it is answered: OblivionMP doesn't pause the game for it, so a timer used to show it
   a second time underneath, and it came straight back after the first click. It now comes back only if it was lost
-  (by a load) and the player walks about. Shorter button labels: the remaster showed "[NL]" in the old ones. After a sewer exit skip, the race, class and birthsign menus wait until the player has
+  (by a load) and the player walks about. The remaster puts "[NL]" (no localized text) in front of a plugin's text;
+  the CoopQuestSyncUI add-on takes it off the start window's question and buttons. After a sewer exit skip, the race, class and birthsign menus wait until the player has
   arrived there. The window waits until no other menu is open, and the skip waits until every menu is closed: the
   move to the sewer exit with the Esc menu still open under the window left the race menu showing only its camera.
 * Our plugins go right after AltarESPMain.esp in the server's load order, where the ReadyM Launcher (0.32+) puts

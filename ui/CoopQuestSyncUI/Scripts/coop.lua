@@ -750,6 +750,58 @@ function S.questAddedCheck()
     log((ok and "closed" or "could not close") .. " the Quest Added pop-up" .. (ok and "" or ": " .. tostring(err)))
 end
 
+-- "[NL]" in message boxes -----------------------------------------------------------------------------------------
+--
+-- The remaster puts "[NL]" (no localized string) in front of any text from a plugin that its UE5 string tables don't
+-- have, so the mod's start window showed "[NL]" before its question and each button (2026-11-14). While a message
+-- box is open, take it off the text blocks inside the box. Only text that starts with "[NL]", only inside the message
+-- box, a few tries per box. Game thread.
+local NL = "[NL]"
+local NL_TRIES = 6 -- runs (0.5 s apart) per box: its buttons can be filled in a moment after it opens
+
+function S.nlCheck()
+    local open = S.menuClasses and S.menuClasses:find("WBP_ModernMenu_Message_C", 1, true)
+    if not open then
+        S.nlTries = nil
+        return
+    end
+    S.nlTries = (S.nlTries or 0) + 1
+    if S.nlTries > NL_TRIES then
+        return
+    end
+    local fixed, seen, inBox = 0, {}, 0
+    for _, class in ipairs({ "TextBlock", "CommonTextBlock", "RichTextBlock", "CommonRichTextBlock" }) do
+        for _, w in ipairs(FindAllOf(class) or {}) do
+            pcall(function()
+                if not w:IsValid() then
+                    return
+                end
+                local key = w:GetFullName()
+                if seen[key] or not key:find("Message", 1, true) then
+                    return
+                end
+                seen[key] = true
+                inBox = inBox + 1
+                local text = w:GetText():ToString()
+                if text:sub(1, #NL) ~= NL then
+                    return
+                end
+                while text:sub(1, #NL) == NL do
+                    text = text:sub(#NL + 1)
+                end
+                w:SetText(FText(text))
+                fixed = fixed + 1
+            end)
+        end
+    end
+    if fixed > 0 or S.nlTries == NL_TRIES then
+        log("message box: took \"[NL]\" off " .. fixed .. " of " .. inBox .. " text(s)")
+    end
+    if fixed > 0 then
+        S.nlTries = NL_TRIES - 1 -- one more look, for buttons filled in late
+    end
+end
+
 -- Menus ----------------------------------------------------------------------------------------------------------
 
 -- Which screen is open, for the ones the dialogue plugin's MenuMode can't see: the remaster's lockpicking never
@@ -931,6 +983,11 @@ function S.gameJob()
             log("menu kind: " .. tostring(errKind))
         end
         pcall(S.questAddedCheck)
+        local okNl, errNl = pcall(S.nlCheck)
+        if not okNl and not S.nlErrLogged then
+            S.nlErrLogged = true
+            log("message box [NL]: " .. tostring(errNl))
+        end
     end
     for _, step in ipairs({ S.fadeCheck, S.runCommands, S.runVoice, S.runText }) do
         local ok, err = pcall(step)
