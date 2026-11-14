@@ -119,6 +119,12 @@ public sealed class CoopSettings
     /// <summary>Players can hurt each other. Off: a player's hit on another player is refused (see <see cref="FriendlyFire"/>).</summary>
     public bool FriendlyFire { get; set; } = false;
 
+    /// <summary>
+    /// On start, the server puts a save made in the prison cell into its modloader, so a new character starts the
+    /// game's own way (see <see cref="StartSave"/>). Off puts OblivionMP's own start save back. Next start.
+    /// </summary>
+    public bool PrisonStartSave { get; set; } = true;
+
     // ---- New players ----
 
     /// <summary>

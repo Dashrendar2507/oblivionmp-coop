@@ -23,10 +23,12 @@
   character was saved dead and Esc and the inventory never opened again for it. The server now gives the health
   back itself once the player is up, and on joining for a character that was already saved dead. The rebirth's
   reload doesn't run on 1.1 either: if you're still on the ground afterwards, quit and rejoin (the game says so).
-* **The prison start works on OblivionMP 1.1 with a prison start save.** OblivionMP starts every new character from
-  the server's start save (world.sav in its modloader.7z), which a server owner can swap for a save made in the
-  prison cell (docs/INSTALL.md). New characters from such a save get the game's own window: play the prison intro, or
-  skip to the sewer exit. The prison is offered until someone has played the intro and left the sewers, and again
+* **New characters start in the prison cell.** OblivionMP starts every new character from the server's start save
+  (world.sav in its modloader folder), by default a ready-made character near Aleswell. The mod now ships a save
+  made in the prison cell and puts it there each time the server starts, keeping OblivionMP's own file next to the
+  state file (coop-quest-sync-original-world.sav). Setting "Start in the prison" (on by default) turns it off and
+  puts OblivionMP's save back, from the next server start. Players' games get the new save on their next join.
+  New characters then get the game's own window: play the prison intro, or skip to the sewer exit. The prison is offered until someone has played the intro and left the sewers, and again
   on a new server world. New characters from OblivionMP's own save still get the setup above. The stages a new
   character starts with are taken from the latest new character, so a changed start save is picked up by itself.
   "New players start" is now "Ask" by default.

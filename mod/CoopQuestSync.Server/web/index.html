@@ -316,6 +316,7 @@ function renderSettings() {
     ${srow("Friendly fire", "Players can hurt each other. Off: their hits on each other do no damage. NPCs hurt everyone either way.", chk("friendlyFire", st.friendlyFire))}
   </div>
   <div class="sgroup"><h3>New players</h3>
+    ${srow("Start in the prison", "New characters start in the prison cell, the game's own way, instead of as OblivionMP's ready-made character near Aleswell. Off puts OblivionMP's start back. Takes effect when the server restarts.", chk("prisonStartSave", st.prisonStartSave))}
     ${srow("Set up new characters", "OblivionMP starts everyone as the same character. On a new character's first join: empty bag, starter kit, race, class and birthsign menus. The quests that start comes with aren't shared.", chk("newCharacterSetup", st.newCharacterSetup))}
     ${srow("New characters start at the sewer exit", "The setup first takes them just inside the sewer gate, where the game's own start ends, then opens the menus there. Needs the CoopQuestSyncUI add-on.", chk("newCharacterAtSewers", st.newCharacterAtSewers))}
     ${srow("Prison or sewer start", "When the server's start save is in the prison (docs/INSTALL.md). Ask: play the prison intro or skip to the sewer exit. The party's progress reaches them once they leave the sewers. With OblivionMP's own start save nothing is asked.", sel("newStart", choices.newStart, st.newStart))}

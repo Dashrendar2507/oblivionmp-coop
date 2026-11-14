@@ -212,6 +212,8 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
     {
         AutoSync = config.AutoSync;
         LoadState();
+        // Before the server loads its modloader, which happens once every mod has started.
+        StartSave.Apply(Settings.PrisonStartSave, logger);
         events.OnPlayerConnected += OnPlayerConnected;
         events.OnPlayerDisconnected += OnPlayerDisconnected;
         events.OnPlayerJoinedArea += OnPlayerJoinedArea;
