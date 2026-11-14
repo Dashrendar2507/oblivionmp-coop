@@ -53,6 +53,8 @@ rejoin. The defaults keep it sane: nobody gets teleported or thrown into a fight
   you), or the **Calm** buttons on the web page.
 * **Tags over players' heads**: talking, bartering, persuading, training, picking a lock, pickpocketing, down.
 * Rewards handed out in conversation go to everyone. Quest items (keys, letters) can be shared too (off by default).
+* **No friendly fire** by default: a player's hit on another player does no damage (healing still works). A switch
+  on the web page turns it back on.
 * Level scaling and difficulty for the whole session.
 
 **Web admin page** on the server computer (http://localhost:9060/):
@@ -107,8 +109,7 @@ The important ones (full list in [docs/KNOWN-ISSUES.md](docs/KNOWN-ISSUES.md)):
   works; the Deluxe content may not sync between players.
 * Every player needs **all** the game's official plugins, including the **Deluxe** ones (`AltarDeluxe.esp`). The
   remaster comes with all of them.
-* Friendly fire can't be turned off, and fights, followers and companions aren't shared: OblivionMP doesn't give
-  mods a way to do it yet.
+* Fights, followers and companions aren't shared: OblivionMP doesn't give mods a way to do it yet.
 * The conversation overlay is a few seconds behind the talker. The voice plays with the text, from nowhere rather
   than from the NPC.
 * Until the first player has been in for a few minutes, the web page shows names worked out from the game's ids.

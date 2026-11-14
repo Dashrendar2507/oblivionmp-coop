@@ -102,7 +102,8 @@ Version 0.7.0 is the first built for OblivionMP 1.1.0, and it has had much less 
 
 ## Party
 
-* **Friendly fire can't be turned off.** OblivionMP doesn't tell mods who hit whom.
+* **Friendly fire off covers player hits only.** With "Friendly fire" off, the server refuses a player's hit on
+  another player, so it does no damage. Healing still works, and NPCs still hurt everyone.
 * **Fights aren't shared yet.** When one player starts a fight, the others' games don't join it on purpose. NPCs run
   in one player's game (the area's master), and the server can't order an NPC to attack a given player. The server
   log now says who fights where (`Combat:` lines), to find out what OblivionMP already shares.

@@ -129,7 +129,7 @@ reaches the stage always gets everything. These switches decide what everyone el
 | Tags over heads | On | Talking, bartering, persuading, picking a lock, pickpocketing, down. |
 | Level of spawns and loot | Server default (halfway) | Lowest player level, halfway, or highest player level. |
 | Difficulty, damage dealt / taken | Game default | Novice to Master. |
-| Friendly fire | Always on | OblivionMP can't tell mods who hit whom. |
+| Friendly fire | Off | Off: a player's hit on another player does no damage. Healing still works, and NPCs hurt everyone. |
 
 **New players**
 
