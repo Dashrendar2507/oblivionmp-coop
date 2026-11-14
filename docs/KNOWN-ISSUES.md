@@ -48,8 +48,8 @@ Version 0.7.0 is the first built for OblivionMP 1.1.0, and it has had much less 
   player, and it's in OblivionMP's rebirth, not the mod. We're reporting it to ReadyM. Until it's fixed:
   * **Avoid dying.** Keep friendly fire off, and test deaths only on throwaway characters.
   * **If it happens, the way out is a new character.** On the **server**, with the server stopped, move
-    `<server folder>\saves\players\player_<ReadyM id>.sav` out of the folder. That player then starts as a new character on the next join. The shared quest progress
-    stays, and the mod catches the new character up.
+    `<server folder>\saves\players\player_<ReadyM id>.sav` out of the folder. That player then starts as a new
+    character on the next join. The shared quest progress stays, and the mod catches the new character up.
 * **The game's own scripts are now shared by OblivionMP.** By default, OblivionMP 1.1 replays conversation result
   scripts, scripted activations (levers, buttons), triggers and message-box buttons on nearby players' games. With
   the mod's quest sync on top, a quest stage, a journal entry, gold or an item may arrive **twice**, once from
