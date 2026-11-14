@@ -1,6 +1,8 @@
 # Changelog
 
-## 0.7.0 (first public release, for OblivionMP 1.1)
+## 0.8.0 (first public release, for OblivionMP 1.1)
+
+The 0.7.0 test builds were never released; everything in them is here.
 
 * **Built for OblivionMP 1.1.0** (SDK 1.1.0). It doesn't load on an OblivionMP 1.0.x server, and 0.6 and older don't
   load on 1.1. Moving a server: see "Moving from an OblivionMP 1.0 server" in docs/INSTALL.md.
