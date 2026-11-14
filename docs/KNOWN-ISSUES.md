@@ -45,11 +45,12 @@ Version 0.7.0 is the first built for OblivionMP 1.1.0, and it has had much less 
   game and Esc does nothing. When that happens the mod says "Still on the ground? Quit and rejoin": leave and rejoin
   the server, and you're back on your feet. This is in OblivionMP's rebirth, not the mod, and we're reporting it to
   ReadyM.
-  * **Menus locked after a death.** OblivionMP's rebirth also left the character dead on the server, so from that
-    first death on, Esc and Tab (pause menu, inventory) never opened again for that character. The server mod now
-    gives reborn players their health back, and a character saved dead by an older version recovers on its next
-    join. This fix is new and not tested in game yet.
-  * **If a character's menus still don't open** after a rejoin, the way out is a new character. On the
+  * **Menus locked after a death.** From that first death on, Esc and Tab (pause menu, inventory) may never open
+    again for that character, even after a rejoin or a game restart. The chat and the console still work. One cause
+    was that OblivionMP saved the character dead on the server; the server mod now gives reborn players their health
+    back. In our latest test the menus still stayed locked, so we're still looking into it. Until then, avoid dying,
+    and test deaths only on throwaway characters.
+  * **If a character's menus don't open** after a rejoin, the way out is a new character. On the
     **server**, with the server stopped, move `<server folder>\saves\players\<ReadyM id>.sav` out of the folder
     (the server log names the id in a `[QuestSync] Player <id>:` line each time they join). That player then starts
     as a new character on the next join. The shared quest progress stays, and the mod catches the new character up.
