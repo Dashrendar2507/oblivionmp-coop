@@ -40,6 +40,19 @@ names worked out from the game's ids.
 Version 0.7.0 is the first built for OblivionMP 1.1.0, and it has had much less play on 1.1 than on 1.0. Things
 1.1 changed that we haven't tested enough yet:
 
+* **Getting back up after dying may need a rejoin.** On OblivionMP 1.1, the rebirth's reload (after **R**, Alt+G,
+  a teammate's revive or OblivionMP's own timed rebirth) doesn't run, so your character can stay on the ground in
+  your game. When that happens the mod says "Still on the ground? Quit and rejoin": leave and rejoin the server, and
+  you're back on your feet. This is in OblivionMP's rebirth, not the mod, and we're reporting it to ReadyM.
+* **Esc and the inventory locking is fixed.** Earlier 0.7.0 builds could leave Esc and Tab dead after a death, a
+  rejoin outdoors or an Alt+G respawn: OblivionMP saved a reborn character dead, and a position change sent from
+  the server froze the menus until the next loading screen. The server now gives reborn players their health back
+  (also for a character that was saved dead), and moves players through their own game's console instead, which
+  needs the CoopQuestSyncUI add-on. If a character's menus still don't open after a rejoin, please report it. The
+  way out is a new character: on the **server**, with the server stopped, move
+  `<server folder>\saves\players\<ReadyM id>.sav` out of the folder (the server log names the id in a
+  `[QuestSync] Player <id>:` line each time they join). The shared quest progress stays, and the mod catches the
+  new character up.
 * **The game's own scripts are now shared by OblivionMP.** By default, OblivionMP 1.1 replays conversation result
   scripts, scripted activations (levers, buttons), triggers and message-box buttons on nearby players' games. With
   the mod's quest sync on top, a quest stage, a journal entry, gold or an item may arrive **twice**, once from
@@ -69,17 +82,21 @@ Version 0.7.0 is the first built for OblivionMP 1.1.0, and it has had much less 
 
 ## New players
 
-* **Every new character starts as OblivionMP's preset.** On OblivionMP 1.1 the game always loads OblivionMP's own
-  starting save, so nobody makes a character from scratch or plays the prison intro. The mod's "Set up new
-  characters" clears the preset's bag and opens the character menus, but the preset's quest stages (Deliver the
+* **The mod changes the server's start save.** OblivionMP 1.1 starts every new character from `world.sav` in the
+  server's `modloader` folder. With "Start in the prison" on, the server mod writes its prison-cell save over that
+  file each time the server starts, and keeps OblivionMP's own as `<server folder>\coop-quest-sync-original-world.sav`.
+  An OblivionMP update that brings back its own file is replaced again on the next start. If you swapped
+  `world.sav` by hand before, there's no OblivionMP original to put back when you turn the setting off.
+* **The prison intro plays once per world.** The Emperor, the Blades and the prison doors are shared world state.
+  Once someone has played the intro and left the sewers, later new characters start at the sewer exit. A new server
+  world offers the prison again.
+* **Characters already saved on the server don't change.** Only new characters start from the prison save.
+* **With OblivionMP's own start save** ("Start in the prison" off), every new character is the same ready-made one.
+  The mod's "Set up new characters" clears its bag and opens the character menus, but its quest stages (Deliver the
   Amulet started, the Knights of the Nine prophet, MS47...) stay in the new player's own journal: the game can't
   un-set a quest stage. They're kept out of the party's progress.
-* **No prison intro on 1.1.** The preset world save already has the tutorial done, and the Emperor and the prison
-  are shared world state, so the intro can't be replayed. New characters start at the sewer exit instead.
-* **The 1.0 prison or sewer start is off.** It was built for OblivionMP 1.0, where a new player started in the
-  prison. It may come back when OblivionMP lets servers choose how new characters start.
 * **A character only counts as new** when the server has no player save for them when they join. To set someone
-  up again, stop the server and move their `<server folder>\saves\players\player_<ReadyM id>.sav` aside.
+  up again, stop the server and move their `<server folder>\saves\players\<ReadyM id>.sav` aside.
 
 ## Conversations
 
@@ -102,7 +119,8 @@ Version 0.7.0 is the first built for OblivionMP 1.1.0, and it has had much less 
 
 ## Party
 
-* **Friendly fire can't be turned off.** OblivionMP doesn't tell mods who hit whom.
+* **Friendly fire off covers player hits only.** With "Friendly fire" off, the server refuses a player's hit on
+  another player, so it does no damage. Healing still works, and NPCs still hurt everyone.
 * **Fights aren't shared yet.** When one player starts a fight, the others' games don't join it on purpose. NPCs run
   in one player's game (the area's master), and the server can't order an NPC to attack a given player. The server
   log now says who fights where (`Combat:` lines), to find out what OblivionMP already shares.
@@ -111,7 +129,8 @@ Version 0.7.0 is the first built for OblivionMP 1.1.0, and it has had much less 
   dungeons the server doesn't know which area an NPC is in, so calm takes the fighting NPCs within about 40 m of the
   players there instead: a fight further away needs `/coop calm all`.
 * **Followers and companions** aren't shared or synced (OblivionMP's SDK doesn't give mods a way to yet).
-* **Getting back up reloads your character.** OblivionMP brings a dead player back with its "rebirth", which
+* **Getting back up reloads your character** (on OblivionMP 1.0; on 1.1 see [getting back up after dying needs
+  a rejoin](#oblivionmp-11)). OblivionMP brings a dead player back with its "rebirth", which
   reloads you. The mod then takes you back to the party (through the add-on's `coc`/`cow` when that's another
   building or city), so it takes a load or two, behind a black screen.
 * **OblivionMP brings you back by itself.** After some seconds down (about 10 to 25 in our tests), OblivionMP's

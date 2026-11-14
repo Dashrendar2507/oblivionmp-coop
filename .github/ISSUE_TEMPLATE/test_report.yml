@@ -50,7 +50,7 @@ body:
         - label: Back where you left (outside and inside buildings)
         - label: Web admin page (source player, give a stage, reset a quest)
         - label: Travel to a teammate (/coop goto, Alt+O) or to a conversation (Alt+Y)
-        - label: "New character: bag emptied to the starter kit, race, class and birthsign menus opened"
+        - label: "New character: prison start (play the intro or skip to the sewer exit), or sewer exit once the intro was played"
         - label: Calming a fight (/coop calm or the web page)
         - label: Tags over heads (talking, bartering, lockpicking, pickpocketing, down)
         - label: Watchers heard the NPC's voice

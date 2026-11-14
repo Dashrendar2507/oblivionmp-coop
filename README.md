@@ -46,13 +46,15 @@ rejoin. The defaults keep it sane: nobody gets teleported or thrown into a fight
   `/coop goto lock`.
 * **Back where you left.** When you join, you come back where you left, inside buildings too, behind a black
   travel screen so you don't see the jumps.
-* **New characters made their own**: OblivionMP 1.1 starts every new player as the same preset character. The mod
-  empties the preset's bag down to a starter kit, takes them to the sewer exit where the game's own start ends,
-  opens the race, class and birthsign menus there, and keeps the preset's quest stages out of the party's progress.
+* **New characters start in the prison**, like a new game: the server puts a prison-cell start save in place, and
+  each newcomer makes their character the game's own way, then plays the intro or skips to the sewer exit. The
+  intro plays once per world; later newcomers start at the sewer exit.
 * **Calm a fight that went wrong**: `/coop calm` (your area, a player's area, every area, or the NPCs right next to
   you), or the **Calm** buttons on the web page.
 * **Tags over players' heads**: talking, bartering, persuading, training, picking a lock, pickpocketing, down.
 * Rewards handed out in conversation go to everyone. Quest items (keys, letters) can be shared too (off by default).
+* **No friendly fire** by default: a player's hit on another player does no damage (healing still works). A switch
+  on the web page turns it back on.
 * Level scaling and difficulty for the whole session.
 
 **Web admin page** on the server computer (http://localhost:9060/):
@@ -98,6 +100,9 @@ The important ones (full list in [docs/KNOWN-ISSUES.md](docs/KNOWN-ISSUES.md)):
 * **OblivionMP 1.1 is new**, and the mod has had little play on it so far. OblivionMP 1.1 replays some of the
   game's own scripts (conversation results, levers, message boxes) on nearby players' games, so a quest stage or a
   reward may arrive twice. Please report it if you see it.
+* **On OblivionMP 1.1, getting back up after dying may need a rejoin**: OblivionMP's rebirth doesn't always bring
+  your character back in your game. The game tells you when to quit and rejoin
+  ([details](docs/KNOWN-ISSUES.md#oblivionmp-11)). We're reporting it to ReadyM.
 * **OblivionMP's own issues** you'll probably meet: the game can crash when you quit; **R** is OblivionMP's
   "rebirth" and fires even while you type in the chat; OblivionMP brings a dead player back by itself after some
   seconds; paying a fine to a guard can move you; and a console command (`coc`, used to put you back inside a
@@ -107,8 +112,7 @@ The important ones (full list in [docs/KNOWN-ISSUES.md](docs/KNOWN-ISSUES.md)):
   works; the Deluxe content may not sync between players.
 * Every player needs **all** the game's official plugins, including the **Deluxe** ones (`AltarDeluxe.esp`). The
   remaster comes with all of them.
-* Friendly fire can't be turned off, and fights, followers and companions aren't shared: OblivionMP doesn't give
-  mods a way to do it yet.
+* Fights, followers and companions aren't shared: OblivionMP doesn't give mods a way to do it yet.
 * The conversation overlay is a few seconds behind the talker. The voice plays with the text, from nowhere rather
   than from the NPC.
 * Until the first player has been in for a few minutes, the web page shows names worked out from the game's ids.

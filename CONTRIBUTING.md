@@ -11,7 +11,9 @@ Some things we couldn't test ourselves yet, mostly because they need two or more
   boxes on nearby players' games, on top of the mod's quest sync. Talk to a quest giver with a teammate nearby: does
   a journal entry, a quest pop-up, gold or an item arrive twice, or for the player who wasn't talking?
 * **Joining on OblivionMP 1.1**, which starts the game straight in the world: is the catch-up still silent, and does
-  a brand-new character get the starter kit and the character menus?
+  a brand-new character start in the prison, with the choice to play the intro or skip to the sewer exit?
+* **Dying on OblivionMP 1.1**: after getting back up (R, Alt+G, a revive), do Esc and Tab still open? Did you have
+  to rejoin?
 
 * **Sleeping and waiting.** OblivionMP gives each area's clock (the time of day) to one player's game, the area's
   host. With two or more players in the same area, have the player who **isn't** the host wait a few hours, then

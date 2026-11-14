@@ -25,7 +25,7 @@ on). You host and play on the same computer, but they are still different folder
 | The mod on the server | **Server:** `<server folder>\mods\CoopQuestSync\` (`manifest.json`, `client\`, `server\`). Replaced on every update. |
 | Shared progress and settings | **Server:** `<server folder>\coop-quest-sync-state.json`. Keep it. |
 | The server's game text | **Server:** `<server folder>\coop-quest-sync-strings.json` (your hand-made one) and `<server folder>\coop-quest-sync-strings.<language>.json` (learned from the players). Never share them or put them in a zip. |
-| Players' saves on the server | **Server:** `<server folder>\saves\players\` (`player_<ReadyM id>.sav`) |
+| Players' saves on the server | **Server:** `<server folder>\saves\players\` (`<ReadyM id>.sav`) |
 | Optional settings file | **Server:** `<server folder>\mods\CoopQuestSync\server\config.json` |
 | Server log | **Server:** the server console window, the newest log file in `<server folder>`, or the admin panel's **Terminal** tab (http://localhost:9050). The mod's lines start with `[QuestSync]`. |
 | Co-op web page | **Server:** http://localhost:9060/ |
@@ -225,7 +225,7 @@ This one needs a character still in the intro, so it hides your real one for a w
   every half second, even after you went out (that's why Esc didn't work). Now the move is the script's last step.
   Your 14:13 test character (the one whose Esc didn't work) is safe to load: it won't be moved again.
 
-1. **Server:** stop the server. In `<server folder>\saves\players\`, move `player_<your ReadyM id>.sav` (your id
+1. **Server:** stop the server. In `<server folder>\saves\players\`, move `<your ReadyM id>.sav` (your id
    starts with `7198b060`) to your desktop. That's your real character: keep it safe.
 2. **Server:** start the server. On http://localhost:9060/, **Co-op settings > New players**: set **Offer the prison
    intro** to **Always** (your old character has left the sewers, so **Fresh world** would only offer the sewer exit).
@@ -249,14 +249,14 @@ This one needs a character still in the intro, so it hides your real one for a w
 4. Outside, the party's progress arrives. Server log: `<name>: out of the sewers; catching up with the party.`
 5. You stay outside: walk away from the gate, then press Esc. The game's menu opens.
 
-**5B, the prison.** **Server:** delete the test `player_<id>.sav` in `<server folder>\saves\players\`. Then repeat
+**5B, the prison.** **Server:** delete the test `<id>.sav` in `<server folder>\saves\players\`. Then repeat
 steps 3 and 4 above with a fresh new-game save, and press **Play the prison intro**. The intro plays as
 usual. Tell me if anything looks wrong with the Emperor, his guards or Baurus. While you're inside, the page shows you
 as **new: in the intro (progress waits)**. Leaving through the sewer gate brings the catch-up, as in 5A.
 
 **Put things back:**
 
-* **Server:** stop the server, delete the test `player_<id>.sav` in `<server folder>\saves\players\`, and move your
+* **Server:** stop the server, delete the test `<id>.sav` in `<server folder>\saves\players\`, and move your
   real one back.
 * **PC:** remove the test saves from `%USERPROFILE%\Documents\My Games\Oblivion Remastered\Saved\SaveGames\` (or put
   your copy back).
