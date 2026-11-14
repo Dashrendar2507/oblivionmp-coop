@@ -42,8 +42,10 @@ with an R in them while you're down (see [Death](#how-it-plays) below).
   spot), the same as Alt+G. A revive is only possible before that happens.
 * **New players.** OblivionMP 1.1 starts every new character as the same preset: "Danmer", just out of the sewers
   near the Aleswell inn, with gear, gold and a few quest stages. About 8 seconds after a new character is in the
-  world, the mod empties their bag except for a starter kit, then opens the race menu (name, race, face), then
-  class, then birthsign; a chat line says "Welcome! Make your character...". The preset's quest stages (Deliver the
+  world, the mod empties their bag except for a starter kit and takes them to the sewer exit, just inside the sewer
+  gate where the game's own start ends. Once they stand there, it opens the race menu (name, race, face), then
+  class, then birthsign; a chat line says "Welcome! Make your character...". Without the CoopQuestSyncUI add-on
+  the trip can't happen, and the menus open where they are after 60 seconds. The preset's quest stages (Deliver the
   Amulet, the Knights of the Nine prophet, MS47...) are never shared with the party or announced. The party's real
   progress then reaches the new player through the usual catch-up. A new character isn't taken back to where their
   nickname last played. "New" means the server has no save for that player (`<server folder>\saves\players\player_<ReadyM id>.sav`);
@@ -134,6 +136,7 @@ reaches the stage always gets everything. These switches decide what everyone el
 | Setting | Default | Meaning |
 | --- | --- | --- |
 | Set up new characters | On | Empty a new character's bag down to the starter kit, open the race, class and birthsign menus, and keep the preset's quest stages out of the party's progress. |
+| New characters start at the sewer exit | On | Take a new character to the sewer exit (just inside the sewer gate) before the character menus open. Needs the CoopQuestSyncUI add-on. |
 | Starter kit | On | Iron shortsword and bow, 25 arrows, 5 lockpicks, 3 healing potions, a torch, leather cuirass and boots. Off: the bag stays empty. config.json `StarterKitItems` changes it. |
 | Prison or sewer start | Off (game's own) | The 1.0 start: a window offering the game's prison intro or the sewer exit. It doesn't fit OblivionMP 1.1, which always starts new players as its preset, so leave it off for now. |
 | Offer the prison intro | Fresh world | Only with the prison or sewer start on. Fresh world: only until someone has left the sewers on this server. Always: for testing. Never. |
