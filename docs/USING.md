@@ -35,33 +35,30 @@ with an R in them while you're down (see [Death](#how-it-plays) below).
   **Alt+G**, you respawn next to the party leader (or the first other player by name, if the leader is the one
   down), wherever they are. If nobody else is playing, you come back where you last stood on solid ground a few
   seconds before you died, so a fall doesn't kill you twice. Getting back up uses OblivionMP's "rebirth", which
-  reloads your character: the screen stays black through that load and the trip back.
+  reloads your character: the screen stays black through that load and the trip back. On OblivionMP 1.1 that reload
+  sometimes doesn't run and you stay on the ground; the game then says "Still on the ground? Quit and rejoin".
 * **OblivionMP's own rebirth.** OblivionMP brings a dead player back by itself after a while (between about 10 and
   25 seconds in our tests), and **R** does the same at once, even while you type in the chat. The mod can't stop
   either, so it treats them as a respawn: once that reload is over, it takes you to the party (or your last safe
   spot), the same as Alt+G. A revive is only possible before that happens.
-* **New players.** OblivionMP 1.1 starts every new character as the same preset: "Danmer", just out of the sewers
-  near the Aleswell inn, with gear, gold and a few quest stages. About 8 seconds after a new character is in the
-  world, the mod empties their bag except for a starter kit and takes them to the sewer exit, just inside the sewer
-  gate where the game's own start ends. Once they stand there, it opens the race menu (name, race, face), then
-  class, then birthsign; a chat line says "Welcome! Make your character...". Without the CoopQuestSyncUI add-on
-  the trip can't happen, and the menus open where they are after 60 seconds. The preset's quest stages (Deliver the
-  Amulet, the Knights of the Nine prophet, MS47...) are never shared with the party or announced. The party's real
-  progress then reaches the new player through the usual catch-up. A new character isn't taken back to where their
-  nickname last played. "New" means the server has no save for that player (`<server folder>\saves\players\<ReadyM id>.sav`);
-  a character above level 1 is never touched. To start someone over, stop the server and move their file aside.
-* **Back where you left.** When you join, the server puts you back where you were when you left, inside buildings
-  too. The screen goes black with "Taking you back to where you left..." until you stand in your spot, so you don't
-  see the jumps. Into a building, you arrive straight on your spot rather than at its door. Travelling to a
-  teammate (Alt+Y, Alt+O) through a load does the same.
-* **Travel to a teammate any time.** Type `/coop goto <name>` (the start of the name is enough) to travel next to
-  them, into their building or city too. After that, **Alt+O** takes you to the same teammate again; with only one
-  other player online it needs no name at all. Not while you're down, talking or fighting, and once a minute (the
-  host can change both). The teammate sees "Alice is coming to you". A trip waits until your chat is closed ("Co-op:
-  close the chat to travel."), because a load with the chat open breaks OblivionMP's chat.
-* **Ask first.** Type `/coop goto lock` if you'd rather not have people pop up next to you: teammates then ask, and
-  you see "Alice wants to come to you". Press **Alt+Y** or type `/coop accept` within 20 seconds to let them come;
-  ignore it to say no. `/coop goto unlock` undoes it. The server remembers your choice.
+* **New players** start in the prison cell, like a new game. OblivionMP 1.1 starts every new character from one
+  save on the server; the mod puts a save made in the prison cell there each time the server starts (setting "Start
+  in the prison"). The new player makes their character the game's own way, and on arrival the game's own window
+  asks: **play the prison intro**, or **skip to the sewer exit** (with the Amulet of Kings, a starter kit and the
+  race, class and birthsign menus). The Emperor and the prison are shared by everyone, so the intro plays once per
+  world: once someone has played it and left the sewers, later newcomers start at the sewer exit. The party's
+  progress reaches a new player once they've left the sewers, and nobody can travel to a teammate before that.
+
+  With "Start in the prison" off, every new character is OblivionMP's own ready-made one: "Danmer", just out of the
+  sewers near the Aleswell inn, with gear, gold and a few quest stages. About 8 seconds after such a character is in
+  the world, the mod empties their bag except for a starter kit, takes them to the sewer exit, and opens the race
+  menu, then class, then birthsign; a chat line says "Welcome! Make your character...". Without the CoopQuestSyncUI
+  add-on the trip can't happen, and the menus open where they are after 60 seconds. That character's quest stages
+  (Deliver the Amulet, the Knights of the Nine prophet, MS47...) are never shared with the party or announced.
+
+  Either way, a new character isn't taken back to where their nickname last played. "New" means the server has no
+  save for that player (`<server folder>\saves\players\<ReadyM id>.sav`); a character above level 1 is never
+  touched. To start someone over, stop the server and move their file aside.
 
 ## The web admin page
 
@@ -135,13 +132,14 @@ reaches the stage always gets everything. These switches decide what everyone el
 
 | Setting | Default | Meaning |
 | --- | --- | --- |
-| Set up new characters | On | Empty a new character's bag down to the starter kit, open the race, class and birthsign menus, and keep the preset's quest stages out of the party's progress. |
-| New characters start at the sewer exit | On | Take a new character to the sewer exit (just inside the sewer gate) before the character menus open. Needs the CoopQuestSyncUI add-on. |
+| Start in the prison | On | Each time the server starts, put the mod's prison-cell save in the server's `modloader` folder, so new characters start in the prison. OblivionMP's own save is kept as `<server folder>\coop-quest-sync-original-world.sav`. Off puts it back. Takes effect at the next server start; players' games get the new save on their next join. |
+| Set up new characters | On | For OblivionMP's own ready-made character ("Start in the prison" off): empty the bag down to the starter kit, open the race, class and birthsign menus, and keep that character's quest stages out of the party's progress. |
+| New characters start at the sewer exit | On | With "Set up new characters": take the character to the sewer exit (just inside the sewer gate) before the character menus open. Needs the CoopQuestSyncUI add-on. |
 | Starter kit | On | Iron shortsword and bow, 25 arrows, 5 lockpicks, 3 healing potions, a torch, leather cuirass and boots. Off: the bag stays empty. config.json `StarterKitItems` changes it. |
-| Prison or sewer start | Off (game's own) | The 1.0 start: a window offering the game's prison intro or the sewer exit. It doesn't fit OblivionMP 1.1, which always starts new players as its preset, so leave it off for now. |
-| Offer the prison intro | Fresh world | Only with the prison or sewer start on. Fresh world: only until someone has left the sewers on this server. Always: for testing. Never. |
-| Prison intro here | | Only with the prison or sewer start on. Whether someone has left the sewers on this server. **Played: reset** offers the prison again (only on a fresh world). |
-| Take back spare amulets | On | Only with the prison or sewer start on, which gives every new player an Amulet of Kings. Once Jauffre has it ("Deliver the Amulet" stage 50), the other copies go. |
+| Prison or sewer start | Ask | With the prison start. Ask: the game's window offers the prison intro or the sewer exit. Sewer exit: always skip the intro. Game's own: no window, the intro plays as in a new game. With OblivionMP's own start save nothing is asked. A server whose settings were saved before 0.7.0 keeps "Game's own": switch it to Ask. |
+| Offer the prison intro | Fresh world | With the prison start. Fresh world: until someone has played the intro and left the sewers (a new server world resets it). Always: for testing. Never. |
+| Prison intro here | | Whether someone has played the intro and left the sewers on this world. **Played: reset** offers the prison again (only on a fresh world). |
+| Take back spare amulets | On | With the prison start, every new player gets an Amulet of Kings. Once Jauffre has it ("Deliver the Amulet" stage 50), the other copies go. |
 
 ## Chat commands
 
@@ -156,8 +154,8 @@ reaches the stage always gets everything. These switches decide what everyone el
 | `/qs reset` | Reset every shared quest. |
 | `/qs whoami` | Your ReadyM id, and whether the server counts you as an admin. |
 | `/qs newstart` | Where new players start, and where each player is (in the intro, at the sewer exit, out). |
-| `/qs newstart again <name>` | With the prison or sewer start on: show that player the start window again (only while they haven't left the sewers). |
-| `/qs newstart fresh` | With the prison or sewer start on: offer the prison intro again. Only on a fresh world: the Emperor alive, the prison doors closed. |
+| `/qs newstart again <name>` | With the prison start: show that player the start window again (only while they haven't left the sewers). |
+| `/qs newstart fresh` | With the prison start: offer the prison intro again. Only on a fresh world: the Emperor alive, the prison doors closed. |
 | `/coop follow`, `/coop join`, `/coop revive`, `/coop giveup` | Same as the keys. |
 | `/coop calm` | Stop the fights in your area: each NPC fighting there stops, and guards stop chasing the players there. For a fight that went wrong, such as a quest giver turned hostile. |
 | `/coop calm <name>` | The same in that player's area, and their bounty goes to 0. Case and a final dot don't matter, and the start of a name is enough when only one player matches. |
