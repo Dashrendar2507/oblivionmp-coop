@@ -20,7 +20,7 @@ If anything goes differently from what's written here, that's worth a [bug repor
   [OblivionMP docs](https://docs.ready.mp)) with the mods it ships with, and the .NET 10 runtime it asks for.
   Co-op Quest Sync needs the **Chat** mod (`OblivionMP.Chat`), which comes with the server.
 
-Co-op Quest Sync 0.7.0 is built for OblivionMP 1.1.0 and **doesn't load on an OblivionMP 1.0.x server**. Mods built
+Co-op Quest Sync 0.8.0 is built for OblivionMP 1.1.0 and **doesn't load on an OblivionMP 1.0.x server**. Mods built
 for 1.0 (Co-op Quest Sync 0.6 and older) don't load on 1.1.
 
 ## Where things are
@@ -69,7 +69,7 @@ Remastered**, **Manage**, **Browse local files**).
 
    Make sure it's `mods\CoopQuestSync\manifest.json`, not `mods\CoopQuestSync\CoopQuestSync\manifest.json`. Unzipping
    tools sometimes add an extra folder.
-4. **Server:** start the server. In its log you should see `CoopQuestSync v0.7.0` in the list of mods it loads, and
+4. **Server:** start the server. In its log you should see `CoopQuestSync v0.8.0` in the list of mods it loads, and
    lines starting with `[QuestSync]`, including:
    * `Loaded 287 quests / ... stages from the token map`
    * `Quest admin page: http://localhost:9060/`
@@ -86,7 +86,7 @@ OblivionMP 1.1 comes as a new server folder. Set it up as ReadyM describes (copy
 
 1. **Server:** copy `coop-quest-sync-state.json` and every `coop-quest-sync-strings*.json` from the old server
    folder into the new one, next to `server.exe`. They hold the shared progress, the settings and the game's text.
-2. **Server:** copy the **0.7.0** `CoopQuestSync` folder from the zip into the new `<server folder>\mods\`. Don't
+2. **Server:** copy the **0.8.0** `CoopQuestSync` folder from the zip into the new `<server folder>\mods\`. Don't
    copy the old 0.6 one: it doesn't load on 1.1.
 3. **Server:** if you made `<old server folder>\mods\CoopQuestSync\server\config.json`, copy it to the same place in
    the new folder.

@@ -37,14 +37,14 @@ names worked out from the game's ids.
 
 ## OblivionMP 1.1
 
-Version 0.7.0 is the first built for OblivionMP 1.1.0, and it has had much less play on 1.1 than on 1.0. Things
+Version 0.8.0 is the first release for OblivionMP 1.1.0, and it has had much less play on 1.1 than on 1.0. Things
 1.1 changed that we haven't tested enough yet:
 
 * **Getting back up after dying may need a rejoin.** On OblivionMP 1.1, the rebirth's reload (after **R**, Alt+G,
   a teammate's revive or OblivionMP's own timed rebirth) doesn't run, so your character can stay on the ground in
   your game. When that happens the mod says "Still on the ground? Quit and rejoin": leave and rejoin the server, and
   you're back on your feet. This is in OblivionMP's rebirth, not the mod, and we're reporting it to ReadyM.
-* **Esc and the inventory locking is fixed.** Earlier 0.7.0 builds could leave Esc and Tab dead after a death, a
+* **Esc and the inventory locking is fixed.** Test builds before 0.8.0 could leave Esc and Tab dead after a death, a
   rejoin outdoors or an Alt+G respawn: OblivionMP saved a reborn character dead, and a position change sent from
   the server froze the menus until the next loading screen. The server now gives reborn players their health back
   (also for a character that was saved dead), and moves players through their own game's console instead, which

@@ -86,7 +86,7 @@ This is the game-side log, including our add-on's `[CoopQuestSyncUI]` lines.
 ### Versions and load order
 
 * **Mod version** (on the server): the `"version"` line in `<server folder>\mods\CoopQuestSync\manifest.json`
-  (open it in Notepad), or the name of the zip you downloaded, such as `CoopQuestSync-0.7.0.zip`.
+  (open it in Notepad), or the name of the zip you downloaded, such as `CoopQuestSync-0.8.0.zip`.
 * **OblivionMP version** (on the server): the name of the server package, such as `oblivion-server-win64-1.1.0`, or
   the SDK version in the server log's list of mods.
 * **Load order** (on each player's PC): attach your `Plugins.txt` from

@@ -68,7 +68,7 @@ body:
     attributes:
       label: Mod version
       description: The `version` line in `<server folder>\mods\CoopQuestSync\manifest.json` on the server, or the zip name.
-      placeholder: "0.7.0"
+      placeholder: "0.8.0"
     validations:
       required: true
 
