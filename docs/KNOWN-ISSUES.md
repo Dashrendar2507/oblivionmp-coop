@@ -40,20 +40,19 @@ names worked out from the game's ids.
 Version 0.7.0 is the first built for OblivionMP 1.1.0, and it has had much less play on 1.1 than on 1.0. Things
 1.1 changed that we haven't tested enough yet:
 
-* **Getting back up after dying needs a rejoin.** On OblivionMP 1.1, getting back up (with **R**, Alt+G, a
-  teammate's revive or OblivionMP's own timed rebirth) doesn't bring the game character back: it stays down in your
-  game and Esc does nothing. When that happens the mod says "Still on the ground? Quit and rejoin": leave and rejoin
-  the server, and you're back on your feet. This is in OblivionMP's rebirth, not the mod, and we're reporting it to
-  ReadyM.
-  * **Menus locked after a death.** From that first death on, Esc and Tab (pause menu, inventory) may never open
-    again for that character, even after a rejoin or a game restart. The chat and the console still work. One cause
-    was that OblivionMP saved the character dead on the server; the server mod now gives reborn players their health
-    back. In our latest test the menus still stayed locked, so we're still looking into it. Until then, avoid dying,
-    and test deaths only on throwaway characters.
-  * **If a character's menus don't open** after a rejoin, the way out is a new character. On the
-    **server**, with the server stopped, move `<server folder>\saves\players\<ReadyM id>.sav` out of the folder
-    (the server log names the id in a `[QuestSync] Player <id>:` line each time they join). That player then starts
-    as a new character on the next join. The shared quest progress stays, and the mod catches the new character up.
+* **Getting back up after dying may need a rejoin.** On OblivionMP 1.1, the rebirth's reload (after **R**, Alt+G,
+  a teammate's revive or OblivionMP's own timed rebirth) doesn't run, so your character can stay on the ground in
+  your game. When that happens the mod says "Still on the ground? Quit and rejoin": leave and rejoin the server, and
+  you're back on your feet. This is in OblivionMP's rebirth, not the mod, and we're reporting it to ReadyM.
+* **Esc and the inventory locking is fixed.** Earlier 0.7.0 builds could leave Esc and Tab dead after a death, a
+  rejoin outdoors or an Alt+G respawn: OblivionMP saved a reborn character dead, and a position change sent from
+  the server froze the menus until the next loading screen. The server now gives reborn players their health back
+  (also for a character that was saved dead), and moves players through their own game's console instead, which
+  needs the CoopQuestSyncUI add-on. If a character's menus still don't open after a rejoin, please report it. The
+  way out is a new character: on the **server**, with the server stopped, move
+  `<server folder>\saves\players\<ReadyM id>.sav` out of the folder (the server log names the id in a
+  `[QuestSync] Player <id>:` line each time they join). The shared quest progress stays, and the mod catches the
+  new character up.
 * **The game's own scripts are now shared by OblivionMP.** By default, OblivionMP 1.1 replays conversation result
   scripts, scripted activations (levers, buttons), triggers and message-box buttons on nearby players' games. With
   the mod's quest sync on top, a quest stage, a journal entry, gold or an item may arrive **twice**, once from
@@ -83,15 +82,19 @@ Version 0.7.0 is the first built for OblivionMP 1.1.0, and it has had much less 
 
 ## New players
 
-* **Every new character starts as OblivionMP's preset.** On OblivionMP 1.1 the game always loads OblivionMP's own
-  starting save, so nobody makes a character from scratch or plays the prison intro. The mod's "Set up new
-  characters" clears the preset's bag and opens the character menus, but the preset's quest stages (Deliver the
+* **The mod changes the server's start save.** OblivionMP 1.1 starts every new character from `world.sav` in the
+  server's `modloader` folder. With "Start in the prison" on, the server mod writes its prison-cell save over that
+  file each time the server starts, and keeps OblivionMP's own as `<server folder>\coop-quest-sync-original-world.sav`.
+  An OblivionMP update that brings back its own file is replaced again on the next start. If you swapped
+  `world.sav` by hand before, there's no OblivionMP original to put back when you turn the setting off.
+* **The prison intro plays once per world.** The Emperor, the Blades and the prison doors are shared world state.
+  Once someone has played the intro and left the sewers, later new characters start at the sewer exit. A new server
+  world offers the prison again.
+* **Characters already saved on the server don't change.** Only new characters start from the prison save.
+* **With OblivionMP's own start save** ("Start in the prison" off), every new character is the same ready-made one.
+  The mod's "Set up new characters" clears its bag and opens the character menus, but its quest stages (Deliver the
   Amulet started, the Knights of the Nine prophet, MS47...) stay in the new player's own journal: the game can't
   un-set a quest stage. They're kept out of the party's progress.
-* **No prison intro on 1.1.** The preset world save already has the tutorial done, and the Emperor and the prison
-  are shared world state, so the intro can't be replayed. New characters start at the sewer exit instead.
-* **The 1.0 prison or sewer start is off.** It was built for OblivionMP 1.0, where a new player started in the
-  prison. It may come back when OblivionMP lets servers choose how new characters start.
 * **A character only counts as new** when the server has no player save for them when they join. To set someone
   up again, stop the server and move their `<server folder>\saves\players\<ReadyM id>.sav` aside.
 

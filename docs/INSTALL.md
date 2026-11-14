@@ -35,6 +35,8 @@ Remastered**, **Manage**, **Browse local files**).
 | The mod | **Server:** `<server folder>\mods\CoopQuestSync\` (`manifest.json`, `client\`, `server\`). Replaced on every update. |
 | Shared progress and settings | **Server:** `<server folder>\coop-quest-sync-state.json`. Keep it across updates. |
 | The game's text the server learned | **Server:** `<server folder>\coop-quest-sync-strings.<language>.json`, and `<server folder>\coop-quest-sync-strings.json` if you made one by hand. Never share them. |
+| New characters' start save | **Server:** `world.sav` inside `<server folder>\modloader\`. With "Start in the prison" on (the default), the mod writes its prison-cell save there each time the server starts. |
+| OblivionMP's own start save | **Server:** `<server folder>\coop-quest-sync-original-world.sav`, kept by the mod. Turning "Start in the prison" off puts it back. |
 | Optional settings file | **Server:** `<server folder>\mods\CoopQuestSync\server\config.json` |
 | Server log | **Server:** the server console window, or the **Terminal** tab of the ReadyM admin panel (http://localhost:9050). The mod's lines start with `[QuestSync]`. |
 | Co-op web page | **Server:** http://localhost:9060/ |
@@ -71,6 +73,7 @@ Remastered**, **Manage**, **Browse local files**).
    lines starting with `[QuestSync]`, including:
    * `Loaded 287 quests / ... stages from the token map`
    * `Quest admin page: http://localhost:9060/`
+   * `Start save: now the prison cell (...)` on the first start, then `Start save: the prison cell (...)`
 5. **Server:** open http://localhost:9060/ in a browser on the server computer. You should see the **Co-op Quest
    Sync** page.
 
@@ -177,14 +180,20 @@ folder. Our own file lives next to it, not inside it, so delete it too:
 2. **Server:** move `<server folder>\saves\` and `<server folder>\coop-quest-sync-state.json` somewhere else (or
    delete them). The state file holds the shared progress, each nickname's last spot and every web page setting, so
    note any settings you changed first.
-3. **Server:** start the server. Everyone joins as a new character. Keep `coop-quest-sync-strings*.json`: that's the
-   game's text, and it doesn't depend on the world.
+3. **Server:** start the server. Everyone joins as a new character, and the prison intro is offered again. Keep
+   `coop-quest-sync-strings*.json` (the game's text) and `coop-quest-sync-original-world.sav` (OblivionMP's own start
+   save): neither depends on the world.
 
 ### Uninstalling
 
-**Server:** delete `<server folder>\mods\CoopQuestSync\` and restart the server. You can also delete
-`coop-quest-sync-state.json` and `coop-quest-sync-strings*.json` from `<server folder>`. Players have nothing to
-remove: the launcher only adds the mod's plugins while they play on the server.
+1. **Server:** on the web page, turn **Start in the prison** off, then restart the server once. That puts
+   OblivionMP's own start save back in `<server folder>\modloader\`. (Skipped it? With the server stopped, copy
+   `<server folder>\coop-quest-sync-original-world.sav` over the `world.sav` inside `<server folder>\modloader\`.)
+2. **Server:** stop the server and delete `<server folder>\mods\CoopQuestSync\`. You can also delete
+   `coop-quest-sync-state.json`, `coop-quest-sync-strings*.json` and `coop-quest-sync-original-world.sav` from
+   `<server folder>`.
+
+Players have nothing to remove: the launcher only adds the mod's plugins while they play on the server.
 
 ## Part 2: every player's PC
 
@@ -204,14 +213,15 @@ older version of the mod, remove the two lines from **PC:**
 1. **PC:** join the server through the ReadyM Launcher, as usual. The launcher downloads the mod. On OblivionMP 1.1
    the game starts straight in the multiplayer world, without the main menu.
 2. **PC:** on your first join, the mod installs its add-on into
-   `%APPDATA%\ReadyM.Launcher\Oblivion\Mods\CoopQuestSyncUI\`. It hides pop-ups while you catch up, puts you back
-   inside buildings, plays the voices and reads the game's text. A note in the top left corner tells you to restart
+   `%APPDATA%\ReadyM.Launcher\Oblivion\Mods\CoopQuestSyncUI\`. It hides pop-ups while you catch up, moves you
+   (back where you left, to a teammate, after a respawn), plays the voices and reads the game's text. A note in the top left corner tells you to restart
    the game; it stays until you do.
 3. **PC:** quit the game and join again from the launcher.
 
 From then on, joining is all there is to it. Within a few seconds of joining you should catch up on the party's
-quests, without pop-ups. A brand-new character first gets a starter kit and the race, class and
-birthsign menus (see [USING.md](USING.md#how-it-plays)).
+quests, without pop-ups. A brand-new character starts in the prison cell and makes their character
+the game's own way, or starts at the sewer exit once someone on the server has played the intro (see
+[USING.md](USING.md#how-it-plays)).
 
 **Tip:** if the launcher says your join ticket expired, click **Join** in the launcher again. Each ticket is only
 good for a short time. If you host and play on the same computer, join `127.0.0.1` rather than `localhost`.
@@ -229,8 +239,8 @@ If any of these don't happen, see [CONTRIBUTING.md](../CONTRIBUTING.md) for what
 
 **PC:** put an empty file named `off` (`off.txt` works too) in
 `%APPDATA%\ReadyM.Launcher\Oblivion\Mods\CoopQuestSyncUI\` and restart the game. That switches the add-on off;
-quest sync still works, but quest pop-ups show while you catch up, and voices, travel into buildings and calm
-don't. Tell us whether the crashes stopped (see [KNOWN-ISSUES.md](KNOWN-ISSUES.md#the-ue4ss-add-on)). Delete `off`
+quest sync still works, but quest pop-ups show while you catch up, and voices, moves (back where you left, respawns,
+trips to a teammate) and calm don't. Tell us whether the crashes stopped (see [KNOWN-ISSUES.md](KNOWN-ISSUES.md#the-ue4ss-add-on)). Delete `off`
 to turn the add-on back on.
 
 ### Removing it
