@@ -143,8 +143,12 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
         public float RestoreStartedAt;
         public Dictionary<uint, int>? Baseline;
         public Dictionary<uint, int> Previous = new();
-        /// <summary>Quests an admin reset while this player was in game: their tokens are taken away until they rejoin.</summary>
-        public HashSet<string> Suppressed = new(StringComparer.OrdinalIgnoreCase);
+        /// <summary>
+        /// Stages of a quest an admin reset while this player was in game. Their game still has them (nothing in the game
+        /// can undo a stage), so the plugin keeps handing their tokens back: the server takes them until the player
+        /// rejoins. Stages the player reaches after the reset, or an admin gives again, are not in here and count as usual.
+        /// </summary>
+        public HashSet<QuestStage> Suppressed = new();
 
         /// <summary>Catching up on the party's stages after joining: the "join" switches apply.</summary>
         public bool CatchingUp;
@@ -440,10 +444,10 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
                 }
             }
 
-            // Quests an admin reset: keep taking those tokens away until the player rejoins with a fresh game.
+            // Stages of quests an admin reset: keep taking those tokens away until the player rejoins with a fresh game.
             if (view.Suppressed.Count > 0)
             {
-                foreach (var stage in snap.Stages.Where(s => view.Suppressed.Contains(s.Quest)).ToList())
+                foreach (var stage in snap.Stages.Where(view.Suppressed.Contains).ToList())
                 {
                     if (Map.TryGetToken(stage, out var local))
                         Take(main, slot << 24 | local, 1);
@@ -735,12 +739,10 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
         var count = 0;
         foreach (var (quest, set) in Shared)
         {
-            if (view.Suppressed.Contains(quest))
-                continue;
             foreach (var s in set)
             {
                 var stage = new QuestStage(quest, s);
-                if (!view.Stages.Contains(stage) && Give(main, view, stage))
+                if (!view.Stages.Contains(stage) && !view.Suppressed.Contains(stage) && Give(main, view, stage))
                     count++;
             }
         }
@@ -749,63 +751,116 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
         return count;
     }
 
-    /// <summary>Gives one stage token to one player and wakes the plugin. Returns false unless the player is ready.</summary>
+    /// <summary>
+    /// Gives one stage token to one player and wakes the plugin; their game sets the stage within a few seconds.
+    /// Returns false unless the player is ready.
+    /// </summary>
     public bool PushOne(MainCharacter main, QuestStage stage)
     {
         if (!_players.TryGetValue(main.PlayerId, out var view) || view.Phase != Phase.Ready)
             return false;
+        // Given on purpose after a reset of its quest: the server stops taking this stage's token (2026-11-14: the
+        // push after a reset reached nobody, because the whole quest stayed taken until the player rejoined).
+        view.Suppressed.Remove(stage);
         if (view.Stages.Contains(stage))
             return true;
-        // Reset while they play: the server takes this quest's tokens until they rejoin (their game still has its
-        // stages), so a token given now would be taken back at once (2026-11-13, MS05).
-        if (view.Suppressed.Contains(stage.Quest))
-            return false;
         if (!Give(main, view, stage))
             return false;
         Bump(main, view);
         return true;
     }
 
-    /// <summary>
-    /// Admin: marks a stage as shared progress and gives it to every ready player (or just <paramref name="only"/>).
-    /// Returns how many players got it.
-    /// </summary>
-    public int AdminPush(QuestStage stage, PlayerId? only = null)
+    /// <summary>What an admin's push did: who got the stage now, and who gets it once they are out of the intro.</summary>
+    public readonly record struct PushResult(int Given, int Waiting, int Joining, bool Auto)
     {
-        if (only is null && AddShared(stage))
-            logger.LogInformation("[QuestSync] Shared progress: {Stage} (added by an admin)", stage);
-        var count = 0;
-        foreach (var main in entities.Query<MainCharacter>())
-            if ((only is null || main.PlayerId == only) && PushOne(main, stage))
-                count++;
-        if (_dirty)
-            SaveState();
-        return count;
+        public override string ToString() =>
+            $"to {Given} player(s)"
+            + (Waiting == 0 ? "" : Auto ? $"; {Waiting} in the prison intro get it when they leave the sewers"
+                : $"; not to {Waiting} in the prison intro (it would end their intro; auto sync is off, so give it again later)")
+            + (Joining > 0 ? $"; {Joining} still joining get it in their catch-up" : "");
     }
 
     /// <summary>
-    /// Admin: forgets a quest's shared progress and takes its tokens from everyone in game. The game cannot undo a
-    /// stage while someone plays, so each player keeps the quest until they rejoin; then it is gone.
+    /// Admin: marks a stage as shared progress and gives it at once to every player in game (or just
+    /// <paramref name="only"/>). A player still in the prison intro gets it with the rest of the party's progress
+    /// when they leave the sewers (MQ02 stages would end their intro), and one still joining gets it in their catch-up.
+    /// </summary>
+    public PushResult AdminPush(QuestStage stage, PlayerId? only = null)
+    {
+        if (only is null && AddShared(stage))
+            logger.LogInformation("[QuestSync] Shared progress: {Stage} (added by an admin)", stage);
+        int given = 0, waiting = 0, joining = 0;
+        foreach (var main in entities.Query<MainCharacter>())
+        {
+            if (only is not null && main.PlayerId != only || !_players.TryGetValue(main.PlayerId, out var view) || view.ModIndex is null)
+                continue;
+            if (view.Phase != Phase.Ready || view.CatchingUp)
+            {
+                view.Suppressed.Remove(stage);
+                if (only is null && AutoSync)
+                    joining++;
+                else if (PushOne(main, stage))
+                    given++;
+                continue;
+            }
+            if (only is null && HoldsForIntro(view) && !view.Stages.Contains(stage))
+            {
+                view.Suppressed.Remove(stage);
+                waiting++;
+                continue;
+            }
+            if (PushOne(main, stage))
+                given++;
+        }
+        if (_dirty)
+            SaveState();
+        return new PushResult(given, waiting, joining, AutoSync);
+    }
+
+    /// <summary>
+    /// Admin: forgets a quest's shared progress and takes its tokens from everyone in game, at once. A player whose
+    /// game has stages of it keeps those in their journal until they rejoin: nothing in the game (no console command
+    /// or script function, without OBSE) can undo a stage, and OblivionMP 1.1 only reloads the game on a join. Until
+    /// then those stages stay out of the shared progress; anything the player does in the quest from now on counts.
     /// </summary>
     public void ResetQuest(string quest)
     {
+        foreach (var id in ResetOne(quest))
+            chat.SendTo(id, $"An admin reset {data.QuestName(quest, LanguageOf(id))}. It is no longer shared; "
+                + "your journal keeps it until you rejoin (the game can't undo a quest stage while it runs).", ChatLineKind.System);
+        RebuildState();
+        SaveState();
+    }
+
+    /// <summary>Resets one quest; returns the players whose game still has stages of it.</summary>
+    private List<PlayerId> ResetOne(string quest)
+    {
         Shared.Remove(quest);
         ResetQuests.Add(quest);
+        var keep = new List<PlayerId>();
         foreach (var main in entities.Query<MainCharacter>())
         {
             if (!_players.TryGetValue(main.PlayerId, out var view) || view.ModIndex is not { } slot)
                 continue;
-            view.Suppressed.Add(quest);
-            foreach (var stage in view.Stages.Where(s => s.Quest.Equals(quest, StringComparison.OrdinalIgnoreCase)).ToList())
+            var had = view.Stages.Where(s => s.Quest.Equals(quest, StringComparison.OrdinalIgnoreCase)).ToList();
+            foreach (var stage in had)
             {
                 if (Map.TryGetToken(stage, out var local))
                     Take(main, slot << 24 | local, 1);
                 view.Stages.Remove(stage);
+                view.Suppressed.Add(stage);
             }
+            // Not given yet: the shared stages a player in the intro or still joining was going to get.
+            if (had.Count == 0)
+                continue;
+            keep.Add(main.PlayerId);
         }
-        logger.LogInformation("[QuestSync] {Quest} reset by an admin. Players lose it when they rejoin.", quest);
-        RebuildState();
-        SaveState();
+        if (keep.Count == 0)
+            logger.LogInformation("[QuestSync] {Quest} reset by an admin. Nobody in game had it, so it is gone everywhere now.", quest);
+        else
+            logger.LogInformation("[QuestSync] {Quest} reset by an admin: taken out of the shared progress now. Still in the journal of {Players} until they rejoin.",
+                quest, string.Join(", ", keep.Select(Nickname)));
+        return keep;
     }
 
     private bool Give(MainCharacter main, PlayerView view, QuestStage stage)
@@ -830,9 +885,14 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
 
     public void ClearShared()
     {
+        var kept = new HashSet<PlayerId>();
         foreach (var quest in Shared.Keys.ToList())
-            ResetQuest(quest);
+            kept.UnionWith(ResetOne(quest));
+        foreach (var id in kept)
+            chat.SendTo(id, "An admin reset all shared quests. They are no longer shared; your journal keeps them until you rejoin "
+                + "(the game can't undo a quest stage while it runs).", ChatLineKind.System);
         Shared.Clear();
+        RebuildState();
         _dirty = true;
         SaveState();
     }
