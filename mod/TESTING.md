@@ -237,7 +237,7 @@ This one needs a character still in the intro, so it hides your real one for a w
    If you're not in the cell, or no window appears, stop here and send the server log lines with `new player` or
    `intro`: that tells me how 1.0 starts a new character.
 
-**5A, the skip.** Press **At the sewer exit: skip the intro**.
+**5A, the skip.** Press **Skip to the sewer exit**.
 
 1. You're moved next to the sewer gate, once. Server log: `<name>: start at the sewer exit: gave the Amulet of Kings,
    <n> starter item(s).` Your inventory has the Amulet of Kings, an iron shortsword, an iron bow, 25
@@ -250,7 +250,7 @@ This one needs a character still in the intro, so it hides your real one for a w
 5. You stay outside: walk away from the gate, then press Esc. The game's menu opens.
 
 **5B, the prison.** **Server:** delete the test `<id>.sav` in `<server folder>\saves\players\`. Then repeat
-steps 3 and 4 above with a fresh new-game save, and press **In the prison: play the intro**. The intro plays as
+steps 3 and 4 above with a fresh new-game save, and press **Play the prison intro**. The intro plays as
 usual. Tell me if anything looks wrong with the Emperor, his guards or Baurus. While you're inside, the page shows you
 as **new: in the intro (progress waits)**. Leaving through the sewer gate brings the catch-up, as in 5A.
 
