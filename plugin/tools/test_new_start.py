@@ -16,6 +16,7 @@ class Game:
         self.cur = dict(cur or {})
         self.inv = dict(inv or {})
         self.box = None          # the buttons of the open message box
+        self.menu = False        # another menu is open (the Esc menu, the map...)
         self.pressed = -1        # what GetButtonPressed returns next
         self.boxes = []          # every box shown: (text, buttons)
         self.topics = set()
@@ -52,7 +53,7 @@ class Script:
             raise Exception(name)
         e = re.sub(r"(player\.)?(GetStageDone|GetStage|GetItemCount)((?: \w+)+?)(?= ==| !=| >=| <=| >| <|$| \|\|| &&)",
                    fn, expr, flags=re.I)
-        e = re.sub(r"\bMenuMode\b", "1" if g.box is not None else "0", e, flags=re.I)
+        e = re.sub(r"\bMenuMode\b", "1" if g.box is not None or g.menu else "0", e, flags=re.I)
         if re.search(r"GetButtonPressed", e, re.I):
             pressed, g.pressed = g.pressed, -1
             e = re.sub(r"GetButtonPressed", str(pressed), e, flags=re.I)
@@ -187,6 +188,24 @@ def main():
     g.press(1)
     ticks(s, g)
     check("open window: the late answer still counts", g.at == "CGSewerExitMarker", g.at)
+
+    # 4b. The Esc menu is open: no window over it, and the skip waits until every menu is closed.
+    s, g = Script(src), Game(**in_prison)
+    g.inv["CQSStartOffer"] = 1
+    g.menu = True
+    ticks(s, g, 10)
+    check("menu open: no window over it", not g.boxes, g.boxes)
+    g.menu = False
+    ticks(s, g, 1)
+    check("menu closed: the window comes", len(g.boxes) == 1, g.boxes)
+    g.menu = True                # Esc pressed while the window is up
+    g.press(1)
+    ticks(s, g, 10)
+    check("skip with a menu open: not moved yet", g.at == "prison" and not g.inv.get("CQSStartDone"), (g.at, g.inv))
+    check("skip with a menu open: no new window", len(g.boxes) == 1, g.boxes)
+    g.menu = False
+    ticks(s, g)
+    check("skip after the menu closed: at the sewer exit", g.at == "CGSewerExitMarker" and g.inv.get("CQSStartDone") == 1, g.at)
 
     # 5. The box was lost (a load): it comes back after about 10 s.
     s, g = Script(src), Game(**in_prison)

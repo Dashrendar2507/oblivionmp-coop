@@ -280,7 +280,8 @@ NEW_START_SCRIPT = "\r\n".join([
     "endif",
     "if state == 0",
     "set offer to player.GetItemCount CQSStartOffer",
-    "if offer > 0 && want > 0 && player.GetItemCount CQSStartDone == 0 && player.GetItemCount CQSStartPrison == 0",
+    # Not over another menu: the 2026-11-14 window came up over the Esc menu, which then stayed open under it.
+    "if offer > 0 && want > 0 && player.GetItemCount CQSStartDone == 0 && player.GetItemCount CQSStartPrison == 0 && MenuMode == 0",
     "if offer == 1",
     f'MessageBox "{START_ASK}", "{START_PRISON_BUTTON}", "{START_SKIP_BUTTON}"',
     "else",
@@ -308,6 +309,9 @@ NEW_START_SCRIPT = "\r\n".join([
     "endif",
     "endif",
     "elseif state == 3",
+    # Only once every menu is closed: the move's load with the Esc menu still open under the window left the game's
+    # menus half shut, and the race menu then came up as its camera alone (2026-11-14).
+    "if MenuMode == 0",
     "set state to 2",
     # A save from before the fix below can still be at state 3 after going out: no skip then.
     "if GetStageDone MQ01 88 == 0",
@@ -323,6 +327,7 @@ NEW_START_SCRIPT = "\r\n".join([
        # player was moved back to the sewer exit every half second, even after going out): everything else first.
        "player.AddItem CQSStartDone 1",
        "player.MoveTo CGSewerExitMarker",
+       "endif",
        "endif",
        # Chose already (an answer item is there) or out of the sewers: nothing to do. Back to 0 if the answer item is
        # gone (an admin offered the start again).

@@ -34,7 +34,8 @@
   "New players start" is now "Ask" by default.
 * The start window stays up until it is answered: OblivionMP doesn't pause the game for it, so it used to close and
   come back after 5 seconds. After a sewer exit skip, the race, class and birthsign menus wait until the player has
-  arrived there; asked for during the move, the race menu showed its camera without its screen.
+  arrived there. The window waits until no other menu is open, and the skip waits until every menu is closed: the
+  move to the sewer exit with the Esc menu still open under the window left the race menu showing only its camera.
 * Our plugins go right after AltarESPMain.esp in the server's load order, where the ReadyM Launcher (0.32+) puts
   them, so DLC and Altar items keep their ids.
 * Includes everything from the 0.6 test builds below.
