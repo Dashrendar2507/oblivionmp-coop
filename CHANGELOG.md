@@ -18,8 +18,13 @@
   character was saved dead and Esc and the inventory never opened again for it. The server now gives the health
   back itself once the player is up, and on joining for a character that was already saved dead. The rebirth's
   reload doesn't run on 1.1 either: if you're still on the ground afterwards, quit and rejoin (the game says so).
-* **The prison / sewer exit start is off by default** ("New players start: Game's own"): OblivionMP 1.1 starts
-  every player from its own world save, not in the prison. It stays on the settings page for when the SDK allows it.
+* **The prison start works on OblivionMP 1.1 with a prison start save.** OblivionMP starts every new character from
+  the server's start save (world.sav in its modloader.7z), which a server owner can swap for a save made in the
+  prison cell (docs/INSTALL.md). New characters from such a save get the game's own window: play the prison intro, or
+  skip to the sewer exit. The prison is offered until someone has played the intro and left the sewers, and again
+  on a new server world. New characters from OblivionMP's own save still get the setup above. The stages a new
+  character starts with are taken from the latest new character, so a changed start save is picked up by itself.
+  "New players start" is now "Ask" by default.
 * Our plugins go right after AltarESPMain.esp in the server's load order, where the ReadyM Launcher (0.32+) puts
   them, so DLC and Altar items keep their ids.
 * Includes everything from the 0.6 test builds below.

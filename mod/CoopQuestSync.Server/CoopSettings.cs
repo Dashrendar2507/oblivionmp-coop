@@ -124,10 +124,11 @@ public sealed class CoopSettings
     /// <summary>
     /// What a player who has never left the sewers gets on joining: "ask" (a window: the prison intro or the sewer exit),
     /// "sewers" (always the sewer exit, with a short note), or "off" (the game's own start, nothing from the mod).
-    /// Either way, the party's quest progress waits until they are out of the sewers. "off" by default since 0.7.0:
-    /// OblivionMP 1.1 starts every player from its own world save instead of the prison.
+    /// Either way, the party's quest progress waits until they are out of the sewers. OblivionMP 1.1 starts every new
+    /// character from the server's start save (world.sav in its modloader.7z): this only does something when that save
+    /// is in the prison (see docs/INSTALL.md). With OblivionMP's own save (out of the sewers already) nothing is asked.
     /// </summary>
-    public string NewStart { get; set; } = "off";
+    public string NewStart { get; set; } = "ask";
 
     /// <summary>
     /// When the prison intro is offered: "fresh" (only until someone has left the sewers on this server: the Emperor and

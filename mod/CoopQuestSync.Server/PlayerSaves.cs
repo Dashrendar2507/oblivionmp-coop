@@ -44,6 +44,18 @@ internal static class PlayerSaves
         return fresh;
     }
 
+    /// <summary>
+    /// Whether the server has no saved world yet (it makes a new one on this start): checked when the mod starts,
+    /// before the server loads or creates its world. Null when the saves folder can't be found.
+    /// </summary>
+    public static bool? WorldIsNew()
+    {
+        var saves = Folder();
+        if (saves is null)
+            return null;
+        return !File.Exists(Path.Combine(saves, "world", "global.sav")) && !File.Exists(Path.Combine(saves, "world.sav"));
+    }
+
     /// <summary>The server's saves folder: in the folder it runs in, or above the mod's own folder.</summary>
     private static string? Folder()
     {
@@ -63,7 +75,8 @@ internal static class PlayerSaves
         foreach (var place in places)
         {
             var saves = Path.Combine(place, "saves");
-            if (File.Exists(Path.Combine(saves, "world.sav")) || Directory.Exists(Path.Combine(saves, "players")))
+            if (File.Exists(Path.Combine(saves, "world.sav")) || Directory.Exists(Path.Combine(saves, "world"))
+                || Directory.Exists(Path.Combine(saves, "players")))
                 return _saves = saves;
         }
         // No saves yet (a fresh server, or an admin deleted the saves folder, 2026-11-14): the server's folder is the one

@@ -268,6 +268,25 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
         _accounts.Remove(gone.PlayerId);
     }
 
+    /// <summary>
+    /// The quest stages every new character starts with are the ones this new character has now: they replace the
+    /// last ones, so changing the server's start save (OblivionMP's preset, or a prison save) is picked up by the
+    /// next new character. Those stages are never shared.
+    /// </summary>
+    public void TakePresetStages(PlayerView view)
+    {
+        var now = view.Stages.Where(s => Map.IsShared(s.Quest)).ToHashSet();
+        if (now.SetEquals(PresetStages))
+            return;
+        PresetStages.Clear();
+        PresetStages.UnionWith(now);
+        foreach (var stage in now)
+            if (Shared.TryGetValue(stage.Quest, out var had) && had.Remove(stage.Stage) && had.Count == 0)
+                Shared.Remove(stage.Quest);
+        _dirty = true;
+        logger.LogInformation("[QuestSync] New characters start with {Count} quest stage(s) on this server; they are never shared.", now.Count);
+    }
+
     /// <summary>The first-join setup ran (or isn't wanted): the party's progress reaches the player from now on.</summary>
     public void CharacterSetUp(PlayerId id, bool done)
     {
