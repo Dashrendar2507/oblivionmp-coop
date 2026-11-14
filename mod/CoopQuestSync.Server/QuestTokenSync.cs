@@ -242,7 +242,17 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
             _dirty = true;
         if (!Settings.NewCharacterSetup)
             return;
-        if (!NewCharacters.Contains(account) && PlayerSaves.IsBrandNew(readyMId, known, logger))
+        bool brandNew;
+        try
+        {
+            brandNew = !NewCharacters.Contains(account) && PlayerSaves.IsBrandNew(readyMId, known, logger);
+        }
+        catch (Exception e)
+        {
+            logger.LogWarning("[QuestSync] Couldn't tell whether player {Account} is a new character: {Error}", account, e.Message);
+            brandNew = false;
+        }
+        if (brandNew)
         {
             NewCharacters.Add(account);
             _dirty = true;

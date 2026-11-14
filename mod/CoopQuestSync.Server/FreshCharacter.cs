@@ -39,8 +39,11 @@ public sealed partial class FreshCharacter(IEntities entities, QuestTokenSync sy
 
     /// <summary>Players on their way to the sewer exit: when they left, and since when they stand there.</summary>
     private readonly Dictionary<PlayerId, (DateTime Left, DateTime? There)> _travelling = new();
-    /// <summary>In the world this long before the setup: the load and the plugin's first look settle first.</summary>
-    private static readonly TimeSpan Settle = TimeSpan.FromSeconds(8);
+    /// <summary>
+    /// Ready this long before the setup. Ready already comes about 10 s after the load (the plugin's handshake, then the
+    /// wait for a restore), so this only lets the last inventory read land. It was 8 s: the welcome came about 18 s in.
+    /// </summary>
+    private static readonly TimeSpan Settle = TimeSpan.FromSeconds(2);
 
     private readonly Dictionary<PlayerId, DateTime> _inWorldSince = new();
     private List<(uint FormId, int Count)> _kit = [];
@@ -142,6 +145,10 @@ public sealed partial class FreshCharacter(IEntities entities, QuestTokenSync sy
         }
         // The server changed the bag itself: nothing here was picked up in the game.
         view.SkipItemDiff = true;
+        // Where an earlier character with this nickname last stood means nothing to this one (2026-11-14: a new
+        // character on a wiped server was taken back into the Aleswell inn).
+        if (sync.Returns.Remove(name) | sync.Outdoors.Remove(name))
+            sync.MarkDirty();
         _kitGiven[id] = kit.Count > 0;
         if (sync.Settings.NewCharacterAtSewers && travel.SendTo(id, SewerExit, "Welcome! Taking you to the sewer exit..."))
         {

@@ -11,6 +11,8 @@
   the setup has run. Setting "Set up new characters" (on), with "Starter kit". The setup first takes them to the
   sewer exit, just inside the gate where the game's own start ends, and opens the menus there (setting "New
   characters start at the sewer exit", on; needs the CoopQuestSyncUI add-on).
+* **Friendly fire is off by default**: OblivionMP 1.1 tells the server who hit whom, so a player's hit on another
+  player is refused and does no damage. Healing still works, and NPCs hurt everyone. Setting "Friendly fire".
 * **The prison / sewer exit start is off by default** ("New players start: Game's own"): OblivionMP 1.1 starts
   every player from its own world save, not in the prison. It stays on the settings page for when the SDK allows it.
 * Our plugins go right after AltarESPMain.esp in the server's load order, where the ReadyM Launcher (0.32+) puts

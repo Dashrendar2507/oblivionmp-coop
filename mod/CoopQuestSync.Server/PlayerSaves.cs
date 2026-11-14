@@ -28,15 +28,20 @@ internal static class PlayerSaves
         }
         var players = Path.Combine(saves, "players");
         if (!Directory.Exists(players))
+        {
+            logger.LogInformation("[QuestSync] Player {Account}: no {Folder} yet, so a new character.", account.ToString("N"), players);
             return true;
+        }
         string n = account.ToString("N"), d = account.ToString("D");
         var files = Directory.EnumerateFiles(players)
             .Where(f => Path.GetFileName(f) is var name
                         && (name.Contains(n, StringComparison.OrdinalIgnoreCase) || name.Contains(d, StringComparison.OrdinalIgnoreCase)))
             .ToList();
-        if (files.Count == 0)
-            return true;
-        return !known && files.All(f => DateTime.UtcNow - File.GetCreationTimeUtc(f) < JustMade);
+        var fresh = files.Count == 0 || !known && files.All(f => DateTime.UtcNow - File.GetCreationTimeUtc(f) < JustMade);
+        logger.LogInformation("[QuestSync] Player {Account}: {Save} in {Folder}, so {Verdict}.", n,
+            files.Count == 0 ? "no save" : files.Count == 1 ? Path.GetFileName(files[0]) : $"{files.Count} saves",
+            players, fresh ? "a new character" : "a returning character");
+        return fresh;
     }
 
     /// <summary>The server's saves folder: in the folder it runs in, or above the mod's own folder.</summary>
@@ -44,15 +49,28 @@ internal static class PlayerSaves
     {
         if (_saves is not null)
             return _saves;
+        // The server runs in its own folder. AppContext.BaseDirectory is empty on the Windows server (2026-11-14: an empty
+        // path threw here, on every join), so the mod's own folder comes from its assembly.
         var places = new List<string> { Directory.GetCurrentDirectory() };
-        for (var dir = new DirectoryInfo(AppContext.BaseDirectory); dir is not null && places.Count < 6; dir = dir.Parent)
-            places.Add(dir.FullName);
+        foreach (var start in new[] { AppContext.BaseDirectory, Path.GetDirectoryName(typeof(PlayerSaves).Assembly.Location) })
+        {
+            if (string.IsNullOrWhiteSpace(start))
+                continue;
+            var count = 0;
+            for (var dir = new DirectoryInfo(start); dir is not null && count < 5; dir = dir.Parent, count++)
+                places.Add(dir.FullName);
+        }
         foreach (var place in places)
         {
             var saves = Path.Combine(place, "saves");
             if (File.Exists(Path.Combine(saves, "world.sav")) || Directory.Exists(Path.Combine(saves, "players")))
                 return _saves = saves;
         }
+        // No saves yet (a fresh server, or an admin deleted the saves folder, 2026-11-14): the server's folder is the one
+        // with the mods folder that holds this mod, and its saves will go there. Not kept, so a real folder wins later.
+        foreach (var place in places)
+            if (Directory.Exists(Path.Combine(place, "mods", "CoopQuestSync")))
+                return Path.Combine(place, "saves");
         return null;
     }
 }
