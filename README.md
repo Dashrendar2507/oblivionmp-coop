@@ -101,8 +101,9 @@ The important ones (full list in [docs/KNOWN-ISSUES.md](docs/KNOWN-ISSUES.md)):
   game's own scripts (conversation results, levers, message boxes) on nearby players' games, so a quest stage or a
   reward may arrive twice. Please report it if you see it.
 * **On OblivionMP 1.1, getting back up after dying needs a rejoin.** OblivionMP's rebirth doesn't bring your
-  character back in your game right now, so leave and rejoin the server
-  ([details](docs/KNOWN-ISSUES.md#oblivionmp-11)). We're reporting it to ReadyM.
+  character back in your game right now, so leave and rejoin the server. A death can also lock Esc and Tab for that
+  character for good, so avoid dying for now ([details](docs/KNOWN-ISSUES.md#oblivionmp-11)). We're reporting it to
+  ReadyM.
 * **OblivionMP's own issues** you'll probably meet: the game can crash when you quit; **R** is OblivionMP's
   "rebirth" and fires even while you type in the chat; OblivionMP brings a dead player back by itself after some
   seconds; paying a fine to a guard can move you; and a console command (`coc`, used to put you back inside a
