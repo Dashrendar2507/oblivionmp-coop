@@ -100,9 +100,9 @@ The important ones (full list in [docs/KNOWN-ISSUES.md](docs/KNOWN-ISSUES.md)):
 * **OblivionMP 1.1 is new**, and the mod has had little play on it so far. OblivionMP 1.1 replays some of the
   game's own scripts (conversation results, levers, message boxes) on nearby players' games, so a quest stage or a
   reward may arrive twice. Please report it if you see it.
-* **Dying can leave you stuck dead on OblivionMP 1.1.** Getting back up (R, a revive or the timed rebirth) doesn't
-  bring your character back in your game right now. Leave and rejoin the server to get back up (still being tested).
-  We're reporting it to ReadyM.
+* **On OblivionMP 1.1, dying costs your character its menus.** Getting back up leaves you down; rejoining brings
+  you back, but Esc and Tab never open again for that character. The way out is a new character, so avoid dying for
+  now ([details](docs/KNOWN-ISSUES.md#oblivionmp-11)). We're reporting it to ReadyM.
 * **OblivionMP's own issues** you'll probably meet: the game can crash when you quit; **R** is OblivionMP's
   "rebirth" and fires even while you type in the chat; OblivionMP brings a dead player back by itself after some
   seconds; paying a fine to a guard can move you; and a console command (`coc`, used to put you back inside a

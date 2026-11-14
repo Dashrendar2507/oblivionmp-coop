@@ -40,11 +40,16 @@ names worked out from the game's ids.
 Version 0.7.0 is the first built for OblivionMP 1.1.0, and it has had much less play on 1.1 than on 1.0. Things
 1.1 changed that we haven't tested enough yet:
 
-* **Dying can leave you stuck dead.** On OblivionMP 1.1, getting back up (with **R**, Alt+G, a teammate's revive or
-  OblivionMP's own timed rebirth) currently doesn't bring the game character back: the server counts you alive, but
-  your character stays down in your game and Esc does nothing. This is in OblivionMP's rebirth, not the mod, and
-  we're reporting it to ReadyM. Until it's fixed, **leave and rejoin** the server to get back up (still being tested,
-  so please tell us whether it works for you). Being careful in fights helps, and so does keeping friendly fire off.
+* **Dying costs your character its menus.** On OblivionMP 1.1, getting back up (with **R**, Alt+G, a teammate's
+  revive or OblivionMP's own timed rebirth) doesn't bring the game character back: the server counts you alive, but
+  your character stays down and Esc does nothing. Leaving and rejoining the server brings you back alive, but from
+  that first death on, **Esc and Tab (pause menu, inventory) never open again for that character**, even after
+  restarting the game. The chat and the console still work. OblivionMP stores this in the server's save for that
+  player, and it's in OblivionMP's rebirth, not the mod. We're reporting it to ReadyM. Until it's fixed:
+  * **Avoid dying.** Keep friendly fire off, and test deaths only on throwaway characters.
+  * **If it happens, the way out is a new character.** On the **server**, with the server stopped, move
+    `<server folder>\saves\players\player_<ReadyM id>.sav` out of the folder. That player then starts as a new character on the next join. The shared quest progress
+    stays, and the mod catches the new character up.
 * **The game's own scripts are now shared by OblivionMP.** By default, OblivionMP 1.1 replays conversation result
   scripts, scripted activations (levers, buttons), triggers and message-box buttons on nearby players' games. With
   the mod's quest sync on top, a quest stage, a journal entry, gold or an item may arrive **twice**, once from
@@ -117,8 +122,8 @@ Version 0.7.0 is the first built for OblivionMP 1.1.0, and it has had much less 
   dungeons the server doesn't know which area an NPC is in, so calm takes the fighting NPCs within about 40 m of the
   players there instead: a fight further away needs `/coop calm all`.
 * **Followers and companions** aren't shared or synced (OblivionMP's SDK doesn't give mods a way to yet).
-* **Getting back up reloads your character** (on OblivionMP 1.0; on 1.1 see [dying can leave you stuck
-  dead](#oblivionmp-11)). OblivionMP brings a dead player back with its "rebirth", which
+* **Getting back up reloads your character** (on OblivionMP 1.0; on 1.1 see [dying costs your character its
+  menus](#oblivionmp-11)). OblivionMP brings a dead player back with its "rebirth", which
   reloads you. The mod then takes you back to the party (through the add-on's `coc`/`cow` when that's another
   building or city), so it takes a load or two, behind a black screen.
 * **OblivionMP brings you back by itself.** After some seconds down (about 10 to 25 in our tests), OblivionMP's
