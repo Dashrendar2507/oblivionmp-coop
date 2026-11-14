@@ -140,6 +140,12 @@ public sealed class CoopSettings
     /// </summary>
     public bool NewCharacterSetup { get; set; } = true;
 
+    /// <summary>
+    /// The new-character setup first takes the player to the sewer exit (just inside the gate out of the Imperial
+    /// Sewers, where the vanilla game starts you off), then opens the menus there.
+    /// </summary>
+    public bool NewCharacterAtSewers { get; set; } = true;
+
     /// <summary>New characters (and, with the custom start, players who skip the intro) get some gear (config.json StarterKitItems), like what the prison gives.</summary>
     public bool StarterKit { get; set; } = true;
 

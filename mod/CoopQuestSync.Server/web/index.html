@@ -317,6 +317,7 @@ function renderSettings() {
   </div>
   <div class="sgroup"><h3>New players</h3>
     ${srow("Set up new characters", "OblivionMP starts everyone as the same character. On a new character's first join: empty bag, starter kit, race, class and birthsign menus. The quests that start comes with aren't shared.", chk("newCharacterSetup", st.newCharacterSetup))}
+    ${srow("New characters start at the sewer exit", "The setup first takes them just inside the sewer gate, where the game's own start ends, then opens the menus there. Needs the CoopQuestSyncUI add-on.", chk("newCharacterAtSewers", st.newCharacterAtSewers))}
     ${srow("Prison or sewer start", "Off (Game's own) on OblivionMP 1.1, which skips the prison. Ask: the prison intro or the sewer exit. The party's progress reaches them once they leave the sewers.", sel("newStart", choices.newStart, st.newStart))}
     ${srow("Offer the prison intro", "Fresh world: until someone has left the sewers. The Emperor is shared, so the intro plays once.", sel("prisonStart", choices.prisonStart, st.prisonStart))}
     ${srow("Prison intro here", state.sewersLeft ? "Someone has left the sewers. Reset only on a fresh world." : "Nobody has left the sewers yet.",
