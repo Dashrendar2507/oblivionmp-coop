@@ -573,7 +573,10 @@ public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents event
     }
 
     /// <summary>The client's reload after the rebirth is over (sent by its Resurrection).</summary>
-    private void OnRebornLoaded(PlayerId player)
+    private void OnRebornLoaded(PlayerId player) => MarkRebornLoaded(player);
+
+    /// <summary>The rebirth's reload is over: the trip back can start.</summary>
+    public void MarkRebornLoaded(PlayerId player)
     {
         if (_sessions.TryGetValue(player, out var s) && s.Reborn)
         {
