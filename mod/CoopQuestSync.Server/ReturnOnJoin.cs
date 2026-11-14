@@ -67,6 +67,11 @@ public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents event
     /// <summary>Closer than this (cm) to the spot already: no need to move.</summary>
     private const float CloseEnough = 300f;
     private static readonly float[] RecheckAfter = [2f, 5f, 10f];
+    /// <summary>
+    /// A move through the console is checked once, this late: it waits for the add-on, then may load for a while, and
+    /// the game doesn't undo its own move the way it undid the server's position write.
+    /// </summary>
+    private const float ConsoleRecheckSeconds = 30f;
     /// <summary>The travel screen lifts after this long whatever happens.</summary>
     private const float ScreenMaxSeconds = 45f;
     /// <summary>A client too old to say its reload is over: go on after this long anyway.</summary>
@@ -98,6 +103,10 @@ public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents event
         /// <summary>The trip in was asked as positioncell (straight onto the spot): coc if that does nothing.</summary>
         public bool Direct;
         public Vector3? Target;
+        /// <summary>The spot of the last move, for a second try.</summary>
+        public ReturnSpot? TargetSpot;
+        /// <summary>The last move went through the console (the game's own move), not a position write.</summary>
+        public bool ByConsole;
         /// <summary>Where the game had put them before the move (the door, for a coc).</summary>
         public Vector3 MovedFrom;
         public float MovedAt;
@@ -278,19 +287,22 @@ public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents event
 
             // The game may put them back where it loaded them (at the door, 2026-11-07): check 2, 5 and 10 seconds
             // after the move.
-            if (s.Target is { } t && s.Checks < RecheckAfter.Length && _clock - s.MovedAt > RecheckAfter[s.Checks])
+            if (s.Target is { } t && s.Checks < RecheckAfter.Length
+                && _clock - s.MovedAt > (s.ByConsole ? ConsoleRecheckSeconds : RecheckAfter[s.Checks]))
             {
-                s.Checks++;
+                s.Checks = s.ByConsole ? RecheckAfter.Length : s.Checks + 1;
                 // Only when they stand where the game had put them, so someone who walked off isn't pulled back.
-                if (Vector3.Distance(main.Position, t) > CloseEnough && Vector3.Distance(main.Position, s.MovedFrom) <= CloseEnough)
+                if (Vector3.Distance(main.Position, t) > CloseEnough && Vector3.Distance(main.Position, s.MovedFrom) <= CloseEnough
+                    && s.TargetSpot is { } again)
                 {
-                    main.Position = t;
-                    logger.LogInformation("[QuestSync] {Player} moved back again (the game had put them elsewhere).", name);
+                    Move(main, again);
+                    logger.LogInformation("[QuestSync] {Player} moved again (still where the game had put them).", name);
                 }
             }
 
             // The screen lifts once they stand where they should, after the first check that the game left them there.
-            if (s.Screen && ((s.Resolved && (s.Target is null || s.Checks > 0 || main.IsDead)) || _clock - s.ScreenSince > ScreenMaxSeconds))
+            var arrived = s.Target is { } there && Vector3.Distance(main.Position, there) <= CloseEnough;
+            if (s.Screen && ((s.Resolved && (s.Target is null || s.Checks > 0 || main.IsDead || arrived)) || _clock - s.ScreenSince > ScreenMaxSeconds))
                 LowerScreen(id, s);
 
             if (s.Resolved && settled)
@@ -328,13 +340,13 @@ public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents event
                 name, s.Joining is null ? "left inside" : "travels into", cell, s.Direct ? "player.positioncell" : "coc");
             return;
         }
-        if (WorldPlace(spot) is { } place)
+        if (WorldSpot(spot) is { } place)
         {
             s.Going = spot;
             s.GoingSince = _clock;
             ScreenForMove(main.PlayerId, s);
             rpc.SendGoToWorld(main.PlayerId, place);
-            logger.LogInformation("[QuestSync] {Player} {Why} {Area}: asking their game to go there (cow {Place}).",
+            logger.LogInformation("[QuestSync] {Player} {Why} {Area}: asking their game to go there (player.positionworld {Place}).",
                 name, s.Joining is null ? "left outdoors in" : "travels to", spot.Area, place);
             return;
         }
@@ -410,9 +422,9 @@ public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents event
         if (main.IsDead || Vector3.Distance(main.Position, spot.Position) <= CloseEnough)
             return;
         s.MovedFrom = main.Position;
-        main.Position = spot.Position;
-        main.Rotation = spot.Yaw;
+        s.ByConsole = Move(main, spot);
         s.Target = spot.Position;
+        s.TargetSpot = spot;
         s.MovedAt = _clock;
         s.Checks = 0;
         rpc.SendNotice(main.PlayerId, char.ToUpperInvariant(what[0]) + what[1..] + ".");
@@ -452,6 +464,32 @@ public sealed partial class ReturnOnJoin(IEntities entities, IServerEvents event
         static int Clamp(float v) => (int)Math.Clamp(MathF.Round(v), -999999f, 999999f);
         return $"{Clamp(spot.X / UnitCm)} {Clamp(-spot.Y / UnitCm)} {Clamp(spot.Z / UnitCm + 20)}";
     }
+
+    /// <summary>
+    /// Puts the player on the spot. Through their game's console when it can (positioncell inside, positionworld
+    /// outdoors): on OblivionMP 1.1 a position write from the server left Esc and the inventory dead until the next
+    /// load (2026-11-14: every rejoin outdoors and every Alt+G respawn). True when the console does it.
+    /// </summary>
+    private bool Move(MainCharacter main, ReturnSpot spot)
+    {
+        if (spot.Cell is { } cell && GameData.IsInterior(spot.Area))
+        {
+            rpc.SendGoToCell(main.PlayerId, $"{cell} {GameXyz(spot)}");
+            return true;
+        }
+        if (WorldSpot(spot) is { } place)
+        {
+            rpc.SendGoToWorld(main.PlayerId, place);
+            return true;
+        }
+        main.Position = spot.Position;
+        main.Rotation = spot.Yaw;
+        return false;
+    }
+
+    /// <summary>An outdoor spot for <c>player.positionworld</c>: "world x y z" in the game's units.</summary>
+    private static string? WorldSpot(ReturnSpot spot)
+        => WorldPlace(spot) is { } place ? $"{place.Split(' ')[0]} {GameXyz(spot)}" : null;
 
     private static string? WorldPlace(ReturnSpot spot)
     {

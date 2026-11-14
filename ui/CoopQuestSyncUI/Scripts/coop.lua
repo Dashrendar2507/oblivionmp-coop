@@ -40,6 +40,7 @@ local ALLOWED = {
     "^coc [%w_]+$",                 -- into a building (back where you left, travel to a teammate)
     "^cow [%w_]+ %-?%d+ %-?%d+$",   -- to another world space
     "^player%.positioncell %-?%d+ %-?%d+ %-?%d+ 0 [%w_]+$", -- into a building, straight onto the spot
+    "^player%.positionworld %-?%d+ %-?%d+ %-?%d+ 0 [%w_]+$", -- outdoors, straight onto the spot
     "^%x+%.StopCombat$",            -- /coop calm: an NPC stops fighting
     "^player%.scaonactor$",         -- /coop calm: guards stop chasing you
     "^player%.SetCrimeGold 0$",     -- /coop calm: your bounty goes to 0
@@ -314,6 +315,7 @@ function S.runCommands()
         log("running " .. next.cmd .. " after " .. COMMAND_MAX_WAIT .. " s even though " .. busy)
     end
     local moves = next.cmd:match("^coc ") or next.cmd:match("^cow ") or next.cmd:match("^player%.positioncell ")
+        or next.cmd:match("^player%.positionworld ")
     -- Only with a client that brings the world back (it writes fade-ok): an older one left it black for the whole
     -- FADE_MAX (2026-11-07).
     if moves and not next.faded and hasFile(FOLDER .. "fade-ok") then

@@ -13,6 +13,11 @@
   characters start at the sewer exit", on; needs the CoopQuestSyncUI add-on).
 * **Friendly fire is off by default**: OblivionMP 1.1 tells the server who hit whom, so a player's hit on another
   player is refused and does no damage. Healing still works, and NPCs hurt everyone. Setting "Friendly fire".
+* **Esc and the inventory work after a rejoin and after a respawn.** On OblivionMP 1.1, moving a player by
+  writing their position from the server left Esc and the inventory dead until the next loading screen, so
+  every rejoin outdoors ("Taking you back to where you left") and every Alt+G respawn locked them. Players are
+  now moved through their own game's console (`player.positionworld` outdoors, `player.positioncell` inside),
+  which needs the CoopQuestSyncUI add-on, like trips into buildings already did.
 * **Dying no longer locks the menus for good.** OblivionMP 1.1's rebirth (its R key, and our revive and respawn,
   which use it) heals the player in their game, but its server ignores that heal for a dead player, so the
   character was saved dead and Esc and the inventory never opened again for it. The server now gives the health
