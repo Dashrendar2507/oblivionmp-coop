@@ -131,9 +131,18 @@ public sealed partial class ConsoleBridge(IUserInterface ui, IInput input, Resta
         Move("coc " + cell);
     }
 
-    /// <summary>Takes the player to a cell of an exterior world space: <c>cow &lt;world&gt; &lt;x&gt; &lt;y&gt;</c>.</summary>
+    /// <summary>
+    /// Takes the player outdoors: "&lt;world&gt; &lt;x&gt; &lt;y&gt; &lt;z&gt;" straight onto the spot (<c>player.positionworld</c>),
+    /// or "&lt;world&gt; &lt;cellx&gt; &lt;celly&gt;" into that cell (<c>cow</c>).
+    /// </summary>
     public void GoToWorld(string place)
     {
+        var spot = CellSpot.Match(place);
+        if (spot.Success)
+        {
+            Move($"player.positionworld {spot.Groups[2].Value} {spot.Groups[3].Value} {spot.Groups[4].Value} 0 {spot.Groups[1].Value}");
+            return;
+        }
         if (!WorldPlace.IsMatch(place))
         {
             logger.LogWarning("[QuestSync] Ignored a place that isn't one: {Place}", place);

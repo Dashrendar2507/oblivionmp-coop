@@ -183,7 +183,8 @@ public sealed partial class TravelScreen(CefHost cef, IPlayers players, IInput i
             _checkIn2 = 0.2f;
             if (!File.Exists(TravelRan))
                 return;
-            try { _watchedPositionCell = File.ReadAllText(TravelRan).StartsWith("player.positioncell ", StringComparison.Ordinal); }
+            // positionworld too: a short hop outdoors may not load at all, so don't wait 20 s for one.
+            try { _watchedPositionCell = File.ReadAllText(TravelRan).StartsWith("player.position", StringComparison.Ordinal); }
             catch { _watchedPositionCell = false; }
             _watching = true;
             _sawLoad = false;
