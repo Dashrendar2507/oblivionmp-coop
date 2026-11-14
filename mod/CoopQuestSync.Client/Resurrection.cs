@@ -122,6 +122,12 @@ public sealed partial class Resurrection(IPlayers players, IInput input, IUserIn
         logger.LogInformation("[QuestSync] Back in the world after the rebirth{Note}; telling the server.",
             _sawLoad ? "'s reload" : " (no reload seen)");
         travel.Refresh();
+        if (!_sawLoad)
+        {
+            // OblivionMP 1.1's rebirth heals but its quickload never runs, so the game can stay dead underneath
+            // (2026-11-14). A rejoin loads the world again, and the server has the player back up by now.
+            ui.ShowMessage("Still on the ground? Quit and rejoin: OblivionMP can't stand you back up in place yet.", MessagePosition.Center, 8f);
+        }
         try
         {
             services.Resolve<ClientRpc>().SendRebirthLoaded();
