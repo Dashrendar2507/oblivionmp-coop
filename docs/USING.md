@@ -48,7 +48,7 @@ with an R in them while you're down (see [Death](#how-it-plays) below).
   the trip can't happen, and the menus open where they are after 60 seconds. The preset's quest stages (Deliver the
   Amulet, the Knights of the Nine prophet, MS47...) are never shared with the party or announced. The party's real
   progress then reaches the new player through the usual catch-up. A new character isn't taken back to where their
-  nickname last played. "New" means the server has no save for that player (`<server folder>\saves\players\player_<ReadyM id>.sav`);
+  nickname last played. "New" means the server has no save for that player (`<server folder>\saves\players\<ReadyM id>.sav`);
   a character above level 1 is never touched. To start someone over, stop the server and move their file aside.
 * **Back where you left.** When you join, the server puts you back where you were when you left, inside buildings
   too. The screen goes black with "Taking you back to where you left..." until you stand in your spot, so you don't
@@ -129,7 +129,7 @@ reaches the stage always gets everything. These switches decide what everyone el
 | Tags over heads | On | Talking, bartering, persuading, picking a lock, pickpocketing, down. |
 | Level of spawns and loot | Server default (halfway) | Lowest player level, halfway, or highest player level. |
 | Difficulty, damage dealt / taken | Game default | Novice to Master. |
-| Friendly fire | Always on | OblivionMP can't tell mods who hit whom. |
+| Friendly fire | Off | Off: a player's hit on another player does no damage. Healing still works, and NPCs hurt everyone. |
 
 **New players**
 
