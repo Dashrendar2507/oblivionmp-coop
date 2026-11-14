@@ -16,6 +16,9 @@ class Game:
         self.cur = dict(cur or {})
         self.inv = dict(inv or {})
         self.box = None          # the buttons of the open message box
+        self.menu = False        # another menu is open (the Esc menu, the map...)
+        self.pos = [0.0, 0.0]    # the player's X and Y
+        self.walking = False     # the player walks 50 units each run (never while a box is up: it takes the input)
         self.pressed = -1        # what GetButtonPressed returns next
         self.boxes = []          # every box shown: (text, buttons)
         self.topics = set()
@@ -49,9 +52,13 @@ class Script:
                 return "1" if int(args[1]) in g.done.get(args[0].upper(), set()) else "0"
             if name == "getitemcount":
                 return str(g.inv.get(args[0], 0))
+            if name == "getpos":
+                return str(g.pos["XY".index(args[0].upper())])
             raise Exception(name)
-        e = re.sub(r"(player\.)?(GetStageDone|GetStage|GetItemCount)((?: \w+)+?)(?= ==| !=| >=| <=| >| <|$| \|\|| &&)",
+        e = re.sub(r"(player\.)?(GetStageDone|GetStage|GetItemCount|GetPos)((?: \w+)+?)(?= ==| !=| >=| <=| >| <|$| \|\|| &&)",
                    fn, expr, flags=re.I)
+        # Under OblivionMP, MenuMode stays 0 while a message box is open (2026-11-14).
+        e = re.sub(r"\bMenuMode\b", "1" if g.menu else "0", e, flags=re.I)
         if re.search(r"GetButtonPressed", e, re.I):
             pressed, g.pressed = g.pressed, -1
             e = re.sub(r"GetButtonPressed", str(pressed), e, flags=re.I)
@@ -65,8 +72,9 @@ class Script:
         return eval(re.sub(r"[A-Za-z_]\w*", var, e))
 
     def run(self, g):
-        if g.box is not None:
-            return                       # a message box pauses the game: GameMode blocks don't run
+        # OblivionMP doesn't pause the game for a message box: GameMode blocks keep running while it is open.
+        if g.walking and g.box is None:
+            g.pos[0] += 50
         stack, active = [], True
         for l in self.body:
             kw = l.split()[0].lower()
@@ -178,22 +186,60 @@ def main():
     ticks(s, g)
     check("offer 2: skipped to the sewer exit", g.at == "CGSewerExitMarker" and g.inv.get("CQSStartDone") == 1)
 
-    # 4. The box was lost (a load): it comes back after about 5 s.
+    # 4. The box stays open a long time (the script keeps running under it): it is not shown again.
+    s, g = Script(src), Game(**in_prison)
+    g.inv["CQSStartOffer"] = 1
+    ticks(s, g, 1)
+    ticks(s, g, 120)             # a minute of thinking
+    check("open window: not shown again while open", len(g.boxes) == 1, g.boxes)
+    g.press(1)
+    ticks(s, g)
+    check("open window: the late answer still counts", g.at == "CGSewerExitMarker", g.at)
+
+    # 4b. The Esc menu is open: no window over it, and the skip waits until every menu is closed.
+    s, g = Script(src), Game(**in_prison)
+    g.inv["CQSStartOffer"] = 1
+    g.menu = True
+    ticks(s, g, 10)
+    check("menu open: no window over it", not g.boxes, g.boxes)
+    g.menu = False
+    ticks(s, g, 1)
+    check("menu closed: the window comes", len(g.boxes) == 1, g.boxes)
+    g.menu = True                # Esc pressed while the window is up
+    g.press(1)
+    ticks(s, g, 10)
+    check("skip with a menu open: not moved yet", g.at == "prison" and not g.inv.get("CQSStartDone"), (g.at, g.inv))
+    check("skip with a menu open: no new window", len(g.boxes) == 1, g.boxes)
+    g.menu = False
+    ticks(s, g)
+    check("skip after the menu closed: at the sewer exit", g.at == "CGSewerExitMarker" and g.inv.get("CQSStartDone") == 1, g.at)
+
+    # 5. The box was lost (a load): it comes back once the player walks about.
     s, g = Script(src), Game(**in_prison)
     g.inv["CQSStartOffer"] = 1
     ticks(s, g, 1)
     g.box = None                 # gone without an answer
-    ticks(s, g, 13)
-    check("lost window: shown again", len(g.boxes) == 2, g.boxes)
+    ticks(s, g, 30)
+    check("lost window: not back while the player stands still", len(g.boxes) == 1, g.boxes)
+    g.pos[1] += 3000             # a teleport: one move
+    ticks(s, g, 3)
+    check("lost window: not back after a teleport", len(g.boxes) == 1, g.boxes)
+    g.walking = True
+    ticks(s, g, 3)
+    check("lost window: not back after a few steps", len(g.boxes) == 1, g.boxes)
+    ticks(s, g, 5)
+    check("lost window: shown again once the player walks", len(g.boxes) == 2, g.boxes)
+    ticks(s, g, 10)
+    check("lost window: shown once, not again while it is up", len(g.boxes) == 2, g.boxes)
 
-    # 5. A player who already left the sewers gets no window, even with an offer.
+    # 6. A player who already left the sewers gets no window, even with an offer.
     s, g = Script(src), Game(cur={"CHARACTERGEN": 88}, done={"MQ01": {5, 88, 100}}, inv={"CQSIntro": 1})
     g.inv["CQSStartOffer"] = 1
     ticks(s, g)
     check("out of the sewers: no window", not g.boxes)
     check("out of the sewers: stale CQSIntro taken back", g.inv.get("CQSIntro") == 0, g.inv)
 
-    # 6. Never left the sewers, but no intro runs (not the vanilla start): CQSIntro is 2, the skip still works.
+    # 7. Never left the sewers, but no intro runs (not the vanilla start): CQSIntro is 2, the skip still works.
     s, g = Script(src), Game()
     ticks(s, g)
     check("no intro running: CQSIntro is 2", g.inv.get("CQSIntro") == 2, g.inv)
@@ -210,7 +256,7 @@ def main():
     ticks(s, g)
     check("old save stuck at state 3: not moved", g.at == "outside" and g.moves == 0, (g.at, g.moves))
 
-    # 7. An admin offers the start again: the answer item is taken, the window comes back.
+    # 8. An admin offers the start again: the answer item is taken, the window comes back.
     s, g = Script(src), Game(**in_prison)
     g.inv["CQSStartOffer"] = 1
     ticks(s, g)

@@ -32,6 +32,12 @@
   on a new server world. New characters from OblivionMP's own save still get the setup above. The stages a new
   character starts with are taken from the latest new character, so a changed start save is picked up by itself.
   "New players start" is now "Ask" by default.
+* The start window stays up until it is answered: OblivionMP doesn't pause the game for it, so a timer used to show it
+  a second time underneath, and it came straight back after the first click. It now comes back only if it was lost
+  (by a load) and the player walks about. The remaster puts "[NL]" (no localized text) in front of a plugin's text;
+  the CoopQuestSyncUI add-on takes it off the start window's question and buttons. After a sewer exit skip, the race, class and birthsign menus wait until the player has
+  arrived there. The window waits until no other menu is open, and the skip waits until every menu is closed: the
+  move to the sewer exit with the Esc menu still open under the window left the race menu showing only its camera.
 * Our plugins go right after AltarESPMain.esp in the server's load order, where the ReadyM Launcher (0.32+) puts
   them, so DLC and Altar items keep their ids.
 * Includes everything from the 0.6 test builds below.
@@ -39,7 +45,7 @@
 **From the 0.6 test builds**
 
 * **New players choose where to start**: a player who has never left the sewers gets the game's own message box on
-  their first join: "In the prison: play the intro" or "At the sewer exit: skip the intro". The prison is only
+  their first join: "Play the prison intro" or "Skip to the sewer exit". The prison is only
   offered until someone has left the sewers on the server (the Emperor and the Blades are shared, so the intro plays
   once per world). The sewer exit start sets "Deliver the Amulet" in the player's journal, gives the Amulet of Kings
   and a starter kit, puts them just inside the sewer gate, and opens the race, class and birthsign menus; the gate

@@ -31,11 +31,11 @@ public sealed partial class FreshCharacter(IEntities entities, QuestTokenSync sy
     ReturnOnJoin travel, QuestSyncConfig config, IChat chat, ILogger logger)
 {
     /// <summary>CGSewerExitMarker in Oblivion.esm: the vanilla start's spot just inside the sewer gate (ImperialSewers03).</summary>
-    private static readonly ReturnSpot SewerExit = ReturnOnJoin.GameSpot(0x000272F2, "ImperialSewers03", 3822.1f, 2046.3f, 6894.6f);
+    internal static readonly ReturnSpot SewerExit = ReturnOnJoin.GameSpot(0x000272F2, "ImperialSewers03", 3822.1f, 2046.3f, 6894.6f);
     /// <summary>In the sewers this long before the menus open: the move onto the spot and the black screen finish first.</summary>
-    private static readonly TimeSpan ArriveSettle = TimeSpan.FromSeconds(4);
+    internal static readonly TimeSpan ArriveSettle = TimeSpan.FromSeconds(4);
     /// <summary>No arrival by then (no add-on?): the menus open where they are.</summary>
-    private static readonly TimeSpan TravelTimeout = TimeSpan.FromSeconds(60);
+    internal static readonly TimeSpan TravelTimeout = TimeSpan.FromSeconds(60);
 
     /// <summary>Players on their way to the sewer exit: when they left, and since when they stand there.</summary>
     private readonly Dictionary<PlayerId, (DateTime Left, DateTime? There)> _travelling = new();
