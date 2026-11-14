@@ -45,7 +45,9 @@ with an R in them while you're down (see [Death](#how-it-plays) below).
   save on the server; the mod puts a save made in the prison cell there each time the server starts (setting "Start
   in the prison"). The new player makes their character the game's own way, and on arrival the game's own window
   asks: **play the prison intro**, or **skip to the sewer exit** (with the Amulet of Kings, a starter kit and the
-  race, class and birthsign menus). The Emperor and the prison are shared by everyone, so the intro plays once per
+  race, class and birthsign menus, which open once you've stood at the sewer exit for a few seconds). The window
+  stays up until you click; close the Esc menu before answering it. If a load closes the window before you answer,
+  it comes back once you walk a few steps. The Emperor and the prison are shared by everyone, so the intro plays once per
   world: once someone has played it and left the sewers, later newcomers start at the sewer exit. The party's
   progress reaches a new player once they've left the sewers, and nobody can travel to a teammate before that.
 
@@ -136,7 +138,7 @@ reaches the stage always gets everything. These switches decide what everyone el
 | Set up new characters | On | For OblivionMP's own ready-made character ("Start in the prison" off): empty the bag down to the starter kit, open the race, class and birthsign menus, and keep that character's quest stages out of the party's progress. |
 | New characters start at the sewer exit | On | With "Set up new characters": take the character to the sewer exit (just inside the sewer gate) before the character menus open. Needs the CoopQuestSyncUI add-on. |
 | Starter kit | On | Iron shortsword and bow, 25 arrows, 5 lockpicks, 3 healing potions, a torch, leather cuirass and boots. Off: the bag stays empty. config.json `StarterKitItems` changes it. |
-| Prison or sewer start | Ask | With the prison start. Ask: the game's window offers the prison intro or the sewer exit. Sewer exit: always skip the intro. Game's own: no window, the intro plays as in a new game. With OblivionMP's own start save nothing is asked. A server whose settings were saved before 0.7.0 keeps "Game's own": switch it to Ask. |
+| Prison or sewer start | Ask | With the prison start. Ask: the game's window offers the prison intro or the sewer exit. Sewer exit: always skip the intro. Game's own: no window, the intro plays as in a new game. With OblivionMP's own start save nothing is asked. A server whose settings were saved before 0.8.0 keeps "Game's own": switch it to Ask. |
 | Offer the prison intro | Fresh world | With the prison start. Fresh world: until someone has played the intro and left the sewers (a new server world resets it). Always: for testing. Never. |
 | Prison intro here | | Whether someone has played the intro and left the sewers on this world. **Played: reset** offers the prison again (only on a fresh world). |
 | Take back spare amulets | On | With the prison start, every new player gets an Amulet of Kings. Once Jauffre has it ("Deliver the Amulet" stage 50), the other copies go. |

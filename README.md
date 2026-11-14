@@ -5,7 +5,7 @@
 progress is shared live, players who join later catch up silently, and conversations, deaths, travel and rewards are
 handled with a party in mind.
 
-> **Version 0.7.0, for OblivionMP 1.1.** This is the first public release. It has been played a lot by a handful of
+> **Version 0.8.0, for OblivionMP 1.1.** This is the first public release. It has been played a lot by a handful of
 > people, but not by many, and not much yet on OblivionMP 1.1. Expect rough edges and
 > [report what you find](CONTRIBUTING.md): every report helps.
 
@@ -91,7 +91,7 @@ file whether it's on the server or on the player's PC.
 
 **Requirements:** Oblivion Remastered with all its official plugins (see [known issues](docs/KNOWN-ISSUES.md)), the
 ReadyM Launcher, and an **OblivionMP 1.1.0 server** with the mods it ships with (the Chat mod is required). Version
-0.7.0 doesn't load on an OblivionMP 1.0.x server, and older versions of the mod don't load on 1.1.
+0.8.0 doesn't load on an OblivionMP 1.0.x server, and older versions of the mod don't load on 1.1.
 
 ## Known issues
 
