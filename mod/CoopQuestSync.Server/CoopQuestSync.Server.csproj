@@ -17,6 +17,7 @@
         <EmbeddedResource Include="..\Content\npcs.json" LogicalName="CoopQuestSync.npcs.json" />
         <EmbeddedResource Include="..\Content\cells.json" LogicalName="CoopQuestSync.cells.json" />
         <EmbeddedResource Include="..\Content\voices.json" LogicalName="CoopQuestSync.voices.json" />
+        <EmbeddedResource Include="..\Content\prison-start.sav" LogicalName="CoopQuestSync.prison-start.sav" />
         <EmbeddedResource Include="web\index.html" LogicalName="CoopQuestSync.web.index.html" />
     </ItemGroup>
     <ItemGroup>
