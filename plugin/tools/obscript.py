@@ -20,6 +20,8 @@ FUNCS = {
     "moveto":        (0x109E, ["ref"]),
     "addtopic":      (0x1058, ["ref"]),
     "getbuttonpressed": (0x101F, None),
+    # an optional menu type: the game writes an empty parameter list (a zero count) when there is none
+    "menumode":      (0x1024, []),
     # no parameter block at all: just opcode and a zero length
     "enableplayercontrols":  (0x1060, None),
     "disableplayercontrols": (0x1061, None),

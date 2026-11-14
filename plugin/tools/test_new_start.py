@@ -52,6 +52,7 @@ class Script:
             raise Exception(name)
         e = re.sub(r"(player\.)?(GetStageDone|GetStage|GetItemCount)((?: \w+)+?)(?= ==| !=| >=| <=| >| <|$| \|\|| &&)",
                    fn, expr, flags=re.I)
+        e = re.sub(r"\bMenuMode\b", "1" if g.box is not None else "0", e, flags=re.I)
         if re.search(r"GetButtonPressed", e, re.I):
             pressed, g.pressed = g.pressed, -1
             e = re.sub(r"GetButtonPressed", str(pressed), e, flags=re.I)
@@ -65,8 +66,7 @@ class Script:
         return eval(re.sub(r"[A-Za-z_]\w*", var, e))
 
     def run(self, g):
-        if g.box is not None:
-            return                       # a message box pauses the game: GameMode blocks don't run
+        # OblivionMP doesn't pause the game for a message box: GameMode blocks keep running while it is open.
         stack, active = [], True
         for l in self.body:
             kw = l.split()[0].lower()
@@ -178,22 +178,34 @@ def main():
     ticks(s, g)
     check("offer 2: skipped to the sewer exit", g.at == "CGSewerExitMarker" and g.inv.get("CQSStartDone") == 1)
 
-    # 4. The box was lost (a load): it comes back after about 5 s.
+    # 4. The box stays open a long time (the script keeps running under it): it is not shown again.
+    s, g = Script(src), Game(**in_prison)
+    g.inv["CQSStartOffer"] = 1
+    ticks(s, g, 1)
+    ticks(s, g, 120)             # a minute of thinking
+    check("open window: not shown again while open", len(g.boxes) == 1, g.boxes)
+    g.press(1)
+    ticks(s, g)
+    check("open window: the late answer still counts", g.at == "CGSewerExitMarker", g.at)
+
+    # 5. The box was lost (a load): it comes back after about 10 s.
     s, g = Script(src), Game(**in_prison)
     g.inv["CQSStartOffer"] = 1
     ticks(s, g, 1)
     g.box = None                 # gone without an answer
-    ticks(s, g, 13)
+    ticks(s, g, 15)
+    check("lost window: not back too soon", len(g.boxes) == 1, g.boxes)
+    ticks(s, g, 10)
     check("lost window: shown again", len(g.boxes) == 2, g.boxes)
 
-    # 5. A player who already left the sewers gets no window, even with an offer.
+    # 6. A player who already left the sewers gets no window, even with an offer.
     s, g = Script(src), Game(cur={"CHARACTERGEN": 88}, done={"MQ01": {5, 88, 100}}, inv={"CQSIntro": 1})
     g.inv["CQSStartOffer"] = 1
     ticks(s, g)
     check("out of the sewers: no window", not g.boxes)
     check("out of the sewers: stale CQSIntro taken back", g.inv.get("CQSIntro") == 0, g.inv)
 
-    # 6. Never left the sewers, but no intro runs (not the vanilla start): CQSIntro is 2, the skip still works.
+    # 7. Never left the sewers, but no intro runs (not the vanilla start): CQSIntro is 2, the skip still works.
     s, g = Script(src), Game()
     ticks(s, g)
     check("no intro running: CQSIntro is 2", g.inv.get("CQSIntro") == 2, g.inv)
@@ -210,7 +222,7 @@ def main():
     ticks(s, g)
     check("old save stuck at state 3: not moved", g.at == "outside" and g.moves == 0, (g.at, g.moves))
 
-    # 7. An admin offers the start again: the answer item is taken, the window comes back.
+    # 8. An admin offers the start again: the answer item is taken, the window comes back.
     s, g = Script(src), Game(**in_prison)
     g.inv["CQSStartOffer"] = 1
     ticks(s, g)

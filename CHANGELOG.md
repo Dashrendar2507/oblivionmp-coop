@@ -32,6 +32,9 @@
   on a new server world. New characters from OblivionMP's own save still get the setup above. The stages a new
   character starts with are taken from the latest new character, so a changed start save is picked up by itself.
   "New players start" is now "Ask" by default.
+* The start window stays up until it is answered: OblivionMP doesn't pause the game for it, so it used to close and
+  come back after 5 seconds. After a sewer exit skip, the race, class and birthsign menus wait until the player has
+  arrived there; asked for during the move, the race menu showed its camera without its screen.
 * Our plugins go right after AltarESPMain.esp in the server's load order, where the ReadyM Launcher (0.32+) puts
   them, so DLC and Altar items keep their ids.
 * Includes everything from the 0.6 test builds below.

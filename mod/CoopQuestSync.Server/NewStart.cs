@@ -46,6 +46,12 @@ public sealed partial class NewStart(IEntities entities, QuestTokenSync sync, In
     /// <summary>The server had no saved world when the mod started: nobody has played the intro in this one.</summary>
     private bool _newWorld;
     private List<(uint FormId, int Count)>? _kit;
+    /// <summary>
+    /// Players whose character menus wait for them to stand at the sewer exit: since when, and since when they are there.
+    /// The plugin gives CQSStartDone just before it moves the player, so the menus asked for at once opened during
+    /// that load: the race menu's camera came up without its screen (2026-11-14).
+    /// </summary>
+    private readonly Dictionary<PlayerId, (DateTime Asked, DateTime? There)> _menusDue = new();
 
     private TokenMap Map => sync.Map;
 
@@ -76,11 +82,14 @@ public sealed partial class NewStart(IEntities entities, QuestTokenSync sync, In
                 logger.LogInformation("[QuestSync] The server made a new world: the prison intro can be played again.");
             }
         }
+        var now = DateTime.UtcNow;
         foreach (var main in entities.Query<MainCharacter>())
         {
             var id = main.PlayerId;
             if (!sync.Players.TryGetValue(id, out var view) || view.ModIndex is not { } slot || view.Phase != QuestTokenSync.Phase.Ready)
                 continue;
+            if (_menusDue.ContainsKey(id))
+                MenusWhenThere(id, view, now);
             var offer = Count(view, Map.StartOfferLocalId);
             var prison = Count(view, Map.StartPrisonLocalId);
             var done = Count(view, Map.StartDoneLocalId);
@@ -136,6 +145,8 @@ public sealed partial class NewStart(IEntities entities, QuestTokenSync sync, In
             _told.Remove(id);
         foreach (var id in _inSewers.Keys.Where(id => !sync.Players.ContainsKey(id)).ToList())
             _inSewers.Remove(id);
+        foreach (var id in _menusDue.Keys.Where(id => !sync.Players.ContainsKey(id)).ToList())
+            _menusDue.Remove(id);
     }
 
     /// <summary>CQSStartOffer's count: 0 no window, 1 the prison or the sewer exit, 2 the sewer exit only.</summary>
@@ -167,10 +178,32 @@ public sealed partial class NewStart(IEntities entities, QuestTokenSync sync, In
         logger.LogInformation("[QuestSync] {Player}: start at the sewer exit: {Amulet}, {Kit} starter item(s).", name,
             amulet ? "gave the Amulet of Kings" : delivered ? "no amulet (Jauffre already has it)" : "already has the amulet", kit.Count);
 
-        rpc.SendMakeCharacter(main.PlayerId);
+        _menusDue[main.PlayerId] = (DateTime.UtcNow, null);
         chat.SendTo(main.PlayerId, delivered
             ? "You start at the sewer exit. Make your character, then go through the gate. Your party has already brought the Amulet of Kings to Jauffre."
             : "You start at the sewer exit with the Amulet of Kings. Make your character, then go through the gate.", ChatLineKind.System);
+    }
+
+    /// <summary>
+    /// Opens the character menus once the player has stood at the sewer exit for a few seconds (the move's load is over),
+    /// or after a minute anyway.
+    /// </summary>
+    private void MenusWhenThere(PlayerId id, QuestTokenSync.PlayerView view, DateTime now)
+    {
+        var (asked, there) = _menusDue[id];
+        var here = view.Area is { } a && GameData.AreaKey(a) == FreshCharacter.SewerExit.Area;
+        there = here ? there ?? now : null;
+        _menusDue[id] = (asked, there);
+        var settled = there is { } since && now - since >= FreshCharacter.ArriveSettle;
+        var late = now - asked > FreshCharacter.TravelTimeout;
+        if (!settled && !late)
+            return;
+        _menusDue.Remove(id);
+        if (settled)
+            logger.LogInformation("[QuestSync] {Player} is at the sewer exit: opening the character menus.", sync.Nickname(id));
+        else
+            logger.LogWarning("[QuestSync] {Player} isn't at the sewer exit a minute after the skip: opening the character menus where they are.", sync.Nickname(id));
+        rpc.SendMakeCharacter(id);
     }
 
     /// <summary>Jauffre has the amulet: the copies the other players were given at the start go away.</summary>

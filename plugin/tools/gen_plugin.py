@@ -290,8 +290,9 @@ NEW_START_SCRIPT = "\r\n".join([
     "set waited to 0",
     "endif",
     "elseif state == 1",
-    # The box pauses the game, so this only counts while it is closed: an answer comes on the first run after.
-    # No answer for 5 s means the box was lost (a load): show it again.
+    # OblivionMP doesn't pause the game for a message box, so this runs while the box is open (2026-11-14: the box
+    # closed and came back after 5 s). Only time with no menu open counts: 10 s of that without an answer means the box
+    # was lost (a load), so it is shown again.
     "set button to GetButtonPressed",
     "if button >= 0",
     "if offer == 1 && button == 0",
@@ -300,9 +301,9 @@ NEW_START_SCRIPT = "\r\n".join([
     "else",
     "set state to 3",
     "endif",
-    "else",
+    "elseif MenuMode == 0",
     "set waited to waited + 1",
-    "if waited > 10",
+    "if waited > 20",
     "set state to 0",
     "endif",
     "endif",
