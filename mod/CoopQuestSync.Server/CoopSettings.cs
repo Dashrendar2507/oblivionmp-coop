@@ -116,6 +116,9 @@ public sealed class CoopSettings
 
     public string DifficultyTaken { get; set; } = "Unset";
 
+    /// <summary>Players can hurt each other. Off: a player's hit on another player is refused (see <see cref="FriendlyFire"/>).</summary>
+    public bool FriendlyFire { get; set; } = false;
+
     // ---- New players ----
 
     /// <summary>

@@ -313,7 +313,7 @@ function renderSettings() {
     ${srow("Level of spawns and loot", "", sel("scaling", choices.scaling, st.scaling))}
     ${srow("Difficulty, damage dealt", "", sel("difficultyDealt", choices.difficultyDealt, st.difficultyDealt))}
     ${srow("Difficulty, damage taken", "", sel("difficultyTaken", choices.difficultyTaken, st.difficultyTaken))}
-    ${srow("Friendly fire", "Always on: OblivionMP can't tell mods who hit whom.", `<span class="edid">On</span>`)}
+    ${srow("Friendly fire", "Players can hurt each other. Off: their hits on each other do no damage. NPCs hurt everyone either way.", chk("friendlyFire", st.friendlyFire))}
   </div>
   <div class="sgroup"><h3>New players</h3>
     ${srow("Set up new characters", "OblivionMP starts everyone as the same character. On a new character's first join: empty bag, starter kit, race, class and birthsign menus. The quests that start comes with aren't shared.", chk("newCharacterSetup", st.newCharacterSetup))}
