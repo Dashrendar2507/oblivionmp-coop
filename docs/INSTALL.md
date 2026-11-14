@@ -170,6 +170,16 @@ To wipe the shared progress, click **Reset all shared progress** on the web page
 and takes the hidden quest tokens back from everyone, so the quests don't come back on the next join. To reset a
 single quest, open it on the page and use its reset button.
 
+**A whole new world** (new characters for everyone, a fresh map): ReadyM's docs say to delete the server's `saves`
+folder. Our own file lives next to it, not inside it, so delete it too:
+
+1. **Server:** stop the server.
+2. **Server:** move `<server folder>\saves\` and `<server folder>\coop-quest-sync-state.json` somewhere else (or
+   delete them). The state file holds the shared progress, each nickname's last spot and every web page setting, so
+   note any settings you changed first.
+3. **Server:** start the server. Everyone joins as a new character. Keep `coop-quest-sync-strings*.json`: that's the
+   game's text, and it doesn't depend on the world.
+
 ### Uninstalling
 
 **Server:** delete `<server folder>\mods\CoopQuestSync\` and restart the server. You can also delete
