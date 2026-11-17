@@ -90,6 +90,10 @@ Version 0.8.0 is the first release for OblivionMP 1.1.0, and it has had much les
 * **The prison intro plays once per world.** The Emperor, the Blades and the prison doors are shared world state.
   Once someone has played the intro and left the sewers, later new characters start at the sewer exit. A new server
   world offers the prison again.
+* **The Mythic Dawn assassins in the prison and the sewers look naked and fight bare-handed.** Their armor and mace
+  come from a spell, and OblivionMP dresses NPCs only with the items the server has for them, so the summoned gear
+  is dropped. This is OblivionMP's to fix. Captain Renault still dies in the first ambush (the server mod sees to
+  it since 0.8.3).
 * **"[NL]" in the start window without the add-on.** The remaster puts "[NL]" in front of plugin text its own
   string tables don't have. The CoopQuestSyncUI add-on takes it off the start window; with the add-on off, the
   question and both buttons show it.

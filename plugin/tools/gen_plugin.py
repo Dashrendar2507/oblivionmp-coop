@@ -296,6 +296,13 @@ NEW_START_SCRIPT = "\r\n".join([
     "if state != 3 && want == 1 && player.GetItemCount CQSStartDone > 0 && GetQuestRunning Charactergen == 1",
     "set state to 3",
     "endif",
+    # Captain Renault died in the first ambush on the server (IntroDeaths), not by the hit whose script moves the intro
+    # on: move it on here (OblivionMP 2026-11-17: she didn't die, and the intro waited).
+    "if GetStage Charactergen >= 22 && GetStage Charactergen < 24",
+    "if RenoteRef.GetDead == 1",
+    "SetStage Charactergen 24",
+    "endif",
+    "endif",
     "if state == 0",
     "set offer to player.GetItemCount CQSStartOffer",
     # Not over another menu: the 2026-11-14 window came up over the Esc menu, which then stayed open under it. (Under
@@ -368,14 +375,14 @@ NEW_START_SCRIPT = "\r\n".join([
        "end"]) + "\r\n"
 
 # Vanilla forms the new-start script names, looked up in Oblivion.esm by editor id.
-START_FORMS = ["MQ01", "MQ02", "Charactergen", "CGSewerExitMarker", *START_TOPICS]
+START_FORMS = ["MQ01", "MQ02", "Charactergen", "CGSewerExitMarker", "RenoteRef", *START_TOPICS]
 
 
 def vanilla_forms(lo, edids):
     """Editor id (lower case) -> form id, for these editor ids in Oblivion.esm (the first plugin)."""
     want = {e.lower() for e in edids}
     out = {}
-    for r in tes4.iter_records(lo.sources[0].buf, want={"QUST", "DIAL", "CELL", "REFR"}):
+    for r in tes4.iter_records(lo.sources[0].buf, want={"QUST", "DIAL", "CELL", "REFR", "ACHR"}):
         if r.edid and r.edid.lower() in want and r.edid.lower() not in out:
             out[r.edid.lower()] = r.formid
     missing = want - out.keys()

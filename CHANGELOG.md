@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.8.3
+
+* **Captain Renault dies in the first ambush of the prison intro.** In the game she dies by script when the assassins
+  strike, but under OblivionMP that death stayed in one player's game: the server kept her alive and brought her
+  back, and the intro waited for her. The server now kills her at the same moments (an assassin hits her, or
+  assassin 1 or 2 is hit), and in a world where the intro got stuck, once all four assassins are dead. The plugin
+  then moves the intro on. The assassins' missing armor and mace (summoned by a spell OblivionMP doesn't keep) are
+  still OblivionMP's to fix.
+
 ## 0.8.2
 
 * **Back where you left after leaving the sewers.** Every join loads the server's start save, the prison, so the

@@ -25,6 +25,7 @@ class Game:
         self.topics = set()
         self.stopped = set()
         self.chargen = None      # what SetInCharGen last set
+        self.dead = set()        # refs that are dead
         self.at = "prison"
         self.moves = 0
 
@@ -54,12 +55,14 @@ class Script:
                 return "1" if int(args[1]) in g.done.get(args[0].upper(), set()) else "0"
             if name == "getitemcount":
                 return str(g.inv.get(args[0], 0))
+            if name == "getdead":
+                return "1" if m.group(1) and m.group(1)[:-1] in g.dead else "0"
             if name == "getquestrunning":
                 return "1" if args[0].upper() in g.running else "0"
             if name == "getpos":
                 return str(g.pos["XY".index(args[0].upper())])
             raise Exception(name)
-        e = re.sub(r"(player\.)?(GetStageDone|GetStage|GetItemCount|GetPos|GetQuestRunning)((?: \w+)+?)(?= ==| !=| >=| <=| >| <|$| \|\|| &&)",
+        e = re.sub(r"(\w+\.)?(GetStageDone|GetStage|GetItemCount|GetPos|GetQuestRunning|GetDead)((?: \w+)*?)(?= ==| !=| >=| <=| >| <|$| \|\|| &&)",
                    fn, expr, flags=re.I)
         # Under OblivionMP, MenuMode stays 0 while a message box is open (2026-11-14).
         e = re.sub(r"\bMenuMode\b", "1" if g.menu else "0", e, flags=re.I)
@@ -293,6 +296,19 @@ def main():
           (g.inv, g.boxes))
     ticks(s, g, 10)
     check("rejoin before the gate: moved once", g.moves == 1, g.moves)
+
+    # 11. Renault died on the server, not by the hit whose script moves the intro on: the plugin moves it on.
+    s, g = Script(src), Game(**in_prison, inv={"CQSStartPrison": 1})
+    g.setstage("CHARACTERGEN", 22)
+    ticks(s, g)
+    check("ambush, Renault alive: intro not moved on", 24 not in g.done.get("CHARACTERGEN", set()))
+    g.dead.add("RenoteRef")
+    ticks(s, g)
+    check("ambush, Renault dead: Charactergen 24", 24 in g.done.get("CHARACTERGEN", set()), g.done)
+    s, g = Script(src), Game(**in_prison)
+    g.dead.add("RenoteRef")
+    ticks(s, g)
+    check("before the ambush: nothing moved on", 24 not in g.done.get("CHARACTERGEN", set()), g.done)
 
     # 8. An admin offers the start again: the answer item is taken, the window comes back.
     s, g = Script(src), Game(**in_prison)
