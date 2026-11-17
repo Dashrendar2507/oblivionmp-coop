@@ -52,7 +52,7 @@ import tes4, tes4write, obscript, scriptpatch
 PLUGIN = "CoopQuestSync.esp"
 DIALOGUE_PLUGIN = "CoopQuestSyncDialogue.esp"
 BASE = 0xC05000           # unusual local ids so the server can spot our forms
-BEACON, SEQ, BUSY, ACK, GLOB_GO, GLOB_REPLAY, GLOB_SIGN = (BASE + i for i in range(7))
+BEACON, SEQ, BUSY, ACK, GLOB_GO, GLOB_REPLAY = (BASE + i for i in range(6))
 ALLOW = {c: BASE + 0x100 + i for i, c in enumerate(scriptpatch.CATEGORIES)}
 FREEZE = BASE + 0x110
 # New-player start (see NEW_START_SCRIPT): the server's offer, the player's answers, and the intro flag.
@@ -255,12 +255,6 @@ CONTROL_SCRIPT = "\r\n".join([
 # the player just inside the sewer gate, whose own script then offers to revise the character before going out. It
 # never runs Charactergen's stage scripts: those kill and move the Emperor and the Blades, who are shared NPCs.
 START_TOPICS = ["AmuletofKingsTopic", "WeynonPrioryTopic", "OrderofTalosTopic", "JauffreTopic", "UrielSeptimTopic"]
-BIRTHSIGNS = ["BirthSignApprentice", "BirthSignAtronach", "BirthSignLady", "BirthSignLord", "BirthSignLover",
-              "BirthSignMage", "BirthSignRitual", "BirthSignSerpent", "BirthSignShadow", "BirthSignSteed",
-              "BirthSignThief", "BirthSignTower", "BirthSignWarrior"]
-# The Emperor's line after the birthsign menu (Charactergen 44): the plugin's copy also wants CQSSignGate 1.
-EMPEROR_BIRTHSIGN_PACKAGE = 0x00033B81
-GET_GLOBAL_VALUE = 74                   # condition function index
 START_ASK = "Welcome to the co-op server! Where do you want to start?"
 # Short, plain button labels: the remaster showed "[NL]" in the longer ones with a colon (2026-11-14).
 START_PRISON_BUTTON = "Play the prison intro"
@@ -270,7 +264,6 @@ START_INFO = ("Welcome to the co-op server! You start at the sewer exit with the
 NEW_START_SCRIPT = "\r\n".join([
     "scn CQSNewStartScript", "float fQuestDelayTime", "short state", "short button", "short offer", "short want",
     "short have", "short waited", "float px", "float py", "float lastx", "float lasty", "short wallwait",
-    "short signnow", "short signwas", "short signseen", "short signwait",
     "begin GameMode",
     "set fQuestDelayTime to 0.5",
     # CQSIntro: 1 in the prison intro, 2 when the player never left the sewers but no intro runs, 0 once out.
@@ -324,28 +317,6 @@ NEW_START_SCRIPT = "\r\n".join([
     # the wall closed). Take the skip to the sewer exit instead (state 0: the first run of this load).
     "if state == 0 && want == 1 && player.GetItemCount CQSStartPrison > 0 && player.GetItemCount CQSStartDone == 0 && GetQuestRunning Charactergen == 1",
     "set state to 3",
-    "endif",
-    # The birthsign menu (Charactergen 43, then 44 at once): the game pauses for it, so the Emperor's next line
-    # (CGEmperorToPlayerB, a force greet at 44) waits until it's closed. OblivionMP doesn't pause: the conversation
-    # started under the open menu, which then couldn't be closed (2026-11-17). The plugin's copy of that package also
-    # wants CQSSignGate 1, set here once the birthsign changes (the player chose one). A player keeping the sign they
-    # had: after a minute. Anyway after five.
-    "if GetStage Charactergen == 44 && CQSSignGate == 0",
-    "set signnow to 0"]
-    + [f"if GetIsPlayerBirthsign {b} == 1\r\nset signnow to {i}\r\nendif" for i, b in enumerate(BIRTHSIGNS, 1)]
-    + ["if signseen == 0",
-    "set signseen to 1",
-    "set signwas to signnow",
-    "set signwait to 0",
-    "endif",
-    "set signwait to signwait + 1",
-    "if signnow != signwas || signwait >= 600",
-    "set CQSSignGate to 1",
-    "elseif signwas != 0 && signwait >= 120",
-    "set CQSSignGate to 1",
-    "endif",
-    "elseif GetStage Charactergen > 44 && CQSSignGate == 0",
-    "set CQSSignGate to 1",
     "endif",
     "if GetStage Charactergen >= 22 && GetStage Charactergen < 24",
     "if RenoteRef.GetDead == 1",
@@ -544,7 +515,7 @@ def death_script(edid, refs):
 
 
 # Vanilla forms the new-start script names, looked up in Oblivion.esm by editor id.
-START_FORMS = ["MQ01", "MQ02", "Charactergen", "CGSewerExitMarker", "RenoteRef", "CGCrumbleDust01REF", *START_TOPICS, *BIRTHSIGNS]
+START_FORMS = ["MQ01", "MQ02", "Charactergen", "CGSewerExitMarker", "RenoteRef", "CGCrumbleDust01REF", *START_TOPICS]
 # The prison wall the rats push in (CGCrumbleWall01SCRIPT); the reference has no editor id.
 CRUMBLE_WALL = 0x0003E31C
 
@@ -553,7 +524,7 @@ def vanilla_forms(lo, edids):
     """Editor id (lower case) -> form id, for these editor ids in Oblivion.esm (the first plugin)."""
     want = {e.lower() for e in edids}
     out = {}
-    for r in tes4.iter_records(lo.sources[0].buf, want={"QUST", "DIAL", "CELL", "REFR", "ACHR", "BSGN"}):
+    for r in tes4.iter_records(lo.sources[0].buf, want={"QUST", "DIAL", "CELL", "REFR", "ACHR"}):
         if r.edid and r.edid.lower() in want and r.edid.lower() not in out:
             out[r.edid.lower()] = r.formid
     missing = want - out.keys()
@@ -592,14 +563,157 @@ DLG_CONTROL_SCRIPT = "\r\n".join(
     + sum(([f"begin MenuMode {code}", f"set seen to {i}", "end"] for i, (_, code) in enumerate(DLG_MENUS, 1)), [])
     + ["begin MenuMode", "set fQuestDelayTime to 0.5"] + _menu_sync() + ["set seen to 0", "end"]) + "\r\n"
 
-GLOBALS = {"CQSGo": GLOB_GO, "CQSReplay": GLOB_REPLAY, "CQSSignGate": GLOB_SIGN}
+GLOBALS = {"CQSGo": GLOB_GO, "CQSReplay": GLOB_REPLAY}
+
+
+# ---------------------------------------------------------------------------------------------------------------
+# Menus a quest opens (world state sync: the game's pause)
+#
+# The game pauses while a menu is open, and quests rely on it: Charactergen opens the birthsign menu at 43 and moves to
+# 44 at once, and the Emperor's force greet (CGEmperorToPlayerB) waits for 44; at 87 the class menu opens and Baurus's
+# force greet waits for 87. OblivionMP doesn't pause: the conversation started under the open menu, which then
+# couldn't be closed (2026-11-17). Every quest stage at which a script opens a menu gets a gate global; every package
+# that waits for that stage (GetStage quest == stage) also wants the gate at 1. CQSMenuGateScript opens it once the
+# player has picked something (the birthsign or class changed), after a minute if they keep what they had (or make
+# their own class, or for a menu it can't read), and in any case after five, or once the quest is past that stage.
+MENU_COMMANDS = {"showbirthsignmenu": "birthsign", "showclassmenu": "class", "showracemenu": "race",
+                 "showspellmaking": "spellmaking", "showenchantment": "enchanting"}
+GET_STAGE, GET_GLOBAL_VALUE = 58, 74     # condition function indexes
+MENU_KEPT_TICKS, MENU_MAX_TICKS = 120, 600  # half-second runs: a minute, five minutes
+
+
+def _code_lines(text):
+    return [l.split(";")[0].strip() for l in text.replace("\r", "").split("\n")]
+
+
+def find_menu_gates(lo):
+    """[{quest, stage, kind, packages: [(src, PACK record)]}] for each quest stage at which a script opens a menu and
+    some package waits for that stage."""
+    quests = {r.edid.lower(): (key, r.edid) for key, (src, r) in lo.winning({"QUST"}).items() if r.edid}
+    found = {}                             # (quest form id, stage) -> kind
+    menu = re.compile(r"^(?:\w+\.)?(" + "|".join(MENU_COMMANDS) + r")\b", re.I)
+    for key, (src, r) in lo.winning({"QUST", "SCPT"}).items():
+        if r.type == "QUST":
+            # Stage result scripts: the menu is open at that stage, or at the one the script moves to.
+            stage = None
+            for k, v in r.subs:
+                if k == "INDX":
+                    stage = struct.unpack("<H", v[:2])[0]
+                elif k == "SCTX" and stage is not None:
+                    lines = _code_lines(v.decode("cp1252", "replace"))
+                    kinds = [MENU_COMMANDS[m.group(1).lower()] for l in lines for m in [menu.match(l)] if m]
+                    if kinds:
+                        moved = [int(m.group(1)) for l in lines
+                                 for m in [re.match(rf"setstage\s+{re.escape(r.edid)}\s+(\d+)$", l, re.I)] if m]
+                        found[(key, moved[-1] if moved else stage)] = kinds[0]
+            continue
+        # Quest and object scripts: a menu inside "if GetStage <quest> == <stage>", maybe moved on in the same block.
+        lines = _code_lines((r.get("SCTX") or b"").decode("cp1252", "replace"))
+        stack = []
+        for i, l in enumerate(lines):
+            low = l.lower()
+            if low.startswith("if ") or low.startswith("if("):
+                stack.append(re.match(r"if\s*\(?\s*getstage\s+(\w+)\s*==\s*(\d+)\s*\)?$", l, re.I))
+            elif low == "endif":
+                if stack:
+                    stack.pop()
+            elif (m := menu.match(l)) and stack and stack[-1] and stack[-1].group(1).lower() in quests:
+                qkey, qedid = quests[stack[-1].group(1).lower()]
+                stage, depth = int(stack[-1].group(2)), 0
+                for l2 in lines[i + 1:]:
+                    l2low = l2.lower()
+                    if l2low.startswith("if ") or l2low.startswith("if("):
+                        depth += 1
+                    elif l2low == "endif":
+                        if depth == 0:
+                            break
+                        depth -= 1
+                    elif depth == 0 and (m2 := re.match(rf"setstage\s+{re.escape(qedid)}\s+(\d+)$", l2, re.I)):
+                        stage = int(m2.group(1))
+                found[(qkey, stage)] = MENU_COMMANDS[m.group(1).lower()]
+    if not found:
+        return []
+    by_key = {key: edid for key, edid in quests.values()}
+    waiting = {}
+    for key, (src, r) in lo.winning({"PACK"}).items():
+        for k, v in r.subs:
+            if k != "CTDA" or len(v) < 20:
+                continue
+            op, value, func, param = v[0], *struct.unpack_from("<fII", v, 4)
+            if func != GET_STAGE or op >> 5 != 0:
+                continue
+            qkey = lo.remap(src, param) if src is not lo.sources[0] else param
+            if (qkey, int(value)) in found:
+                waiting.setdefault((qkey, int(value)), []).append((src, r))
+    return [dict(quest=by_key[q], stage=st, kind=kind, packages=waiting[(q, st)])
+            for (q, st), kind in sorted(found.items()) if (q, st) in waiting]
+
+
+def gated_package(lo, src, r, gate):
+    """A package's copy that also wants the gate global at 1."""
+    subs = remap_record(lo, src, r, set())
+    if src is not lo.sources[0] or src.masters:
+        # Location and target: a form id at offset 4 for these kinds (reference, cell, object id).
+        out = []
+        for k, v in subs:
+            if (k == "PLDT" and len(v) >= 8 and struct.unpack_from("<I", v)[0] in (0, 1, 4)) or \
+               (k == "PTDT" and len(v) >= 8 and struct.unpack_from("<I", v)[0] in (0, 1)):
+                fid = lo.remap(src, struct.unpack_from("<I", v, 4)[0])
+                v = v[:4] + struct.pack("<I", fid or 0) + v[8:]
+            out.append((k, v))
+        subs = out
+    last = max((i for i, (k, _) in enumerate(subs) if k == "CTDA"), default=len(subs) - 1)
+    subs.insert(last + 1, ("CTDA", struct.pack("<B3sfIIII", 0, b"\0\0\0", 1.0, GET_GLOBAL_VALUE, gate, 0, 0)))
+    return tes4write.record("PACK", lo.remap(src, r.formid) if src is not lo.sources[0] else r.formid, subs,
+                            r.flags & ~0x40000)
+
+
+def menu_choices(lo, kind):
+    """Editor ids the gate script tests the player against, for a menu it can read: the birthsigns, the playable classes."""
+    if kind == "birthsign":
+        return sorted(r.edid for src, r in lo.winning({"BSGN"}).values() if r.edid)
+    if kind == "class":
+        # CLAS DATA: attributes (8), specialization (4), major skills (28), then flags (bit 0: playable).
+        return sorted(r.edid for src, r in lo.winning({"CLAS"}).values()
+                      if r.edid and len(r.get("DATA") or b"") >= 44 and struct.unpack_from("<I", r.get("DATA"), 40)[0] & 1)
+    return []
+
+
+def menu_gate_names(lo):
+    """Editor id (lower case) -> form id for the quests, birthsigns and classes the gate script names."""
+    return {r.edid.lower(): key for key, (src, r) in lo.winning({"QUST", "BSGN", "CLAS"}).items() if r.edid}
+
+
+def menu_gate_script(gates, lo):
+    lines = ["scn CQSMenuGateScript", "float fQuestDelayTime", "short now"]
+    for i, _ in enumerate(gates):
+        lines += [f"short seen{i}", f"short was{i}", f"short wait{i}"]
+    lines += ["begin GameMode", "set fQuestDelayTime to 0.5"]
+    for i, g in enumerate(gates):
+        q, st, gv = g["quest"], g["stage"], g["global"]
+        test = {"birthsign": "GetIsPlayerBirthsign {}", "class": "player.GetIsClass {}"}.get(g["kind"])
+        choices = menu_choices(lo, g["kind"]) if test else []
+        lines += [f"if GetStage {q} == {st} && {gv} == 0", "set now to 0"]
+        lines += [f"if {test.format(c)} == 1\r\nset now to {j}\r\nendif" for j, c in enumerate(choices, 1)]
+        lines += [f"if seen{i} == 0", f"set seen{i} to 1", f"set was{i} to now", f"set wait{i} to 0", "endif",
+                  f"set wait{i} to wait{i} + 1",
+                  f"if now != was{i} || wait{i} >= {MENU_MAX_TICKS}", f"set {gv} to 1",
+                  # Kept what they had (or a menu the script can't read): a minute.
+                  # A birthsign is always one of the list (a new character has none yet); a class can be the player's own.
+                  (f"elseif was{i} != 0 && wait{i} >= {MENU_KEPT_TICKS}" if g["kind"] == "birthsign"
+                   else f"elseif wait{i} >= {MENU_KEPT_TICKS}"),
+                  f"set {gv} to 1",
+                  "endif",
+                  f"elseif GetStage {q} > {st} && {gv} == 0", f"set {gv} to 1",
+                  "endif"]
+    return "\r\n".join(lines + ["end"]) + "\r\n"
 
 
 # ---------------------------------------------------------------------------------------------------------------
 # Records
 
-def scpt_record(formid, edid, source, resolve):
-    s = obscript.Script(resolve, GLOBALS.keys())
+def scpt_record(formid, edid, source, resolve, globals_=()):
+    s = obscript.Script(resolve, [*GLOBALS.keys(), *globals_])
     code = s.compile(source)
     subs = [("EDID", edid),
             ("SCHR", struct.pack("<IIIIHH", 0, len(s.refs), len(code), len(s.vars), 1, 0)),
@@ -619,21 +733,6 @@ def token_record(formid, edid):
         ("MODL", "Clothes\\Ring\\Novice01.NIF"), ("MODB", struct.pack("<f", 0)),
         ("ICON", "Clothes\\Ring\\RingNovice.dds"),
         ("DATA", struct.pack("<If", 0, 0.0))])
-
-
-def emperor_birthsign_package(lo, gate):
-    """The Emperor's force greet after the birthsign menu, wanting the gate global at 1 too (see NEW_START_SCRIPT)."""
-    winner = lo.winning({"PACK"}).get(EMPEROR_BIRTHSIGN_PACKAGE)
-    if winner is None:
-        raise SystemExit(f"package {EMPEROR_BIRTHSIGN_PACKAGE:08X} (CGEmperorToPlayerB) not found")
-    src, r = winner
-    # Its location and target hold form ids at offset 4, which remap_record leaves alone: only Oblivion.esm's copy.
-    if src is not lo.sources[0]:
-        raise SystemExit(f"CGEmperorToPlayerB is changed by {src.name}: its copy would need remapping")
-    subs = list(r.subs)
-    last = max(i for i, (k, _) in enumerate(subs) if k == "CTDA")
-    subs.insert(last + 1, ("CTDA", struct.pack("<B3sfIIII", 0, b"\0\0\0", 1.0, GET_GLOBAL_VALUE, gate, 0, 0)))
-    return tes4write.record("PACK", EMPEROR_BIRTHSIGN_PACKAGE, subs, r.flags & ~0x40000)
 
 
 def glob_record(formid, edid):
@@ -864,7 +963,22 @@ def build_main(lo, outdir, only):
     rec, _ = scpt_record(mod | nsid, "CQSNewStartScript", NEW_START_SCRIPT, lambda n: start_names.get(n.lower()))
     scpt.append(rec)
     qust.append(quest_record(mod | nqid, "CQSNewStart", mod | nsid))
-    packs = [] if only else [emperor_birthsign_package(lo, mod | GLOB_SIGN)]
+
+    # Menus a quest opens while an NPC's force greet waits for the stage (see find_menu_gates).
+    packs, gates = [], []
+    for g in ([] if only else find_menu_gates(lo)):
+        g["global"] = f"CQSMenuGate{len(gates) + 1}"
+        gid = g["gid"] = token_id(f"menugate:{g['quest']}:{g['stage']}")
+        glob.append(glob_record(mod | gid, g["global"]))
+        packs += [gated_package(lo, src, r, mod | gid) for src, r in g["packages"]]
+        gates.append(g)
+    if gates:
+        gate_names = {**menu_gate_names(lo), **{g["global"].lower(): mod | g["gid"] for g in gates}}
+        gsid, gqid = nxt, nxt + 1; nxt += 2
+        rec, _ = scpt_record(mod | gsid, "CQSMenuGateScript", menu_gate_script(gates, lo),
+                             lambda n: gate_names.get(n.lower()), [g["global"] for g in gates])
+        scpt.append(rec)
+        qust.append(quest_record(mod | gqid, "CQSMenuGates", mod | gsid))
 
     # Scripted deaths: one token per actor, scripts of DEATHS_PER_SCRIPT actors each.
     deaths = []
@@ -909,7 +1023,8 @@ def build_main(lo, outdir, only):
                        questItems=[f"{x:08X}" for x in quest_items], quests=mapping), f, indent=1)
     stages = sum(len(q["stages"]) for q in quests)
     patched = sum(len(q["effects"]) for q in quests)
-    print(f"{PLUGIN}: {len(deaths)} actors killed by script watched, {len(corpses)} actors placed dead")
+    print(f"{PLUGIN}: {len(deaths)} actors killed by script watched, {len(corpses)} actors placed dead, "
+          + "menu gates: " + (", ".join(f"{g['quest']} {g['stage']} ({g['kind']}, {len(g['packages'])} package(s))" for g in gates) or "none"))
     print(f"{PLUGIN}: {len(quests)} quests, {stages} stages, {patched} stages with guarded effects in "
           f"{len(overrides)} quest overrides, {len(quest_items)} quest items, {count} records, {len(data)} bytes, "
           f"largest script {max_code} bytes")

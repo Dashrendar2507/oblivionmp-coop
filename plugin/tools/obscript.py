@@ -24,6 +24,7 @@ FUNCS = {
     "getbuttonpressed": (0x101F, None),
     "getdead":       (0x102E, None),
     "getisplayerbirthsign": (0x10E0, ["ref"]),
+    "getisclass":    (0x1044, ["ref"]),       # condition function 68, as the CTDA of packages and topics use it
     "getdisabled":   (0x1023, None),
     "getdestroyed":  (0x10CB, None),
     "activate":      (0x100D, ["ref", "int"]),

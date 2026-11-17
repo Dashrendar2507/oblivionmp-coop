@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.9.5 (test build)
+
+* **Every menu a quest opens waits like the birthsign menu now.** 0.9.4 fixed the Emperor's line only. The plugin
+  generator now finds every quest stage at which a script opens a menu, and every NPC line waiting for that stage. In
+  the game and its DLCs that's the birthsign menu (the Emperor) and the class menu at the sewer exit (Baurus, who had
+  the same problem). Those lines wait until you've picked something: if you keep what you had or make your own class,
+  a minute; in any case at most five.
+
 ## 0.9.4 (test build)
 
 * **The birthsign menu in the prison can be closed again.** The game pauses while that menu is open, so the

@@ -31,7 +31,8 @@ class Game:
         self.at = "prison"
         self.moves = 0
         self.sign = None         # the player's birthsign (editor id)
-        self.globals = {"cqssigngate": 0}
+        self.cls = None          # the player's class (editor id; None: their own)
+        self.globals = {}        # global variables (lower case editor id)
 
     def setstage(self, q, s):
         self.done.setdefault(q, set()).add(s)
@@ -67,10 +68,12 @@ class Script:
                 return "1" if args[0].upper() in g.running else "0"
             if name == "getisplayerbirthsign":
                 return "1" if g.sign == args[0] else "0"
+            if name == "getisclass":
+                return "1" if g.cls == args[0] else "0"
             if name == "getpos":
                 return str(g.pos["XY".index(args[0].upper())])
             raise Exception(name)
-        e = re.sub(r"(\w+\.)?(GetStageDone|GetStage|GetItemCount|GetPos|GetQuestRunning|GetDead|GetDestroyed|GetIsPlayerBirthsign)((?: \w+)*?)(?= ==| !=| >=| <=| >| <|$| \|\|| &&)",
+        e = re.sub(r"(\w+\.)?(GetStageDone|GetStage|GetItemCount|GetPos|GetQuestRunning|GetDead|GetDestroyed|GetIsPlayerBirthsign|GetIsClass)((?: \w+)*?)(?= ==| !=| >=| <=| >| <|$| \|\|| &&)",
                    fn, expr, flags=re.I)
         # Under OblivionMP, MenuMode stays 0 while a message box is open (2026-11-14).
         e = re.sub(r"\bMenuMode\b", "1" if g.menu else "0", e, flags=re.I)
@@ -358,42 +361,6 @@ def main():
     s, g = playing_prison()
     ticks(s, g, 10)
     check("prison intro in this session: not skipped", g.at == "prison" and g.moves == 0, (g.at, g.moves))
-
-    # 14. The birthsign menu (Charactergen 44): the gate for the Emperor's next line opens once a sign is chosen.
-    s, g = playing_prison()
-    g.sign = None                # a new character has none
-    g.setstage("CHARACTERGEN", 44)
-    ticks(s, g, 300)
-    check("birthsign menu open: the Emperor waits", g.globals["cqssigngate"] == 0, g.globals)
-    g.sign = "BirthSignThief"
-    ticks(s, g, 1)
-    check("birthsign chosen: the Emperor goes on", g.globals["cqssigngate"] == 1, g.globals)
-    s, g = playing_prison()
-    g.sign = "BirthSignLady"     # a character that has one already
-    g.setstage("CHARACTERGEN", 44)
-    ticks(s, g, 20)
-    g.sign = "BirthSignLord"
-    ticks(s, g, 1)
-    check("birthsign changed: the Emperor goes on", g.globals["cqssigngate"] == 1, g.globals)
-    s, g = playing_prison()
-    g.sign = "BirthSignLady"
-    g.setstage("CHARACTERGEN", 44)
-    ticks(s, g, 100)
-    check("same birthsign kept: the Emperor waits a minute", g.globals["cqssigngate"] == 0, g.globals)
-    ticks(s, g, 25)
-    check("same birthsign kept: the Emperor goes on after a minute", g.globals["cqssigngate"] == 1, g.globals)
-    s, g = playing_prison()
-    g.setstage("CHARACTERGEN", 44)
-    ticks(s, g, 610)
-    check("no birthsign ever: the Emperor goes on after five minutes", g.globals["cqssigngate"] == 1, g.globals)
-    s, g = playing_prison()
-    g.setstage("CHARACTERGEN", 50)
-    ticks(s, g, 1)
-    check("past the birthsign: the gate is open", g.globals["cqssigngate"] == 1, g.globals)
-    s, g = playing_prison()
-    g.setstage("CHARACTERGEN", 43)
-    ticks(s, g, 300)
-    check("before the menu: the gate stays shut", g.globals["cqssigngate"] == 0, g.globals)
 
     # 8. An admin offers the start again: the answer item is taken, the window comes back.
     s, g = Script(src), Game(**in_prison)
