@@ -58,6 +58,10 @@ Version 0.8.0 is the first release for OblivionMP 1.1.0, and it has had much les
   the mod's quest sync on top, a quest stage, a journal entry, gold or an item may arrive **twice**, once from
   OblivionMP and once from the mod, or reach a player who wasn't in the conversation. If you see it, please report
   the quest and stage, and whether the other player was nearby.
+* **Other changes scripts make to the world stay in one player's game.** OblivionMP shares NPC health, positions
+  and containers, but not what a script changes otherwise. Since 0.9.0 the mod shares NPCs killed by script. Still
+  not shared: Oblivion gates (a gate a friend closed stays open in your game, and each game picks its own random
+  gates to open), and things a script shows, hides, locks or unlocks. That's the next part of the work.
 * **The game starts straight in the multiplayer world**, without the main menu, and there are no local saves any
   more. The mod's add-on, the silent catch-up on join, the new-player start and getting back up after death haven't
   been tested much this way. Reports welcome, good or bad.
@@ -93,7 +97,7 @@ Version 0.8.0 is the first release for OblivionMP 1.1.0, and it has had much les
 * **The Mythic Dawn assassins in the prison and the sewers look naked and fight bare-handed.** Their armor and mace
   come from a spell, and OblivionMP dresses NPCs only with the items the server has for them, so the summoned gear
   is dropped. This is OblivionMP's to fix. Captain Renault still dies in the first ambush (the server mod sees to
-  it since 0.8.3).
+  it since 0.9.0).
 * **"[NL]" in the start window without the add-on.** The remaster puts "[NL]" in front of plugin text its own
   string tables don't have. The CoopQuestSyncUI add-on takes it off the start window; with the add-on off, the
   question and both buttons show it.

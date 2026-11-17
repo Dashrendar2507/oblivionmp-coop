@@ -37,12 +37,15 @@ public sealed class TokenMap
     /// <summary>Token ids from old test builds, [start, end). The server takes these out of inventories.</summary>
     public (uint Start, uint End) Legacy { get; }
     public IReadOnlyDictionary<string, QuestInfo> Quests => _quests;
+    /// <summary>CQSDead tokens (local id) to the actor a vanilla script kills (its ref id in Oblivion.esm).</summary>
+    public IReadOnlyDictionary<uint, (uint Ref, string? EditorId)> Deaths => _deaths;
 
     private readonly Dictionary<uint, QuestStage> _byToken = new();
     private readonly Dictionary<QuestStage, uint> _byStage = new();
     private readonly Dictionary<string, QuestInfo> _quests = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, uint> _allow = new();
     private readonly HashSet<uint> _questItems = new();
+    private readonly Dictionary<uint, (uint, string?)> _deaths = new();
 
     /// <summary>A quest the plugin mirrors. <see cref="Sync"/> is false for quests that stay local (the tutorial).</summary>
     public sealed record QuestInfo(string EditorId, string FormId, string? Name, bool Sync, IReadOnlyList<StageInfo> StageInfos)
@@ -80,6 +83,10 @@ public sealed class TokenMap
         if (root.TryGetProperty("questItems", out var qi))
             foreach (var x in qi.EnumerateArray())
                 _questItems.Add(ParseHex(x.GetString()!));
+        if (root.TryGetProperty("deaths", out var deaths))
+            foreach (var d in deaths.EnumerateArray())
+                _deaths[ParseHex(d.GetProperty("token").GetString()!)] = (ParseHex(d.GetProperty("ref").GetString()!),
+                    d.TryGetProperty("editorId", out var e) && e.ValueKind == JsonValueKind.String ? e.GetString() : null);
         if (root.TryGetProperty("legacy", out var legacy))
             Legacy = (ParseHex(legacy[0].GetString()!), ParseHex(legacy[1].GetString()!));
         foreach (var q in root.GetProperty("quests").EnumerateArray())

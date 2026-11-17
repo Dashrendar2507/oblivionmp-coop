@@ -374,6 +374,87 @@ NEW_START_SCRIPT = "\r\n".join([
        "endif",
        "end"]) + "\r\n"
 
+# ---------------------------------------------------------------------------------------------------------------
+# Scripted deaths (world state sync, part 1)
+#
+# Vanilla scripts kill many NPCs with the Kill command (Captain Renault in the prison, Glenroy, quest victims). Under
+# OblivionMP that death stays in the game that ran the script: the server keeps the NPC alive and brings it back
+# (2026-11-17). Every persistent actor a vanilla script kills gets a CQSDead token: the plugin gives it when that
+# actor dies in the player's game while they play (not dead already when the game loaded), the server kills the actor
+# on its side (DeathSync) and takes the token back.
+KILL_LINE = re.compile(r"(?:(\w+)\.)?(?:kill|killactor)\b", re.I)
+RESURRECT_LINE = re.compile(r"(?:(\w+)\.)?resurrect\b", re.I)
+DEATHS_PER_SCRIPT = 25
+
+
+def find_scripted_deaths(lo):
+    """Persistent actor refs (ACHR/ACRE) that a vanilla script kills: [(ref form id, editor id or None)]. Actors a script
+    also brings back (Resurrect: the Arena's combatants...) are left to the game."""
+    buf = lo.sources[0].buf
+    by_edid, by_base, persistent, base_script, self_kill, named = {}, {}, set(), {}, set(), set()
+    self_back, named_back = set(), set()
+    for r in tes4.iter_records(buf, want={"SCPT", "QUST", "DIAL", "INFO", "CELL", "WRLD", "ACHR", "ACRE", "NPC_", "CREA"}):
+        if r.type in ("ACHR", "ACRE"):
+            by_base.setdefault(struct.unpack("<I", r.get("NAME")[:4])[0], []).append(r.formid)
+            if r.flags & 0x400:
+                persistent.add(r.formid)
+            if r.edid:
+                by_edid[r.edid.lower()] = r.formid
+            continue
+        if r.type in ("NPC_", "CREA"):
+            if r.get("SCRI"):
+                base_script[r.formid] = struct.unpack("<I", r.get("SCRI"))[0]
+            continue
+        for k, v in r.subs:
+            if k != "SCTX":
+                continue
+            for line in v.decode("cp1252", "replace").split("\n"):
+                code = line.split(";")[0].strip()
+                b = RESURRECT_LINE.match(code)
+                if b:
+                    if b.group(1):
+                        named_back.add(b.group(1).lower())
+                    elif r.type == "SCPT":
+                        self_back.add(r.formid)
+                m = KILL_LINE.match(code)
+                if not m:
+                    continue
+                if m.group(1):
+                    named.add(m.group(1).lower())
+                elif r.type == "SCPT":
+                    self_kill.add(r.formid)
+    refs = {by_edid[n] for n in named if n in by_edid}
+    back = {by_edid[n] for n in named_back if n in by_edid}
+    for base, script in base_script.items():
+        if script in self_kill:
+            refs.update(by_base.get(base, []))
+        if script in self_back:
+            back.update(by_base.get(base, []))
+    refs -= back
+    edid_of = {v: k for k, v in by_edid.items()}
+    return sorted((f, edid_of.get(f)) for f in refs if f in persistent)
+
+
+def death_script(edid, refs):
+    """refs: [(ref form id, token editor id, local variable)]. A death counts once the game has run a few seconds."""
+    lines = [f"scn {edid}", "float fQuestDelayTime", "short warm"] + [f"short {var}" for _, _, var in refs]
+    lines += ["begin GameMode", "set fQuestDelayTime to 0.25", "if warm < 8", "set warm to warm + 1", "endif"]
+    for ref, tok, var in refs:
+        name = f"CQSRef{ref:08X}"
+        lines += [f"if {name}.GetDead == 1",
+                  f"if {var} == 0",
+                  f"set {var} to 1",
+                  # Dead already while the game loaded (the save's own state): not a death in play.
+                  "if warm >= 8",
+                  f"if player.GetItemCount {tok} == 0",
+                  f"player.AddItem {tok} 1",
+                  "endif", "endif", "endif",
+                  "else",
+                  f"set {var} to 0",
+                  "endif"]
+    return "\r\n".join(lines + ["end"]) + "\r\n"
+
+
 # Vanilla forms the new-start script names, looked up in Oblivion.esm by editor id.
 START_FORMS = ["MQ01", "MQ02", "Charactergen", "CGSewerExitMarker", "RenoteRef", *START_TOPICS]
 
@@ -679,6 +760,25 @@ def build_main(lo, outdir, only):
     scpt.append(rec)
     qust.append(quest_record(mod | nqid, "CQSNewStart", mod | nsid))
 
+    # Scripted deaths: one token per actor, scripts of DEATHS_PER_SCRIPT actors each.
+    deaths = []
+    for ref, ref_edid in ([] if only else find_scripted_deaths(lo)):
+        tid = token_id(f"dead:{ref:08X}")
+        tedid = f"CQSDead{ref:08X}"
+        names[tedid.lower()] = mod | tid
+        clot.append(token_record(mod | tid, tedid))
+        deaths.append(dict(token=f"{tid:06X}", ref=f"{ref:08X}", editorId=ref_edid))
+    death_names = {**names, **{f"cqsref{int(d['ref'], 16):08x}": int(d["ref"], 16) for d in deaths}}
+    for i in range(0, len(deaths), DEATHS_PER_SCRIPT):
+        chunk = [(int(d["ref"], 16), f"CQSDead{d['ref']}", f"d{j}") for j, d in enumerate(deaths[i:i + DEATHS_PER_SCRIPT])]
+        part = i // DEATHS_PER_SCRIPT + 1
+        dsid, dqid = nxt, nxt + 1; nxt += 2
+        rec, size = scpt_record(mod | dsid, f"CQSDeathScript{part}", death_script(f"CQSDeathScript{part}", chunk),
+                                lambda n: death_names.get(n.lower()))
+        max_code = max(max_code, size)
+        scpt.append(rec)
+        qust.append(quest_record(mod | dqid, f"CQSDeaths{part}", mod | dsid))
+
     count = len(glob) + len(clot) + len(scpt) + len(qust) + len(overrides)
     data = tes4write.header(count, nxt, "CoopQuestSync generator",
                             "Mirrors vanilla quest stages into hidden token items for OblivionMP co-op.",
@@ -696,10 +796,11 @@ def build_main(lo, outdir, only):
                        allow={c: f"{v:06X}" for c, v in ALLOW.items()}, categories=scriptpatch.CATEGORIES,
                        newStart=dict(offer=f"{START_OFFER:06X}", prison=f"{START_PRISON:06X}",
                                      done=f"{START_DONE:06X}", intro=f"{START_INTRO:06X}", kit=f"{START_KIT:06X}"),
-                       legacy=[f"{BASE + 0x10:06X}", f"{BASE + 0x30:06X}"], tokenName=TOKEN_NAME,
+                       legacy=[f"{BASE + 0x10:06X}", f"{BASE + 0x30:06X}"], tokenName=TOKEN_NAME, deaths=deaths,
                        questItems=[f"{x:08X}" for x in quest_items], quests=mapping), f, indent=1)
     stages = sum(len(q["stages"]) for q in quests)
     patched = sum(len(q["effects"]) for q in quests)
+    print(f"{PLUGIN}: {len(deaths)} actors killed by script watched")
     print(f"{PLUGIN}: {len(quests)} quests, {stages} stages, {patched} stages with guarded effects in "
           f"{len(overrides)} quest overrides, {len(quest_items)} quest items, {count} records, {len(data)} bytes, "
           f"largest script {max_code} bytes")

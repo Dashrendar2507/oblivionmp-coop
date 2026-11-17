@@ -1,7 +1,13 @@
 # Changelog
 
-## 0.8.3
+## 0.9.0 (test build)
 
+* **Deaths by script are shared (world state sync, part 1).** Vanilla quests kill many NPCs with a script command
+  instead of damage (106 actors in Oblivion.esm: Captain Renault, Glenroy and the Emperor in the prison, quest
+  victims...). Under OblivionMP that death stayed in the game that ran the script: the server kept the NPC alive and
+  brought it back for everyone. The plugin now watches those actors, and when one dies in a player's game while they
+  play, the server kills it too, so it is dead for everyone, including players who join later. Actors a script also
+  brings back (the Arena's combatants) are left to the game.
 * **Captain Renault dies in the first ambush of the prison intro.** In the game she dies by script when the assassins
   strike, but under OblivionMP that death stayed in one player's game: the server kept her alive and brought her
   back, and the intro waited for her. The server now kills her at the same moments (an assassin hits her, or
