@@ -26,6 +26,8 @@ class Game:
         self.stopped = set()
         self.chargen = None      # what SetInCharGen last set
         self.dead = set()        # refs that are dead
+        self.destroyed = set()   # refs that are destroyed
+        self.activated = []      # (ref, by) activations done by the script
         self.at = "prison"
         self.moves = 0
 
@@ -55,6 +57,8 @@ class Script:
                 return "1" if int(args[1]) in g.done.get(args[0].upper(), set()) else "0"
             if name == "getitemcount":
                 return str(g.inv.get(args[0], 0))
+            if name == "getdestroyed":
+                return "1" if m.group(1) and m.group(1)[:-1] in g.destroyed else "0"
             if name == "getdead":
                 return "1" if m.group(1) and m.group(1)[:-1] in g.dead else "0"
             if name == "getquestrunning":
@@ -62,7 +66,7 @@ class Script:
             if name == "getpos":
                 return str(g.pos["XY".index(args[0].upper())])
             raise Exception(name)
-        e = re.sub(r"(\w+\.)?(GetStageDone|GetStage|GetItemCount|GetPos|GetQuestRunning|GetDead)((?: \w+)*?)(?= ==| !=| >=| <=| >| <|$| \|\|| &&)",
+        e = re.sub(r"(\w+\.)?(GetStageDone|GetStage|GetItemCount|GetPos|GetQuestRunning|GetDead|GetDestroyed)((?: \w+)*?)(?= ==| !=| >=| <=| >| <|$| \|\|| &&)",
                    fn, expr, flags=re.I)
         # Under OblivionMP, MenuMode stays 0 while a message box is open (2026-11-14).
         e = re.sub(r"\bMenuMode\b", "1" if g.menu else "0", e, flags=re.I)
@@ -123,6 +127,8 @@ class Script:
             elif kw == "stopquest":
                 g.stopped.add(l.split()[1].upper())
                 g.running.discard(l.split()[1].upper())
+            elif kw.endswith(".activate"):
+                g.activated.append((l.split()[0].split(".")[0], l.split()[1]))
             elif kw == "setinchargen":
                 g.chargen = int(l.split()[1])
             elif kw == "player.moveto":
@@ -309,6 +315,23 @@ def main():
     g.dead.add("RenoteRef")
     ticks(s, g)
     check("before the ambush: nothing moved on", 24 not in g.done.get("CHARACTERGEN", set()), g.done)
+
+    # 12. The rats never come (not on the server): the wall is crumbled 15 s after Charactergen 29, once.
+    s, g = Script(src), Game(**in_prison, inv={"CQSStartPrison": 1})
+    g.setstage("CHARACTERGEN", 29)
+    ticks(s, g, 20)
+    check("wall: not before 15 s", not g.activated, g.activated)
+    ticks(s, g, 15)
+    check("wall: crumbled by the plugin", g.activated == [("CQSCrumbleWall", "CGCrumbleDust01REF")], g.activated)
+    g.destroyed.add("CQSCrumbleWall")
+    ticks(s, g, 40)
+    check("wall: once", len(g.activated) == 1, g.activated)
+    s, g = Script(src), Game(**in_prison, inv={"CQSStartPrison": 1})
+    g.setstage("CHARACTERGEN", 29)
+    ticks(s, g, 5)
+    g.destroyed.add("CQSCrumbleWall")  # the rats did it
+    ticks(s, g, 60)
+    check("wall: left alone when the rats crumble it", not g.activated, g.activated)
 
     # 8. An admin offers the start again: the answer item is taken, the window comes back.
     s, g = Script(src), Game(**in_prison)

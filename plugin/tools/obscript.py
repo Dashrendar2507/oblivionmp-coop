@@ -23,6 +23,9 @@ FUNCS = {
     "addtopic":      (0x1058, ["ref"]),
     "getbuttonpressed": (0x101F, None),
     "getdead":       (0x102E, None),
+    "getdisabled":   (0x1023, None),
+    "getdestroyed":  (0x10CB, None),
+    "activate":      (0x100D, ["ref", "int"]),
     "getpos":        (0x1006, ["axis"]),   # the axis is one byte, the letter itself
     # an optional menu type: the game writes an empty parameter list (a zero count) when there is none
     "menumode":      (0x1024, []),

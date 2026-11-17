@@ -8,6 +8,10 @@
   brought it back for everyone. The plugin now watches those actors, and when one dies in a player's game while they
   play, the server kills it too, so it is dead for everyone, including players who join later. Actors a script also
   brings back (the Arena's combatants) are left to the game.
+* **The wall in the prison crumbles after the first ambush.** Two rats push it in, but they start hidden, and the
+  OblivionMP server refuses a script's request to show an NPC it doesn't have ("NoEntity"), so they never came and
+  the intro was stuck. The plugin now crumbles the wall itself if the rats haven't done it 15 s after they should
+  have come.
 * **Captain Renault dies in the first ambush of the prison intro.** In the game she dies by script when the assassins
   strike, but under OblivionMP that death stayed in one player's game: the server kept her alive and brought her
   back, and the intro waited for her. The server now kills her at the same moments (an assassin hits her, or

@@ -263,7 +263,7 @@ START_INFO = ("Welcome to the co-op server! You start at the sewer exit with the
               "and make your character there.")
 NEW_START_SCRIPT = "\r\n".join([
     "scn CQSNewStartScript", "float fQuestDelayTime", "short state", "short button", "short offer", "short want",
-    "short have", "short waited", "float px", "float py", "float lastx", "float lasty",
+    "short have", "short waited", "float px", "float py", "float lastx", "float lasty", "short wallwait",
     "begin GameMode",
     "set fQuestDelayTime to 0.5",
     # CQSIntro: 1 in the prison intro, 2 when the player never left the sewers but no intro runs, 0 once out.
@@ -298,6 +298,20 @@ NEW_START_SCRIPT = "\r\n".join([
     "endif",
     # Captain Renault died in the first ambush on the server (IntroDeaths), not by the hit whose script moves the intro
     # on: move it on here (OblivionMP 2026-11-17: she didn't die, and the intro waited).
+    # The rats that push the prison wall in (Charactergen 29 enables them) aren't on the OblivionMP server, which refuses
+    # their Enable ("NoEntity", 2026-11-17): the wall never crumbled and the intro was stuck. 15 s after they should
+    # have come, crumble it here (its script takes any activator but the player).
+    "if GetStage Charactergen >= 29 && GetStageDone MQ01 88 == 0 && wallwait < 1000",
+    "if CQSCrumbleWall.GetDestroyed == 0",
+    "set wallwait to wallwait + 1",
+    "if wallwait >= 30",
+    "CQSCrumbleWall.Activate CGCrumbleDust01REF 1",
+    "set wallwait to 1000",
+    "endif",
+    "else",
+    "set wallwait to 1000",
+    "endif",
+    "endif",
     "if GetStage Charactergen >= 22 && GetStage Charactergen < 24",
     "if RenoteRef.GetDead == 1",
     "SetStage Charactergen 24",
@@ -456,7 +470,9 @@ def death_script(edid, refs):
 
 
 # Vanilla forms the new-start script names, looked up in Oblivion.esm by editor id.
-START_FORMS = ["MQ01", "MQ02", "Charactergen", "CGSewerExitMarker", "RenoteRef", *START_TOPICS]
+START_FORMS = ["MQ01", "MQ02", "Charactergen", "CGSewerExitMarker", "RenoteRef", "CGCrumbleDust01REF", *START_TOPICS]
+# The prison wall the rats push in (CGCrumbleWall01SCRIPT); the reference has no editor id.
+CRUMBLE_WALL = 0x0003E31C
 
 
 def vanilla_forms(lo, edids):
@@ -754,7 +770,7 @@ def build_main(lo, outdir, only):
     qust.append(quest_record(mod | cqid, "CQSControl", mod | csid))
     # The new-player start. Its own names: vanilla forms the quest tables above may leave out (Charactergen is never
     # mirrored), on top of ours.
-    start_names = {**vanilla_forms(lo, START_FORMS), **names}
+    start_names = {**vanilla_forms(lo, START_FORMS), **names, "cqscrumblewall": CRUMBLE_WALL}
     nsid, nqid = nxt, nxt + 1; nxt += 2
     rec, _ = scpt_record(mod | nsid, "CQSNewStartScript", NEW_START_SCRIPT, lambda n: start_names.get(n.lower()))
     scpt.append(rec)
