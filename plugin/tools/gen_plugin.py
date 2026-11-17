@@ -455,6 +455,93 @@ def find_scripted_deaths(lo):
     return sorted((f, edid_of.get(f)) for f in refs if f in persistent)
 
 
+# Kills on a hit by a given actor ("begin OnHit CGAssassinFinal / kill"): the Emperor in the prison, Renault, the
+# orcs at the Shivering Isles gate. Under OblivionMP that hit never reaches the victim's script: the assassin's blow
+# played, the Emperor lived, and the intro kept the player frozen waiting for his death (2026-11-17). The plugin
+# kills the victim itself once that attacker has fought it at melee range for a moment, under the block's own
+# conditions on the victim's script variables; the game's scripts then go on from the death as they would.
+HIT_RANGE, HIT_TICKS = 220, 3          # units; half-second runs in a row (the swing lands within that)
+HITS_PER_SCRIPT = 20
+
+
+def find_hit_kills(lo):
+    """[{victim, attacker, conditions}] for each persistent actor whose script kills it on a hit by a given actor.
+    victim/attacker: (form id, editor id or None); conditions: ifs around the kill, on the victim's own variables, as
+    [(variable, operator, number)]."""
+    buf = lo.sources[0].buf
+    by_edid, by_base, persistent, base_script, scripts = {}, {}, set(), {}, {}
+    for r in tes4.iter_records(buf, want={"SCPT", "CELL", "WRLD", "ACHR", "ACRE", "NPC_", "CREA"}):
+        if r.type in ("ACHR", "ACRE"):
+            by_base.setdefault(struct.unpack("<I", r.get("NAME")[:4])[0], []).append(r.formid)
+            if r.flags & 0x400:
+                persistent.add(r.formid)
+            if r.edid:
+                by_edid[r.edid.lower()] = r.formid
+        elif r.type in ("NPC_", "CREA") and r.get("SCRI"):
+            base_script[r.formid] = struct.unpack("<I", r.get("SCRI"))[0]
+        elif r.type == "SCPT" and r.get("SCTX"):
+            scripts[r.formid] = r
+    out = []
+    for sid, r in scripts.items():
+        text = r.get("SCTX").decode("cp1252", "replace")
+        variables = {}
+        for k, v in r.subs:
+            if k == "SLSD":
+                idx, flags = struct.unpack_from("<I", v)[0], v[16]
+            elif k == "SCVR":
+                variables[v.rstrip(b"\0").decode("cp1252").lower()] = (idx, bool(flags & 1))
+        for m in re.finditer(r"^\s*begin\s+onhit\s+(\w+)\s*$(.*?)^\s*end\b", text, re.I | re.M | re.S):
+            attacker = by_edid.get(m.group(1).lower())
+            if attacker is None:        # the player (their hits do reach the scripts), or not a reference
+                continue
+            ifs, found = [], None
+            for line in m.group(2).split("\n"):
+                code = line.split(";")[0].strip()
+                low = code.lower()
+                if low.startswith("if "):
+                    c = re.fullmatch(r"if\s*\(?\s*(\w+)\s*(==|!=|>=|<=|>|<)\s*(-?\d+)\s*\)?", code, re.I)
+                    ifs.append((c.group(1).lower(), c.group(2), int(c.group(3)))
+                               if c and c.group(1).lower() in variables else None)
+                elif low == "endif":
+                    ifs.pop()
+                elif re.fullmatch(r"(kill|killactor)", low) and found is None:
+                    found = list(ifs)
+            if found is None or None in found:      # no self kill, or under a condition we can't read
+                continue
+            for base, script in base_script.items():
+                if script != sid:
+                    continue
+                for ref in by_base.get(base, []):
+                    if ref in persistent:
+                        out.append(dict(victim=ref, attacker=attacker, conditions=found,
+                                        variables={v: variables[v] for v, _, _ in found}))
+    edid_of = {v: k for k, v in by_edid.items()}
+    for h in out:
+        h["victim_edid"], h["attacker_edid"] = edid_of.get(h["victim"]), edid_of.get(h["attacker"])
+    return sorted(out, key=lambda h: (h["victim"], h["attacker"]))
+
+
+def hit_kill_script(edid, hits):
+    """hits: find_hit_kills entries. The victim dies once its attacker has fought it up close for HIT_TICKS runs."""
+    lines = [f"scn {edid}", "float fQuestDelayTime"] + [f"short h{i}" for i in range(len(hits))]
+    lines += ["begin GameMode", "set fQuestDelayTime to 0.5"]
+    for i, h in enumerate(hits):
+        v, a = f"CQSRef{h['victim']:08X}", f"CQSRef{h['attacker']:08X}"
+        cond = "".join(f" && {v}.{var} {op} {num}" for var, op, num in h["conditions"])
+        lines += [f"if {v}.GetDead == 0 && {a}.GetDead == 0{cond}",
+                  f"if {a}.GetCombatTarget == {v} && {a}.GetDistance {v} < {HIT_RANGE}",
+                  f"set h{i} to h{i} + 1",
+                  f"if h{i} >= {HIT_TICKS}",
+                  f"{v}.Kill",
+                  f"set h{i} to 0",
+                  "endif",
+                  "else",
+                  f"set h{i} to 0",
+                  "endif",
+                  "endif"]
+    return "\r\n".join(lines + ["end"]) + "\r\n"
+
+
 def find_placed_corpses(lo):
     """Actor refs (ACHR/ACRE) placed dead in Oblivion.esm: their base NPC or creature has 0 health, so the game has
     them dead from the start (the dead goblin with the lockpicks in the prison's cave, skeletons, bodies). The OblivionMP
@@ -712,8 +799,9 @@ def menu_gate_script(gates, lo):
 # ---------------------------------------------------------------------------------------------------------------
 # Records
 
-def scpt_record(formid, edid, source, resolve, globals_=()):
+def scpt_record(formid, edid, source, resolve, globals_=(), extvar=None):
     s = obscript.Script(resolve, [*GLOBALS.keys(), *globals_])
+    s.extvar = extvar
     code = s.compile(source)
     subs = [("EDID", edid),
             ("SCHR", struct.pack("<IIIIHH", 0, len(s.refs), len(code), len(s.vars), 1, 0)),
@@ -990,6 +1078,21 @@ def build_main(lo, outdir, only):
         deaths.append(dict(token=f"{tid:06X}", ref=f"{ref:08X}", editorId=ref_edid))
     corpses = [dict(ref=f"{ref:08X}", editorId=ref_edid) for ref, ref_edid in ([] if only else find_placed_corpses(lo))]
     death_names = {**names, **{f"cqsref{int(d['ref'], 16):08x}": int(d["ref"], 16) for d in deaths}}
+
+    # Kills on a hit by a given actor (see find_hit_kills).
+    hits = [] if only else find_hit_kills(lo)
+    for i in range(0, len(hits), HITS_PER_SCRIPT):
+        chunk = hits[i:i + HITS_PER_SCRIPT]
+        part = i // HITS_PER_SCRIPT + 1
+        hit_names = {f"cqsref{f:08x}": f for h in chunk for f in (h["victim"], h["attacker"])}
+        hsid, hqid = nxt, nxt + 1; nxt += 2
+        variables = {(f"cqsref{h['victim']:08x}", var): h["variables"][var] for h in chunk for var in h["variables"]}
+        rec, size = scpt_record(mod | hsid, f"CQSHitKillScript{part}", hit_kill_script(f"CQSHitKillScript{part}", chunk),
+                                lambda n: hit_names.get(n.lower()),
+                                extvar=lambda ref, var: variables.get((ref.lower(), var.lower())))
+        max_code = max(max_code, size)
+        scpt.append(rec)
+        qust.append(quest_record(mod | hqid, f"CQSHitKills{part}", mod | hsid))
     for i in range(0, len(deaths), DEATHS_PER_SCRIPT):
         chunk = [(int(d["ref"], 16), f"CQSDead{d['ref']}", f"d{j}") for j, d in enumerate(deaths[i:i + DEATHS_PER_SCRIPT])]
         part = i // DEATHS_PER_SCRIPT + 1
@@ -1024,7 +1127,7 @@ def build_main(lo, outdir, only):
     stages = sum(len(q["stages"]) for q in quests)
     patched = sum(len(q["effects"]) for q in quests)
     print(f"{PLUGIN}: {len(deaths)} actors killed by script watched, {len(corpses)} actors placed dead, "
-          + "menu gates: " + (", ".join(f"{g['quest']} {g['stage']} ({g['kind']}, {len(g['packages'])} package(s))" for g in gates) or "none"))
+          + f"{len(hits)} kills on a hit, menu gates: " + (", ".join(f"{g['quest']} {g['stage']} ({g['kind']}, {len(g['packages'])} package(s))" for g in gates) or "none"))
     print(f"{PLUGIN}: {len(quests)} quests, {stages} stages, {patched} stages with guarded effects in "
           f"{len(overrides)} quest overrides, {len(quest_items)} quest items, {count} records, {len(data)} bytes, "
           f"largest script {max_code} bytes")

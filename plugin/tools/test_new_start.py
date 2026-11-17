@@ -33,6 +33,9 @@ class Game:
         self.sign = None         # the player's birthsign (editor id)
         self.cls = None          # the player's class (editor id; None: their own)
         self.globals = {}        # global variables (lower case editor id)
+        self.targets = {}        # ref -> the ref it fights
+        self.dist = {}           # (ref, ref) -> distance
+        self.refvars = {}        # (ref, variable lower case) -> another script's variable
 
     def setstage(self, q, s):
         self.done.setdefault(q, set()).add(s)
@@ -68,13 +71,20 @@ class Script:
                 return "1" if args[0].upper() in g.running else "0"
             if name == "getisplayerbirthsign":
                 return "1" if g.sign == args[0] else "0"
+            if name == "getcombattarget":
+                return repr(g.targets.get(m.group(1)[:-1]) if m.group(1) else None)
+            if name == "getdistance":
+                a = m.group(1)[:-1]
+                return str(g.dist.get((a, args[0]), g.dist.get((args[0], a), 99999)))
             if name == "getisclass":
                 return "1" if g.cls == args[0] else "0"
             if name == "getpos":
                 return str(g.pos["XY".index(args[0].upper())])
             raise Exception(name)
-        e = re.sub(r"(\w+\.)?(GetStageDone|GetStage|GetItemCount|GetPos|GetQuestRunning|GetDead|GetDestroyed|GetIsPlayerBirthsign|GetIsClass)((?: \w+)*?)(?= ==| !=| >=| <=| >| <|$| \|\|| &&)",
+        e = re.sub(r"(\w+\.)?(GetStageDone|GetStage|GetItemCount|GetPos|GetQuestRunning|GetDead|GetDestroyed|GetIsPlayerBirthsign|GetIsClass|GetCombatTarget|GetDistance)((?: \w+)*?)(?= ==| !=| >=| <=| >| <|$| \|\|| &&)",
                    fn, expr, flags=re.I)
+        # Another reference's script variable.
+        e = re.sub(r"\b([A-Za-z_]\w*)\.([A-Za-z_]\w*)\b", lambda m: str(g.refvars.get((m.group(1), m.group(2).lower()), 0)), e)
         # Under OblivionMP, MenuMode stays 0 while a message box is open (2026-11-14).
         e = re.sub(r"\bMenuMode\b", "1" if g.menu else "0", e, flags=re.I)
         if re.search(r"GetButtonPressed", e, re.I):
@@ -84,10 +94,14 @@ class Script:
 
         def var(m):
             w = m.group(0)
-            if w in ("and", "or"):
+            if w in ("and", "or", "None"):
                 return w
-            return str(self.vars[w.lower()] if w.lower() in self.vars else g.globals[w.lower()])
-        return eval(re.sub(r"[A-Za-z_]\w*", var, e))
+            if w.lower() in self.vars:
+                return str(self.vars[w.lower()])
+            if w.lower() in g.globals:
+                return str(g.globals[w.lower()])
+            return repr(w)              # a form name (compared with GetCombatTarget)
+        return eval(re.sub(r"'[^']*'|[A-Za-z_]\w*", lambda m: m.group(0) if m.group(0)[0] == "'" else var(m), e))
 
     def run(self, g):
         # OblivionMP doesn't pause the game for a message box: GameMode blocks keep running while it is open.
@@ -135,6 +149,8 @@ class Script:
             elif kw == "stopquest":
                 g.stopped.add(l.split()[1].upper())
                 g.running.discard(l.split()[1].upper())
+            elif kw.endswith(".kill"):
+                g.dead.add(l.split()[0].split(".")[0])
             elif kw.endswith(".activate"):
                 g.activated.append((l.split()[0].split(".")[0], l.split()[1]))
             elif kw == "setinchargen":

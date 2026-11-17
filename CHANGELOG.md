@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.9.6 (test build)
+
+* **The Emperor dies to the assassin again, and the prison intro goes on.** The game kills him with his own script
+  when the final assassin's blow lands, but under OblivionMP that hit never reaches his script: the blow played, he
+  lived, and the intro kept you frozen waiting for his death. The same goes for every script that kills an actor when
+  a given attacker hits it. The plugin generator now finds all of them (the Emperor, Captain Renault, the orcs at the
+  Shivering Isles gate), and the plugin kills the actor once that attacker has fought it up close for a moment, under
+  the same conditions as the game's script. The rest of the game's scripts then go on from the death.
+
 ## 0.9.5 (test build)
 
 * **Every menu a quest opens waits like the birthsign menu now.** 0.9.4 fixed the Emperor's line only. The plugin
