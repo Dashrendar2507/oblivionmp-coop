@@ -117,6 +117,13 @@ public sealed partial class NewStart(IEntities entities, QuestTokenSync sync, In
 
             if (prison > 0 || done > 0)
             {
+                // Just chose the prison (the window was up in this session): name, race and face now, as the intro's
+                // first menu would have (the start save is past it). Not again on a rejoin while still in the intro.
+                if (prison > 0 && _told.GetValueOrDefault(id) == "ask")
+                {
+                    rpc.SendChooseRace(id);
+                    logger.LogInformation("[QuestSync] {Player} chose the prison intro: opening the race menu.", sync.Nickname(id));
+                }
                 if (offer > 0)
                     sync.Take(main, slot << 24 | Map.StartOfferLocalId, offer);
                 if (done > 0 && kit == 0)

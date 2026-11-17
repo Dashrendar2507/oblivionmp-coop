@@ -87,6 +87,12 @@ public static partial class CoopRpcContracts
     [ServerToClient] public static partial void MakeCharacter();
 
     /// <summary>
+    /// A new player chose the prison intro: the game opens the race menu (name, race, face) at once. The intro itself
+    /// shows the birthsign (the Emperor) and the class (Baurus) later on.
+    /// </summary>
+    [ServerToClient] public static partial void ChooseRace();
+
+    /// <summary>
     /// The server would like the game's text for these keys (LOC_..., one per line), in this player's language: their
     /// game looks them up (the CoopQuestSyncUI add-on asks the running game) and answers with <see cref="TextFound"/>.
     /// That is how the server gets its text without reading the game's compressed files.

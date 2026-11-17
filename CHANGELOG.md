@@ -9,6 +9,8 @@
   in their game at once. Players who already left on 0.8.0 or 0.8.1 have that token, so it works for them too.
 * **Rejoining before going through the sewer gate puts you back at the sewer exit** (after the skip), instead of in
   the prison cell with the intro running.
+* **Choosing the prison intro opens the race menu at once** (name, race, face). The start save is past the intro's
+  own race menu; the intro still shows the birthsign and class menus later.
 * A new character with a nickname that was used before is never taken to the old character's last spot.
 
 ## 0.8.1

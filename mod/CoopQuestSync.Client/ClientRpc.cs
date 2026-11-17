@@ -43,6 +43,8 @@ public sealed partial class ClientRpc(WitnessOverlay overlay, PartyTags tags, Co
 
     partial void OnMakeCharacter() => menus.Request();
 
+    partial void OnChooseRace() => menus.Request(raceOnly: true);
+
     partial void OnTextWanted(string keys) => text.ServerWants(keys);
 
     partial void OnDown(string text) => down.Set(text);

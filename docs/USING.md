@@ -44,8 +44,9 @@ with an R in them while you're down (see [Death](#how-it-plays) below).
 * **New players** start in the prison cell, like a new game. OblivionMP 1.1 starts every new character from one
   save on the server; the mod puts a save made in the prison cell there each time the server starts (setting "Start
   in the prison"). The new player makes their character the game's own way, and on arrival the game's own window
-  asks: **play the prison intro**, or **skip to the sewer exit** (with the Amulet of Kings, a starter kit and the
-  race, class and birthsign menus, which open once you've stood at the sewer exit for a few seconds). The window
+  asks: **play the prison intro** (the race menu opens right away; the intro shows the birthsign and class menus
+  later), or **skip to the sewer exit** (with the Amulet of Kings, a starter kit and the race, class and birthsign
+  menus, which open once you've stood at the sewer exit for a few seconds). The window
   stays up until you click; close the Esc menu before answering it. If a load closes the window before you answer,
   it comes back once you walk a few steps. The Emperor and the prison are shared by everyone, so the intro plays once per
   world: once someone has played it and left the sewers, later newcomers start at the sewer exit. The party's
