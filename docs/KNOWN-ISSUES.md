@@ -62,10 +62,10 @@ Version 0.8.0 is the first release for OblivionMP 1.1.0, and it has had much les
   and containers, but not what a script changes otherwise. Since 0.9.0 the mod shares NPCs killed by script. Still
   not shared: Oblivion gates (a gate a friend closed stays open in your game, and each game picks its own random
   gates to open), and things a script shows, hides, locks or unlocks. That's the next part of the work.
-* **NPCs a script brings into the world may never appear.** Many quests keep an NPC hidden until a script shows it
-  (about 300 in Oblivion.esm). The OblivionMP server doesn't have these NPCs and refuses to show them, so they stay
-  hidden. The mod works around the prison intro's rats (the wall they push in crumbles anyway); others need a fix in
-  OblivionMP. Please report the quest if someone who should show up never does.
+* **Some NPCs a script brings into the world may still never appear.** Many quests keep an NPC hidden until a script
+  shows it. Since 0.9.1 the server makes these NPCs itself so the script can show them, but not the hidden leveled
+  creatures (a random pick from a list, about 400), nor anything that appears because a hidden marker is switched
+  on. Please report the quest if someone who should show up never does.
 * **The game starts straight in the multiplayer world**, without the main menu, and there are no local saves any
   more. The mod's add-on, the silent catch-up on join, the new-player start and getting back up after death haven't
   been tested much this way. Reports welcome, good or bad.

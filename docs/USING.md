@@ -93,6 +93,7 @@ The server host opens **http://localhost:9060/** on the server computer (see
 | Party leader | (none) | Used by "leader only" and by respawns. |
 | Wait while someone talks | On | New stages reach a player once their conversation ends. |
 | Announce progress in chat | On | "Alice advanced The Quest: ..." |
+| NPCs that quests bring in | On | The server keeps the hidden NPCs and creatures a quest script shows (an ambush, the prison rats), so they appear for everyone. |
 
 **Effects of a stage someone else reached.** Each quest stage that does something to the player is tagged with
 what it does: **Teleport**, **Combat**, **Items**, **Status**, **Faction ranks**, **Cut scene**. The player who

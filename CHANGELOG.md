@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.9.1 (test build)
+
+* **NPCs that quests bring in appear for everyone (world state sync, part 2).** Many quests keep NPCs and creatures
+  hidden until a script shows them: an ambush, someone who turns up for a quest, the rats that break through the
+  prison wall. The OblivionMP server never had these (a game only reports the actors it shows), so it refused the
+  script's request to show them and they never came. The server now creates them itself, still hidden, from the
+  server's own seed (868 in the base game and its DLCs) once a player is in their area, so the script's request goes
+  through for everyone. They get their usual gear. Hidden leveled creatures (a random pick from a list) are left out
+  for now. Setting: "NPCs that quests bring in" (on).
+
 ## 0.9.0 (test build)
 
 * **Deaths by script are shared (world state sync, part 1).** Vanilla quests kill many NPCs with a script command
