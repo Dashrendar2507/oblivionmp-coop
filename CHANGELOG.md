@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.8.2
+
+* **Back where you left after leaving the sewers.** Every join loads the server's start save, the prison, so the
+  game thought a returning player's intro was under way again: the mod kept them in the prison cell instead of
+  taking them back, held the party's progress, and the vanilla tutorial ran again. The plugin now knows from the
+  character's own "left the sewers" quest token (MQ01 88, kept on the server) that they are out, and ends the intro
+  in their game at once. Players who already left on 0.8.0 or 0.8.1 have that token, so it works for them too.
+* **Rejoining before going through the sewer gate puts you back at the sewer exit** (after the skip), instead of in
+  the prison cell with the intro running.
+* **Choosing the prison intro opens the race menu at once** (name, race, face). The start save is past the intro's
+  own race menu; the intro still shows the birthsign and class menus later.
+* A new character with a nickname that was used before is never taken to the old character's last spot.
+
 ## 0.8.1
 
 * **Giving a stage on the web page right after resetting its quest works.** It reached nobody ("pushed MQ02 10 to

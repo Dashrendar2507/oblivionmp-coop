@@ -102,6 +102,9 @@ public sealed partial class FreshCharacter(IEntities entities, QuestTokenSync sy
             if (view.Intro > 0 && main.Level <= 1)
             {
                 sync.TakePresetStages(view);
+                // Not taken to where an earlier character with this nickname last stood, once out of the sewers.
+                if (sync.Returns.Remove(sync.Nickname(id)) | sync.Outdoors.Remove(sync.Nickname(id)))
+                    sync.MarkDirty();
                 // The server's start save is the game's own start (the prison): nothing to undo. The new-player start
                 // (NewStart) offers the prison intro or the sewer exit, and the game makes the character.
                 logger.LogInformation("[QuestSync] {Player}: a new character in the game's own intro (the server starts players in the prison). The new-player start takes over.", sync.Nickname(id));

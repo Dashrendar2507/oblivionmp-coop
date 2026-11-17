@@ -10,7 +10,8 @@ namespace CoopQuestSync.Client;
 /// A new character is made: the race menu (name, race, face), then the class, then the birthsign, one after the other,
 /// the way the intro would have shown them. The server asks for it on a brand-new character's first join (OblivionMP
 /// starts everyone as the same preset character), or at the sewer exit when the player skipped the intro. Each menu
-/// opens once the game is in play (no load, no other menu), and the next once the last one has closed.
+/// opens once the game is in play (no load, no other menu), and the next once the last one has closed. A player who
+/// chose the prison intro gets the race menu alone: the intro shows the birthsign and the class itself.
 /// </summary>
 [Service]
 public sealed partial class CharacterMenus(IPlayers players, IInput input, IUserInterface ui, ILogger logger)
@@ -25,13 +26,15 @@ public sealed partial class CharacterMenus(IPlayers players, IInput input, IUser
     private bool _opened;         // asked the game to open it
     private bool _seen;           // the game says it is open
     private float _timer;
+    private int _last = 2;        // the last menu to open
 
-    public void Request()
+    public void Request(bool raceOnly = false)
     {
         _step = 0;
+        _last = raceOnly ? 0 : Names.Length - 1;
         _opened = false;
         _timer = 0;
-        logger.LogInformation("[QuestSync] Making the character: race, class and birthsign menus.");
+        logger.LogInformation(raceOnly ? "[QuestSync] Making the character: race menu." : "[QuestSync] Making the character: race, class and birthsign menus.");
     }
 
     private void Update()
@@ -59,10 +62,11 @@ public sealed partial class CharacterMenus(IPlayers players, IInput input, IUser
                 logger.LogWarning("[QuestSync] The {Menu} menu didn't open.", Names[_step]);
             _opened = false;
             _timer = 0;
-            if (++_step >= Names.Length)
+            if (++_step > _last)
             {
                 _step = -1;
-                ui.ShowMessage("Your character is ready.", MessagePosition.Center, 5f);
+                if (_last == Names.Length - 1)
+                    ui.ShowMessage("Your character is ready.", MessagePosition.Center, 5f);
                 logger.LogInformation("[QuestSync] Character menus done.");
             }
             return;

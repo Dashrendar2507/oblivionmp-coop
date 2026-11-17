@@ -11,8 +11,9 @@ import tes4
 
 
 class Game:
-    def __init__(self, done=None, cur=None, inv=None):
+    def __init__(self, done=None, cur=None, inv=None, running=()):
         self.done = {q: set(s) for q, s in (done or {}).items()}
+        self.running = set(running)  # quests under way
         self.cur = dict(cur or {})
         self.inv = dict(inv or {})
         self.box = None          # the buttons of the open message box
@@ -23,6 +24,7 @@ class Game:
         self.boxes = []          # every box shown: (text, buttons)
         self.topics = set()
         self.stopped = set()
+        self.chargen = None      # what SetInCharGen last set
         self.at = "prison"
         self.moves = 0
 
@@ -52,10 +54,12 @@ class Script:
                 return "1" if int(args[1]) in g.done.get(args[0].upper(), set()) else "0"
             if name == "getitemcount":
                 return str(g.inv.get(args[0], 0))
+            if name == "getquestrunning":
+                return "1" if args[0].upper() in g.running else "0"
             if name == "getpos":
                 return str(g.pos["XY".index(args[0].upper())])
             raise Exception(name)
-        e = re.sub(r"(player\.)?(GetStageDone|GetStage|GetItemCount|GetPos)((?: \w+)+?)(?= ==| !=| >=| <=| >| <|$| \|\|| &&)",
+        e = re.sub(r"(player\.)?(GetStageDone|GetStage|GetItemCount|GetPos|GetQuestRunning)((?: \w+)+?)(?= ==| !=| >=| <=| >| <|$| \|\|| &&)",
                    fn, expr, flags=re.I)
         # Under OblivionMP, MenuMode stays 0 while a message box is open (2026-11-14).
         e = re.sub(r"\bMenuMode\b", "1" if g.menu else "0", e, flags=re.I)
@@ -115,6 +119,9 @@ class Script:
                 g.topics.add(l.split()[1])
             elif kw == "stopquest":
                 g.stopped.add(l.split()[1].upper())
+                g.running.discard(l.split()[1].upper())
+            elif kw == "setinchargen":
+                g.chargen = int(l.split()[1])
             elif kw == "player.moveto":
                 g.at = l.split()[1]
                 g.moves += 1
@@ -139,7 +146,8 @@ def main():
         if not ok:
             failures.append(label)
 
-    in_prison = dict(cur={"CHARACTERGEN": 5}, done={"CHARACTERGEN": {5}, "MQ01": {5}})
+    in_prison = dict(cur={"CHARACTERGEN": 5, "MQ01": 5}, done={"CHARACTERGEN": {5}, "MQ01": {5}},
+                     running={"CHARACTERGEN", "MQ01"})
 
     # 1. A new player in the prison picks the sewer exit.
     s, g = Script(src), Game(**in_prison)
@@ -255,6 +263,36 @@ def main():
     g.at = "outside"
     ticks(s, g)
     check("old save stuck at state 3: not moved", g.at == "outside" and g.moves == 0, (g.at, g.moves))
+
+    # 9. Left the sewers in an earlier session (MQ01 88's token), back on the server: the join loaded the prison save.
+    s, g = Script(src), Game(**in_prison, inv={"CQStMQ01_88": 1, "CQSStartDone": 1, "CQSStartKit": 1})
+    g.at = "outside"             # where the server's return took them
+    ticks(s, g)
+    check("rejoin after leaving: CQSIntro stays 0", g.inv.get("CQSIntro", 0) == 0, g.inv)
+    check("rejoin after leaving: intro stopped here", {"CHARACTERGEN", "MQ01"} <= g.stopped and g.chargen == 0,
+          (g.stopped, g.chargen))
+    check("rejoin after leaving: not moved, no window", g.at == "outside" and g.moves == 0 and not g.boxes,
+          (g.at, g.moves, g.boxes))
+    g.inv["CQSStartOffer"] = 1   # even if the server offered the start
+    ticks(s, g, 10)
+    check("rejoin after leaving: still no window", not g.boxes, g.boxes)
+
+    # 9b. Same, for a player who chose the prison and left: no CQSStartDone.
+    s, g = Script(src), Game(**in_prison, inv={"CQStMQ01_88": 1, "CQSStartPrison": 1})
+    ticks(s, g)
+    check("rejoin after the prison intro: CQSIntro 0, intro stopped",
+          g.inv.get("CQSIntro", 0) == 0 and "CHARACTERGEN" in g.stopped and g.moves == 0, (g.inv, g.stopped))
+
+    # 10. Took the skip, left the game before the gate: the join loaded the prison save, so the skip is done again.
+    s, g = Script(src), Game(**in_prison, inv={"CQSStartDone": 1, "CQSStartKit": 1})
+    ticks(s, g)
+    check("rejoin before the gate: back at the sewer exit", g.at == "CGSewerExitMarker" and g.moves == 1, (g.at, g.moves))
+    check("rejoin before the gate: intro stopped, MQ02 10 and 20", "CHARACTERGEN" in g.stopped
+          and {10, 20} <= g.done.get("MQ02", set()), (g.stopped, g.done))
+    check("rejoin before the gate: no second CQSStartDone, no window", g.inv.get("CQSStartDone") == 1 and not g.boxes,
+          (g.inv, g.boxes))
+    ticks(s, g, 10)
+    check("rejoin before the gate: moved once", g.moves == 1, g.moves)
 
     # 8. An admin offers the start again: the answer item is taken, the window comes back.
     s, g = Script(src), Game(**in_prison)

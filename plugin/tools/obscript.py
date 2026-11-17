@@ -17,6 +17,8 @@ FUNCS = {
     "removeitem":    (0x1052, ["ref", "int"]),
     "startquest":    (0x1036, ["ref"]),
     "stopquest":     (0x1037, ["ref"]),
+    "getquestrunning": (0x1038, ["ref"]),
+    "setinchargen":  (0x10E7, ["int"]),
     "moveto":        (0x109E, ["ref"]),
     "addtopic":      (0x1058, ["ref"]),
     "getbuttonpressed": (0x101F, None),
