@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.9.4 (test build)
+
+* **The birthsign menu in the prison can be closed again.** The game pauses while that menu is open, so the
+  Emperor's next line waits for it. OblivionMP doesn't pause: the Emperor started talking under the open menu, which
+  then couldn't be closed. The plugin's copy of that line now waits until you've picked a birthsign (if you keep the
+  one you had, a minute; in any case at most five).
+* **Leaving during the prison intro and coming back puts you at the sewer exit.** Every join loads the server's
+  start save, the prison cell with the wall whole, but the shared Emperor, Blades and wall have moved on, and the
+  intro can't be played twice. You now get the sewer-exit start instead (with the Amulet of Kings if the Emperor
+  hadn't given it to you yet), without the character menus: your character is made already.
+
 ## 0.9.3 (test build)
 
 * **Bodies placed dead can really be looted now.** 0.9.2 marked them dead once, but the game that runs them reports

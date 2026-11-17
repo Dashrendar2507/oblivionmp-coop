@@ -30,6 +30,8 @@ class Game:
         self.activated = []      # (ref, by) activations done by the script
         self.at = "prison"
         self.moves = 0
+        self.sign = None         # the player's birthsign (editor id)
+        self.globals = {"cqssigngate": 0}
 
     def setstage(self, q, s):
         self.done.setdefault(q, set()).add(s)
@@ -63,10 +65,12 @@ class Script:
                 return "1" if m.group(1) and m.group(1)[:-1] in g.dead else "0"
             if name == "getquestrunning":
                 return "1" if args[0].upper() in g.running else "0"
+            if name == "getisplayerbirthsign":
+                return "1" if g.sign == args[0] else "0"
             if name == "getpos":
                 return str(g.pos["XY".index(args[0].upper())])
             raise Exception(name)
-        e = re.sub(r"(\w+\.)?(GetStageDone|GetStage|GetItemCount|GetPos|GetQuestRunning|GetDead|GetDestroyed)((?: \w+)*?)(?= ==| !=| >=| <=| >| <|$| \|\|| &&)",
+        e = re.sub(r"(\w+\.)?(GetStageDone|GetStage|GetItemCount|GetPos|GetQuestRunning|GetDead|GetDestroyed|GetIsPlayerBirthsign)((?: \w+)*?)(?= ==| !=| >=| <=| >| <|$| \|\|| &&)",
                    fn, expr, flags=re.I)
         # Under OblivionMP, MenuMode stays 0 while a message box is open (2026-11-14).
         e = re.sub(r"\bMenuMode\b", "1" if g.menu else "0", e, flags=re.I)
@@ -79,7 +83,7 @@ class Script:
             w = m.group(0)
             if w in ("and", "or"):
                 return w
-            return str(self.vars[w.lower()])
+            return str(self.vars[w.lower()] if w.lower() in self.vars else g.globals[w.lower()])
         return eval(re.sub(r"[A-Za-z_]\w*", var, e))
 
     def run(self, g):
@@ -108,7 +112,8 @@ class Script:
                 continue
             elif kw == "set":
                 m = re.match(r"set (\w+) to (.+)$", l, re.I)
-                self.vars[m.group(1).lower()] = self.ev(m.group(2), g)
+                name = m.group(1).lower()
+                (self.vars if name in self.vars else g.globals)[name] = self.ev(m.group(2), g)
             elif kw == "messagebox":
                 texts = re.findall(r'"([^"]*)"', l)
                 g.box = texts[1:] or ["Ok"]
@@ -157,6 +162,12 @@ def main():
 
     in_prison = dict(cur={"CHARACTERGEN": 5, "MQ01": 5}, done={"CHARACTERGEN": {5}, "MQ01": {5}},
                      running={"CHARACTERGEN", "MQ01"})
+
+    def playing_prison():
+        """A player who chose the prison in this session (the script is past the window: state 2)."""
+        s, g = Script(src), Game(**in_prison, inv={"CQSStartPrison": 1})
+        s.vars["state"] = 2
+        return s, g
 
     # 1. A new player in the prison picks the sewer exit.
     s, g = Script(src), Game(**in_prison)
@@ -304,7 +315,7 @@ def main():
     check("rejoin before the gate: moved once", g.moves == 1, g.moves)
 
     # 11. Renault died on the server, not by the hit whose script moves the intro on: the plugin moves it on.
-    s, g = Script(src), Game(**in_prison, inv={"CQSStartPrison": 1})
+    s, g = playing_prison()
     g.setstage("CHARACTERGEN", 22)
     ticks(s, g)
     check("ambush, Renault alive: intro not moved on", 24 not in g.done.get("CHARACTERGEN", set()))
@@ -317,7 +328,7 @@ def main():
     check("before the ambush: nothing moved on", 24 not in g.done.get("CHARACTERGEN", set()), g.done)
 
     # 12. The rats never come (not on the server): the wall is crumbled 15 s after Charactergen 29, once.
-    s, g = Script(src), Game(**in_prison, inv={"CQSStartPrison": 1})
+    s, g = playing_prison()
     g.setstage("CHARACTERGEN", 29)
     ticks(s, g, 20)
     check("wall: not before 15 s", not g.activated, g.activated)
@@ -326,12 +337,63 @@ def main():
     g.destroyed.add("CQSCrumbleWall")
     ticks(s, g, 40)
     check("wall: once", len(g.activated) == 1, g.activated)
-    s, g = Script(src), Game(**in_prison, inv={"CQSStartPrison": 1})
+    s, g = playing_prison()
     g.setstage("CHARACTERGEN", 29)
     ticks(s, g, 5)
     g.destroyed.add("CQSCrumbleWall")  # the rats did it
     ticks(s, g, 60)
     check("wall: left alone when the rats crumble it", not g.activated, g.activated)
+
+    # 13. Chose the prison, left the game during the intro: this join loaded the prison save again, but the shared
+    # intro has moved on. The skip to the sewer exit instead.
+    s, g = Script(src), Game(**in_prison, inv={"CQSStartPrison": 1})
+    ticks(s, g)
+    check("rejoin during the prison intro: at the sewer exit", g.at == "CGSewerExitMarker" and g.moves == 1, (g.at, g.moves))
+    check("rejoin during the prison intro: intro stopped, MQ02 10 and 20, CQSStartDone",
+          "CHARACTERGEN" in g.stopped and {10, 20} <= g.done.get("MQ02", set()) and g.inv.get("CQSStartDone") == 1,
+          (g.stopped, g.done, g.inv))
+    check("rejoin during the prison intro: no window", not g.boxes, g.boxes)
+    ticks(s, g, 10)
+    check("rejoin during the prison intro: moved once", g.moves == 1, g.moves)
+    s, g = playing_prison()
+    ticks(s, g, 10)
+    check("prison intro in this session: not skipped", g.at == "prison" and g.moves == 0, (g.at, g.moves))
+
+    # 14. The birthsign menu (Charactergen 44): the gate for the Emperor's next line opens once a sign is chosen.
+    s, g = playing_prison()
+    g.sign = None                # a new character has none
+    g.setstage("CHARACTERGEN", 44)
+    ticks(s, g, 300)
+    check("birthsign menu open: the Emperor waits", g.globals["cqssigngate"] == 0, g.globals)
+    g.sign = "BirthSignThief"
+    ticks(s, g, 1)
+    check("birthsign chosen: the Emperor goes on", g.globals["cqssigngate"] == 1, g.globals)
+    s, g = playing_prison()
+    g.sign = "BirthSignLady"     # a character that has one already
+    g.setstage("CHARACTERGEN", 44)
+    ticks(s, g, 20)
+    g.sign = "BirthSignLord"
+    ticks(s, g, 1)
+    check("birthsign changed: the Emperor goes on", g.globals["cqssigngate"] == 1, g.globals)
+    s, g = playing_prison()
+    g.sign = "BirthSignLady"
+    g.setstage("CHARACTERGEN", 44)
+    ticks(s, g, 100)
+    check("same birthsign kept: the Emperor waits a minute", g.globals["cqssigngate"] == 0, g.globals)
+    ticks(s, g, 25)
+    check("same birthsign kept: the Emperor goes on after a minute", g.globals["cqssigngate"] == 1, g.globals)
+    s, g = playing_prison()
+    g.setstage("CHARACTERGEN", 44)
+    ticks(s, g, 610)
+    check("no birthsign ever: the Emperor goes on after five minutes", g.globals["cqssigngate"] == 1, g.globals)
+    s, g = playing_prison()
+    g.setstage("CHARACTERGEN", 50)
+    ticks(s, g, 1)
+    check("past the birthsign: the gate is open", g.globals["cqssigngate"] == 1, g.globals)
+    s, g = playing_prison()
+    g.setstage("CHARACTERGEN", 43)
+    ticks(s, g, 300)
+    check("before the menu: the gate stays shut", g.globals["cqssigngate"] == 0, g.globals)
 
     # 8. An admin offers the start again: the answer item is taken, the window comes back.
     s, g = Script(src), Game(**in_prison)

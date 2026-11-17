@@ -52,7 +52,7 @@ import tes4, tes4write, obscript, scriptpatch
 PLUGIN = "CoopQuestSync.esp"
 DIALOGUE_PLUGIN = "CoopQuestSyncDialogue.esp"
 BASE = 0xC05000           # unusual local ids so the server can spot our forms
-BEACON, SEQ, BUSY, ACK, GLOB_GO, GLOB_REPLAY = (BASE + i for i in range(6))
+BEACON, SEQ, BUSY, ACK, GLOB_GO, GLOB_REPLAY, GLOB_SIGN = (BASE + i for i in range(7))
 ALLOW = {c: BASE + 0x100 + i for i, c in enumerate(scriptpatch.CATEGORIES)}
 FREEZE = BASE + 0x110
 # New-player start (see NEW_START_SCRIPT): the server's offer, the player's answers, and the intro flag.
@@ -255,6 +255,12 @@ CONTROL_SCRIPT = "\r\n".join([
 # the player just inside the sewer gate, whose own script then offers to revise the character before going out. It
 # never runs Charactergen's stage scripts: those kill and move the Emperor and the Blades, who are shared NPCs.
 START_TOPICS = ["AmuletofKingsTopic", "WeynonPrioryTopic", "OrderofTalosTopic", "JauffreTopic", "UrielSeptimTopic"]
+BIRTHSIGNS = ["BirthSignApprentice", "BirthSignAtronach", "BirthSignLady", "BirthSignLord", "BirthSignLover",
+              "BirthSignMage", "BirthSignRitual", "BirthSignSerpent", "BirthSignShadow", "BirthSignSteed",
+              "BirthSignThief", "BirthSignTower", "BirthSignWarrior"]
+# The Emperor's line after the birthsign menu (Charactergen 44): the plugin's copy also wants CQSSignGate 1.
+EMPEROR_BIRTHSIGN_PACKAGE = 0x00033B81
+GET_GLOBAL_VALUE = 74                   # condition function index
 START_ASK = "Welcome to the co-op server! Where do you want to start?"
 # Short, plain button labels: the remaster showed "[NL]" in the longer ones with a colon (2026-11-14).
 START_PRISON_BUTTON = "Play the prison intro"
@@ -264,6 +270,7 @@ START_INFO = ("Welcome to the co-op server! You start at the sewer exit with the
 NEW_START_SCRIPT = "\r\n".join([
     "scn CQSNewStartScript", "float fQuestDelayTime", "short state", "short button", "short offer", "short want",
     "short have", "short waited", "float px", "float py", "float lastx", "float lasty", "short wallwait",
+    "short signnow", "short signwas", "short signseen", "short signwait",
     "begin GameMode",
     "set fQuestDelayTime to 0.5",
     # CQSIntro: 1 in the prison intro, 2 when the player never left the sewers but no intro runs, 0 once out.
@@ -311,6 +318,34 @@ NEW_START_SCRIPT = "\r\n".join([
     "else",
     "set wallwait to 1000",
     "endif",
+    "endif",
+    # Rejoined during the prison intro: this join loaded the start save (the prison, the wall whole), but the server's
+    # Emperor, Blades and wall have moved on, and the intro can't be played twice (2026-11-17: back in the cell with
+    # the wall closed). Take the skip to the sewer exit instead (state 0: the first run of this load).
+    "if state == 0 && want == 1 && player.GetItemCount CQSStartPrison > 0 && player.GetItemCount CQSStartDone == 0 && GetQuestRunning Charactergen == 1",
+    "set state to 3",
+    "endif",
+    # The birthsign menu (Charactergen 43, then 44 at once): the game pauses for it, so the Emperor's next line
+    # (CGEmperorToPlayerB, a force greet at 44) waits until it's closed. OblivionMP doesn't pause: the conversation
+    # started under the open menu, which then couldn't be closed (2026-11-17). The plugin's copy of that package also
+    # wants CQSSignGate 1, set here once the birthsign changes (the player chose one). A player keeping the sign they
+    # had: after a minute. Anyway after five.
+    "if GetStage Charactergen == 44 && CQSSignGate == 0",
+    "set signnow to 0"]
+    + [f"if GetIsPlayerBirthsign {b} == 1\r\nset signnow to {i}\r\nendif" for i, b in enumerate(BIRTHSIGNS, 1)]
+    + ["if signseen == 0",
+    "set signseen to 1",
+    "set signwas to signnow",
+    "set signwait to 0",
+    "endif",
+    "set signwait to signwait + 1",
+    "if signnow != signwas || signwait >= 600",
+    "set CQSSignGate to 1",
+    "elseif signwas != 0 && signwait >= 120",
+    "set CQSSignGate to 1",
+    "endif",
+    "elseif GetStage Charactergen > 44 && CQSSignGate == 0",
+    "set CQSSignGate to 1",
     "endif",
     "if GetStage Charactergen >= 22 && GetStage Charactergen < 24",
     "if RenoteRef.GetDead == 1",
@@ -509,7 +544,7 @@ def death_script(edid, refs):
 
 
 # Vanilla forms the new-start script names, looked up in Oblivion.esm by editor id.
-START_FORMS = ["MQ01", "MQ02", "Charactergen", "CGSewerExitMarker", "RenoteRef", "CGCrumbleDust01REF", *START_TOPICS]
+START_FORMS = ["MQ01", "MQ02", "Charactergen", "CGSewerExitMarker", "RenoteRef", "CGCrumbleDust01REF", *START_TOPICS, *BIRTHSIGNS]
 # The prison wall the rats push in (CGCrumbleWall01SCRIPT); the reference has no editor id.
 CRUMBLE_WALL = 0x0003E31C
 
@@ -518,7 +553,7 @@ def vanilla_forms(lo, edids):
     """Editor id (lower case) -> form id, for these editor ids in Oblivion.esm (the first plugin)."""
     want = {e.lower() for e in edids}
     out = {}
-    for r in tes4.iter_records(lo.sources[0].buf, want={"QUST", "DIAL", "CELL", "REFR", "ACHR"}):
+    for r in tes4.iter_records(lo.sources[0].buf, want={"QUST", "DIAL", "CELL", "REFR", "ACHR", "BSGN"}):
         if r.edid and r.edid.lower() in want and r.edid.lower() not in out:
             out[r.edid.lower()] = r.formid
     missing = want - out.keys()
@@ -557,7 +592,7 @@ DLG_CONTROL_SCRIPT = "\r\n".join(
     + sum(([f"begin MenuMode {code}", f"set seen to {i}", "end"] for i, (_, code) in enumerate(DLG_MENUS, 1)), [])
     + ["begin MenuMode", "set fQuestDelayTime to 0.5"] + _menu_sync() + ["set seen to 0", "end"]) + "\r\n"
 
-GLOBALS = {"CQSGo": GLOB_GO, "CQSReplay": GLOB_REPLAY}
+GLOBALS = {"CQSGo": GLOB_GO, "CQSReplay": GLOB_REPLAY, "CQSSignGate": GLOB_SIGN}
 
 
 # ---------------------------------------------------------------------------------------------------------------
@@ -584,6 +619,21 @@ def token_record(formid, edid):
         ("MODL", "Clothes\\Ring\\Novice01.NIF"), ("MODB", struct.pack("<f", 0)),
         ("ICON", "Clothes\\Ring\\RingNovice.dds"),
         ("DATA", struct.pack("<If", 0, 0.0))])
+
+
+def emperor_birthsign_package(lo, gate):
+    """The Emperor's force greet after the birthsign menu, wanting the gate global at 1 too (see NEW_START_SCRIPT)."""
+    winner = lo.winning({"PACK"}).get(EMPEROR_BIRTHSIGN_PACKAGE)
+    if winner is None:
+        raise SystemExit(f"package {EMPEROR_BIRTHSIGN_PACKAGE:08X} (CGEmperorToPlayerB) not found")
+    src, r = winner
+    # Its location and target hold form ids at offset 4, which remap_record leaves alone: only Oblivion.esm's copy.
+    if src is not lo.sources[0]:
+        raise SystemExit(f"CGEmperorToPlayerB is changed by {src.name}: its copy would need remapping")
+    subs = list(r.subs)
+    last = max(i for i, (k, _) in enumerate(subs) if k == "CTDA")
+    subs.insert(last + 1, ("CTDA", struct.pack("<B3sfIIII", 0, b"\0\0\0", 1.0, GET_GLOBAL_VALUE, gate, 0, 0)))
+    return tes4write.record("PACK", EMPEROR_BIRTHSIGN_PACKAGE, subs, r.flags & ~0x40000)
 
 
 def glob_record(formid, edid):
@@ -814,6 +864,7 @@ def build_main(lo, outdir, only):
     rec, _ = scpt_record(mod | nsid, "CQSNewStartScript", NEW_START_SCRIPT, lambda n: start_names.get(n.lower()))
     scpt.append(rec)
     qust.append(quest_record(mod | nqid, "CQSNewStart", mod | nsid))
+    packs = [] if only else [emperor_birthsign_package(lo, mod | GLOB_SIGN)]
 
     # Scripted deaths: one token per actor, scripts of DEATHS_PER_SCRIPT actors each.
     deaths = []
@@ -835,12 +886,14 @@ def build_main(lo, outdir, only):
         scpt.append(rec)
         qust.append(quest_record(mod | dqid, f"CQSDeaths{part}", mod | dsid))
 
-    count = len(glob) + len(clot) + len(scpt) + len(qust) + len(overrides)
+    count = len(glob) + len(clot) + len(scpt) + len(qust) + len(overrides) + len(packs)
     data = tes4write.header(count, nxt, "CoopQuestSync generator",
                             "Mirrors vanilla quest stages into hidden token items for OblivionMP co-op.",
                             lo.masters)
     data += (tes4write.group("GLOB", glob) + tes4write.group("SCPT", scpt)
              + tes4write.group("CLOT", clot) + tes4write.group("QUST", qust + overrides))
+    if packs:
+        data += tes4write.group("PACK", packs)
     if not only:
         save_ids(IDS_FILE, ids)
     with open(os.path.join(outdir, PLUGIN), "wb") as f:

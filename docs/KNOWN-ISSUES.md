@@ -97,7 +97,8 @@ Version 0.8.0 is the first release for OblivionMP 1.1.0, and it has had much les
   `world.sav` by hand before, there's no OblivionMP original to put back when you turn the setting off.
 * **The prison intro plays once per world.** The Emperor, the Blades and the prison doors are shared world state.
   Once someone has played the intro and left the sewers, later new characters start at the sewer exit. A new server
-  world offers the prison again.
+  world offers the prison again. A player who leaves the game during the intro and comes back is put at the sewer
+  exit: the prison can't be played twice.
 * **The Mythic Dawn assassins in the prison and the sewers look naked and fight bare-handed.** Their armor and mace
   come from a spell, and OblivionMP dresses NPCs only with the items the server has for them, so the summoned gear
   is dropped. This is OblivionMP's to fix. Captain Renault still dies in the first ambush (the server mod sees to
