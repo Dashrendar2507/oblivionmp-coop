@@ -30,7 +30,8 @@ CoopQuestSync.esp
   * CQSAllow*: one per effect category (see scriptpatch.CATEGORIES).
   * CQSFreeze: while the server gives it, the player's controls are off (watching someone's conversation).
   * New-player start (CQSNewStart quest, see NEW_START_SCRIPT): CQSIntro is held while the player hasn't left the
-    sewers (count 1 in the prison intro, 2 when no intro runs), so the server holds the quest catch-up. CQSStartOffer
+    sewers (count 1 in the prison intro, 2 when no intro runs), so the server holds the quest catch-up. MQ01 88's own
+    token says the character left them before: then the intro the start save runs again on each join is ended. CQSStartOffer
     from the server opens the start window (count 1: prison or sewer exit, 2: sewer exit only); the answer comes back
     as CQSStartPrison, or CQSStartDone once the player stands at the sewer exit. CQSStartKit marks that the server
     handed out the amulet and the starter kit.
@@ -268,9 +269,21 @@ NEW_START_SCRIPT = "\r\n".join([
     # CQSIntro: 1 in the prison intro, 2 when the player never left the sewers but no intro runs, 0 once out.
     "set want to 0",
     "if GetStageDone MQ01 88 == 0",
+    # MQ01 88's token stays in the inventory, which the server keeps: this character has left the sewers before. Every
+    # join loads the server's start save (the prison), so the game thinks the intro is under way again, and the player
+    # was kept there instead of going back to where they left (2026-11-17). End the intro in this game too (what MQ01 88
+    # and 100 do, without the tutorial and the achievement).
+    "if player.GetItemCount CQStMQ01_88 > 0",
+    "if GetQuestRunning Charactergen == 1 || GetQuestRunning MQ01 == 1",
+    "SetInCharGen 0",
+    "StopQuest Charactergen",
+    "StopQuest MQ01",
+    "endif",
+    "else",
     "set want to 2",
     "if GetStage Charactergen >= 5",
     "set want to 1",
+    "endif",
     "endif",
     "endif",
     "set have to player.GetItemCount CQSIntro",
@@ -278,6 +291,10 @@ NEW_START_SCRIPT = "\r\n".join([
     "player.AddItem CQSIntro 1",
     "elseif have > want",
     "player.RemoveItem CQSIntro 1",
+    "endif",
+    # Took the skip but never went through the gate, and this join loaded the start save (the prison) again: skip again.
+    "if state != 3 && want == 1 && player.GetItemCount CQSStartDone > 0 && GetQuestRunning Charactergen == 1",
+    "set state to 3",
     "endif",
     "if state == 0",
     "set offer to player.GetItemCount CQSStartOffer",
@@ -337,7 +354,9 @@ NEW_START_SCRIPT = "\r\n".join([
     + ["StopQuest Charactergen",
        # MoveTo on the player ends the script there (2026-11-13: CQSStartDone never came and state stayed 3, so the
        # player was moved back to the sewer exit every half second, even after going out): everything else first.
+       "if player.GetItemCount CQSStartDone == 0",
        "player.AddItem CQSStartDone 1",
+       "endif",
        "player.MoveTo CGSewerExitMarker",
        "endif",
        "endif",
