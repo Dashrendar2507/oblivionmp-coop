@@ -449,6 +449,45 @@ def find_scripted_deaths(lo):
     return sorted((f, edid_of.get(f)) for f in refs if f in persistent)
 
 
+def find_placed_corpses(lo):
+    """Actor refs (ACHR/ACRE) placed dead in Oblivion.esm: their base NPC or creature has 0 health, so the game has
+    them dead from the start (the dead goblin with the lockpicks in the prison's cave, skeletons, bodies). The OblivionMP
+    server has them alive, so it refuses to let anyone loot them. (A saved ragdoll pose, XRGD, is no sign: living NPCs
+    such as Earana have one too.) Refs a script brings back (Resurrect) are left out. [(ref form id, editor id or None)]"""
+    buf = lo.sources[0].buf
+    refs, by_edid, by_base, base_script, named_back, self_back, lifeless = {}, {}, {}, {}, set(), set(), set()
+    for r in tes4.iter_records(buf, want={"SCPT", "QUST", "DIAL", "INFO", "CELL", "WRLD", "ACHR", "ACRE", "NPC_", "CREA"}):
+        if r.type in ("ACHR", "ACRE"):
+            if r.edid:
+                by_edid[r.edid.lower()] = r.formid
+            base = struct.unpack("<I", r.get("NAME")[:4])[0]
+            refs[r.formid] = (base, r.edid)
+            by_base.setdefault(base, []).append(r.formid)
+            continue
+        if r.type in ("NPC_", "CREA"):
+            if r.get("SCRI"):
+                base_script[r.formid] = struct.unpack("<I", r.get("SCRI"))[0]
+            data = r.get("DATA")
+            # Health: a u32 after the 21 skills (NPC_), a u16 after type, combat, magic, stealth, soul and a pad (CREA).
+            if data is not None and (struct.unpack_from("<I", data, 21)[0] if r.type == "NPC_" else struct.unpack_from("<H", data, 6)[0]) == 0:
+                lifeless.add(r.formid)
+            continue
+        for k, v in r.subs:
+            if k != "SCTX":
+                continue
+            for line in v.decode("cp1252", "replace").split("\n"):
+                b = RESURRECT_LINE.match(line.split(";")[0].strip())
+                if b and b.group(1):
+                    named_back.add(b.group(1).lower())
+                elif b and r.type == "SCPT":
+                    self_back.add(r.formid)
+    back = {by_edid[n] for n in named_back if n in by_edid}
+    for base, script in base_script.items():
+        if script in self_back:
+            back.update(by_base.get(base, []))
+    return sorted((f, e) for f, (base, e) in refs.items() if base in lifeless and f not in back)
+
+
 def death_script(edid, refs):
     """refs: [(ref form id, token editor id, local variable)]. A death counts once the game has run a few seconds."""
     lines = [f"scn {edid}", "float fQuestDelayTime", "short warm"] + [f"short {var}" for _, _, var in refs]
@@ -784,6 +823,7 @@ def build_main(lo, outdir, only):
         names[tedid.lower()] = mod | tid
         clot.append(token_record(mod | tid, tedid))
         deaths.append(dict(token=f"{tid:06X}", ref=f"{ref:08X}", editorId=ref_edid))
+    corpses = [dict(ref=f"{ref:08X}", editorId=ref_edid) for ref, ref_edid in ([] if only else find_placed_corpses(lo))]
     death_names = {**names, **{f"cqsref{int(d['ref'], 16):08x}": int(d["ref"], 16) for d in deaths}}
     for i in range(0, len(deaths), DEATHS_PER_SCRIPT):
         chunk = [(int(d["ref"], 16), f"CQSDead{d['ref']}", f"d{j}") for j, d in enumerate(deaths[i:i + DEATHS_PER_SCRIPT])]
@@ -812,11 +852,11 @@ def build_main(lo, outdir, only):
                        allow={c: f"{v:06X}" for c, v in ALLOW.items()}, categories=scriptpatch.CATEGORIES,
                        newStart=dict(offer=f"{START_OFFER:06X}", prison=f"{START_PRISON:06X}",
                                      done=f"{START_DONE:06X}", intro=f"{START_INTRO:06X}", kit=f"{START_KIT:06X}"),
-                       legacy=[f"{BASE + 0x10:06X}", f"{BASE + 0x30:06X}"], tokenName=TOKEN_NAME, deaths=deaths,
+                       legacy=[f"{BASE + 0x10:06X}", f"{BASE + 0x30:06X}"], tokenName=TOKEN_NAME, deaths=deaths, corpses=corpses,
                        questItems=[f"{x:08X}" for x in quest_items], quests=mapping), f, indent=1)
     stages = sum(len(q["stages"]) for q in quests)
     patched = sum(len(q["effects"]) for q in quests)
-    print(f"{PLUGIN}: {len(deaths)} actors killed by script watched")
+    print(f"{PLUGIN}: {len(deaths)} actors killed by script watched, {len(corpses)} actors placed dead")
     print(f"{PLUGIN}: {len(quests)} quests, {stages} stages, {patched} stages with guarded effects in "
           f"{len(overrides)} quest overrides, {len(quest_items)} quest items, {count} records, {len(data)} bytes, "
           f"largest script {max_code} bytes")

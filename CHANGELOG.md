@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.2 (test build)
+
+* **Bodies placed dead can be looted (world state sync, part 3).** The game puts many actors in the world already
+  dead: skeletons, bodies, the dead goblin with the lockpicks and the key in the prison's cave (787 in Oblivion.esm).
+  The OblivionMP server took them as alive, so it refused to let anyone take their things ("not a container or a
+  corpse"). The server now marks them dead once a player's game reports them.
+
 ## 0.9.1 (test build)
 
 * **NPCs that quests bring in appear for everyone (world state sync, part 2).** Many quests keep NPCs and creatures

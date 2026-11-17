@@ -39,6 +39,8 @@ public sealed class TokenMap
     public IReadOnlyDictionary<string, QuestInfo> Quests => _quests;
     /// <summary>CQSDead tokens (local id) to the actor a vanilla script kills (its ref id in Oblivion.esm).</summary>
     public IReadOnlyDictionary<uint, (uint Ref, string? EditorId)> Deaths => _deaths;
+    /// <summary>Actors placed dead in Oblivion.esm (base health 0): ref id to editor id.</summary>
+    public IReadOnlyDictionary<uint, string?> Corpses => _corpses;
 
     private readonly Dictionary<uint, QuestStage> _byToken = new();
     private readonly Dictionary<QuestStage, uint> _byStage = new();
@@ -46,6 +48,7 @@ public sealed class TokenMap
     private readonly Dictionary<string, uint> _allow = new();
     private readonly HashSet<uint> _questItems = new();
     private readonly Dictionary<uint, (uint, string?)> _deaths = new();
+    private readonly Dictionary<uint, string?> _corpses = new();
 
     /// <summary>A quest the plugin mirrors. <see cref="Sync"/> is false for quests that stay local (the tutorial).</summary>
     public sealed record QuestInfo(string EditorId, string FormId, string? Name, bool Sync, IReadOnlyList<StageInfo> StageInfos)
@@ -87,6 +90,10 @@ public sealed class TokenMap
             foreach (var d in deaths.EnumerateArray())
                 _deaths[ParseHex(d.GetProperty("token").GetString()!)] = (ParseHex(d.GetProperty("ref").GetString()!),
                     d.TryGetProperty("editorId", out var e) && e.ValueKind == JsonValueKind.String ? e.GetString() : null);
+        if (root.TryGetProperty("corpses", out var corpses))
+            foreach (var c in corpses.EnumerateArray())
+                _corpses[ParseHex(c.GetProperty("ref").GetString()!)] =
+                    c.TryGetProperty("editorId", out var e) && e.ValueKind == JsonValueKind.String ? e.GetString() : null;
         if (root.TryGetProperty("legacy", out var legacy))
             Legacy = (ParseHex(legacy[0].GetString()!), ParseHex(legacy[1].GetString()!));
         foreach (var q in root.GetProperty("quests").EnumerateArray())
