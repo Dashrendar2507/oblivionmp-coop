@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.3 (test build)
+
+* **Bodies placed dead can really be looted now.** 0.9.2 marked them dead once, but the game that runs them reports
+  them with no health at all, which the server doesn't count as a corpse, and the loot was still refused. The server
+  now marks them dead again whenever that happens, and right before every loot.
+
 ## 0.9.2 (test build)
 
 * **Bodies placed dead can be looted (world state sync, part 3).** The game puts many actors in the world already
