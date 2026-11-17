@@ -263,7 +263,7 @@ START_INFO = ("Welcome to the co-op server! You start at the sewer exit with the
               "and make your character there.")
 NEW_START_SCRIPT = "\r\n".join([
     "scn CQSNewStartScript", "float fQuestDelayTime", "short state", "short button", "short offer", "short want",
-    "short have", "short waited", "float px", "float py", "float lastx", "float lasty",
+    "short have", "short waited", "float px", "float py", "float lastx", "float lasty", "short wallwait",
     "begin GameMode",
     "set fQuestDelayTime to 0.5",
     # CQSIntro: 1 in the prison intro, 2 when the player never left the sewers but no intro runs, 0 once out.
@@ -295,6 +295,33 @@ NEW_START_SCRIPT = "\r\n".join([
     # Took the skip but never went through the gate, and this join loaded the start save (the prison) again: skip again.
     "if state != 3 && want == 1 && player.GetItemCount CQSStartDone > 0 && GetQuestRunning Charactergen == 1",
     "set state to 3",
+    "endif",
+    # Captain Renault died in the first ambush on the server (IntroDeaths), not by the hit whose script moves the intro
+    # on: move it on here (OblivionMP 2026-11-17: she didn't die, and the intro waited).
+    # The rats that push the prison wall in (Charactergen 29 enables them) aren't on the OblivionMP server, which refuses
+    # their Enable ("NoEntity", 2026-11-17): the wall never crumbled and the intro was stuck. 15 s after they should
+    # have come, crumble it here (its script takes any activator but the player).
+    "if GetStage Charactergen >= 29 && GetStageDone MQ01 88 == 0 && wallwait < 1000",
+    "if CQSCrumbleWall.GetDestroyed == 0",
+    "set wallwait to wallwait + 1",
+    "if wallwait >= 30",
+    "CQSCrumbleWall.Activate CGCrumbleDust01REF 1",
+    "set wallwait to 1000",
+    "endif",
+    "else",
+    "set wallwait to 1000",
+    "endif",
+    "endif",
+    # Rejoined during the prison intro: this join loaded the start save (the prison, the wall whole), but the server's
+    # Emperor, Blades and wall have moved on, and the intro can't be played twice (2026-11-17: back in the cell with
+    # the wall closed). Take the skip to the sewer exit instead (state 0: the first run of this load).
+    "if state == 0 && want == 1 && player.GetItemCount CQSStartPrison > 0 && player.GetItemCount CQSStartDone == 0 && GetQuestRunning Charactergen == 1",
+    "set state to 3",
+    "endif",
+    "if GetStage Charactergen >= 22 && GetStage Charactergen < 24",
+    "if RenoteRef.GetDead == 1",
+    "SetStage Charactergen 24",
+    "endif",
     "endif",
     "if state == 0",
     "set offer to player.GetItemCount CQSStartOffer",
@@ -367,15 +394,224 @@ NEW_START_SCRIPT = "\r\n".join([
        "endif",
        "end"]) + "\r\n"
 
+# ---------------------------------------------------------------------------------------------------------------
+# Scripted deaths (world state sync, part 1)
+#
+# Vanilla scripts kill many NPCs with the Kill command (Captain Renault in the prison, Glenroy, quest victims). Under
+# OblivionMP that death stays in the game that ran the script: the server keeps the NPC alive and brings it back
+# (2026-11-17). Every persistent actor a vanilla script kills gets a CQSDead token: the plugin gives it when that
+# actor dies in the player's game while they play (not dead already when the game loaded), the server kills the actor
+# on its side (DeathSync) and takes the token back.
+KILL_LINE = re.compile(r"(?:(\w+)\.)?(?:kill|killactor)\b", re.I)
+RESURRECT_LINE = re.compile(r"(?:(\w+)\.)?resurrect\b", re.I)
+DEATHS_PER_SCRIPT = 25
+
+
+def find_scripted_deaths(lo):
+    """Persistent actor refs (ACHR/ACRE) that a vanilla script kills: [(ref form id, editor id or None)]. Actors a script
+    also brings back (Resurrect: the Arena's combatants...) are left to the game."""
+    buf = lo.sources[0].buf
+    by_edid, by_base, persistent, base_script, self_kill, named = {}, {}, set(), {}, set(), set()
+    self_back, named_back = set(), set()
+    for r in tes4.iter_records(buf, want={"SCPT", "QUST", "DIAL", "INFO", "CELL", "WRLD", "ACHR", "ACRE", "NPC_", "CREA"}):
+        if r.type in ("ACHR", "ACRE"):
+            by_base.setdefault(struct.unpack("<I", r.get("NAME")[:4])[0], []).append(r.formid)
+            if r.flags & 0x400:
+                persistent.add(r.formid)
+            if r.edid:
+                by_edid[r.edid.lower()] = r.formid
+            continue
+        if r.type in ("NPC_", "CREA"):
+            if r.get("SCRI"):
+                base_script[r.formid] = struct.unpack("<I", r.get("SCRI"))[0]
+            continue
+        for k, v in r.subs:
+            if k != "SCTX":
+                continue
+            for line in v.decode("cp1252", "replace").split("\n"):
+                code = line.split(";")[0].strip()
+                b = RESURRECT_LINE.match(code)
+                if b:
+                    if b.group(1):
+                        named_back.add(b.group(1).lower())
+                    elif r.type == "SCPT":
+                        self_back.add(r.formid)
+                m = KILL_LINE.match(code)
+                if not m:
+                    continue
+                if m.group(1):
+                    named.add(m.group(1).lower())
+                elif r.type == "SCPT":
+                    self_kill.add(r.formid)
+    refs = {by_edid[n] for n in named if n in by_edid}
+    back = {by_edid[n] for n in named_back if n in by_edid}
+    for base, script in base_script.items():
+        if script in self_kill:
+            refs.update(by_base.get(base, []))
+        if script in self_back:
+            back.update(by_base.get(base, []))
+    refs -= back
+    edid_of = {v: k for k, v in by_edid.items()}
+    return sorted((f, edid_of.get(f)) for f in refs if f in persistent)
+
+
+# Kills on a hit by a given actor ("begin OnHit CGAssassinFinal / kill"): the Emperor in the prison, Renault, the
+# orcs at the Shivering Isles gate. Under OblivionMP that hit never reaches the victim's script: the assassin's blow
+# played, the Emperor lived, and the intro kept the player frozen waiting for his death (2026-11-17). The plugin
+# kills the victim itself once that attacker has fought it at melee range for a moment, under the block's own
+# conditions on the victim's script variables; the game's scripts then go on from the death as they would.
+HIT_RANGE, HIT_TICKS = 220, 3          # units; half-second runs in a row (the swing lands within that)
+HITS_PER_SCRIPT = 20
+
+
+def find_hit_kills(lo):
+    """[{victim, attacker, conditions}] for each persistent actor whose script kills it on a hit by a given actor.
+    victim/attacker: (form id, editor id or None); conditions: ifs around the kill, on the victim's own variables, as
+    [(variable, operator, number)]."""
+    buf = lo.sources[0].buf
+    by_edid, by_base, persistent, base_script, scripts = {}, {}, set(), {}, {}
+    for r in tes4.iter_records(buf, want={"SCPT", "CELL", "WRLD", "ACHR", "ACRE", "NPC_", "CREA"}):
+        if r.type in ("ACHR", "ACRE"):
+            by_base.setdefault(struct.unpack("<I", r.get("NAME")[:4])[0], []).append(r.formid)
+            if r.flags & 0x400:
+                persistent.add(r.formid)
+            if r.edid:
+                by_edid[r.edid.lower()] = r.formid
+        elif r.type in ("NPC_", "CREA") and r.get("SCRI"):
+            base_script[r.formid] = struct.unpack("<I", r.get("SCRI"))[0]
+        elif r.type == "SCPT" and r.get("SCTX"):
+            scripts[r.formid] = r
+    out = []
+    for sid, r in scripts.items():
+        text = r.get("SCTX").decode("cp1252", "replace")
+        variables = {}
+        for k, v in r.subs:
+            if k == "SLSD":
+                idx, flags = struct.unpack_from("<I", v)[0], v[16]
+            elif k == "SCVR":
+                variables[v.rstrip(b"\0").decode("cp1252").lower()] = (idx, bool(flags & 1))
+        for m in re.finditer(r"^\s*begin\s+onhit\s+(\w+)\s*$(.*?)^\s*end\b", text, re.I | re.M | re.S):
+            attacker = by_edid.get(m.group(1).lower())
+            if attacker is None:        # the player (their hits do reach the scripts), or not a reference
+                continue
+            ifs, found = [], None
+            for line in m.group(2).split("\n"):
+                code = line.split(";")[0].strip()
+                low = code.lower()
+                if low.startswith("if "):
+                    c = re.fullmatch(r"if\s*\(?\s*(\w+)\s*(==|!=|>=|<=|>|<)\s*(-?\d+)\s*\)?", code, re.I)
+                    ifs.append((c.group(1).lower(), c.group(2), int(c.group(3)))
+                               if c and c.group(1).lower() in variables else None)
+                elif low == "endif":
+                    ifs.pop()
+                elif re.fullmatch(r"(kill|killactor)", low) and found is None:
+                    found = list(ifs)
+            if found is None or None in found:      # no self kill, or under a condition we can't read
+                continue
+            for base, script in base_script.items():
+                if script != sid:
+                    continue
+                for ref in by_base.get(base, []):
+                    if ref in persistent:
+                        out.append(dict(victim=ref, attacker=attacker, conditions=found,
+                                        variables={v: variables[v] for v, _, _ in found}))
+    edid_of = {v: k for k, v in by_edid.items()}
+    for h in out:
+        h["victim_edid"], h["attacker_edid"] = edid_of.get(h["victim"]), edid_of.get(h["attacker"])
+    return sorted(out, key=lambda h: (h["victim"], h["attacker"]))
+
+
+def hit_kill_script(edid, hits):
+    """hits: find_hit_kills entries. The victim dies once its attacker has fought it up close for HIT_TICKS runs."""
+    lines = [f"scn {edid}", "float fQuestDelayTime"] + [f"short h{i}" for i in range(len(hits))]
+    lines += ["begin GameMode", "set fQuestDelayTime to 0.5"]
+    for i, h in enumerate(hits):
+        v, a = f"CQSRef{h['victim']:08X}", f"CQSRef{h['attacker']:08X}"
+        cond = "".join(f" && {v}.{var} {op} {num}" for var, op, num in h["conditions"])
+        lines += [f"if {v}.GetDead == 0 && {a}.GetDead == 0{cond}",
+                  f"if {a}.GetCombatTarget == {v} && {a}.GetDistance {v} < {HIT_RANGE}",
+                  f"set h{i} to h{i} + 1",
+                  f"if h{i} >= {HIT_TICKS}",
+                  f"{v}.Kill",
+                  f"set h{i} to 0",
+                  "endif",
+                  "else",
+                  f"set h{i} to 0",
+                  "endif",
+                  "endif"]
+    return "\r\n".join(lines + ["end"]) + "\r\n"
+
+
+def find_placed_corpses(lo):
+    """Actor refs (ACHR/ACRE) placed dead in Oblivion.esm: their base NPC or creature has 0 health, so the game has
+    them dead from the start (the dead goblin with the lockpicks in the prison's cave, skeletons, bodies). The OblivionMP
+    server has them alive, so it refuses to let anyone loot them. (A saved ragdoll pose, XRGD, is no sign: living NPCs
+    such as Earana have one too.) Refs a script brings back (Resurrect) are left out. [(ref form id, editor id or None)]"""
+    buf = lo.sources[0].buf
+    refs, by_edid, by_base, base_script, named_back, self_back, lifeless = {}, {}, {}, {}, set(), set(), set()
+    for r in tes4.iter_records(buf, want={"SCPT", "QUST", "DIAL", "INFO", "CELL", "WRLD", "ACHR", "ACRE", "NPC_", "CREA"}):
+        if r.type in ("ACHR", "ACRE"):
+            if r.edid:
+                by_edid[r.edid.lower()] = r.formid
+            base = struct.unpack("<I", r.get("NAME")[:4])[0]
+            refs[r.formid] = (base, r.edid)
+            by_base.setdefault(base, []).append(r.formid)
+            continue
+        if r.type in ("NPC_", "CREA"):
+            if r.get("SCRI"):
+                base_script[r.formid] = struct.unpack("<I", r.get("SCRI"))[0]
+            data = r.get("DATA")
+            # Health: a u32 after the 21 skills (NPC_), a u16 after type, combat, magic, stealth, soul and a pad (CREA).
+            if data is not None and (struct.unpack_from("<I", data, 21)[0] if r.type == "NPC_" else struct.unpack_from("<H", data, 6)[0]) == 0:
+                lifeless.add(r.formid)
+            continue
+        for k, v in r.subs:
+            if k != "SCTX":
+                continue
+            for line in v.decode("cp1252", "replace").split("\n"):
+                b = RESURRECT_LINE.match(line.split(";")[0].strip())
+                if b and b.group(1):
+                    named_back.add(b.group(1).lower())
+                elif b and r.type == "SCPT":
+                    self_back.add(r.formid)
+    back = {by_edid[n] for n in named_back if n in by_edid}
+    for base, script in base_script.items():
+        if script in self_back:
+            back.update(by_base.get(base, []))
+    return sorted((f, e) for f, (base, e) in refs.items() if base in lifeless and f not in back)
+
+
+def death_script(edid, refs):
+    """refs: [(ref form id, token editor id, local variable)]. A death counts once the game has run a few seconds."""
+    lines = [f"scn {edid}", "float fQuestDelayTime", "short warm"] + [f"short {var}" for _, _, var in refs]
+    lines += ["begin GameMode", "set fQuestDelayTime to 0.25", "if warm < 8", "set warm to warm + 1", "endif"]
+    for ref, tok, var in refs:
+        name = f"CQSRef{ref:08X}"
+        lines += [f"if {name}.GetDead == 1",
+                  f"if {var} == 0",
+                  f"set {var} to 1",
+                  # Dead already while the game loaded (the save's own state): not a death in play.
+                  "if warm >= 8",
+                  f"if player.GetItemCount {tok} == 0",
+                  f"player.AddItem {tok} 1",
+                  "endif", "endif", "endif",
+                  "else",
+                  f"set {var} to 0",
+                  "endif"]
+    return "\r\n".join(lines + ["end"]) + "\r\n"
+
+
 # Vanilla forms the new-start script names, looked up in Oblivion.esm by editor id.
-START_FORMS = ["MQ01", "MQ02", "Charactergen", "CGSewerExitMarker", *START_TOPICS]
+START_FORMS = ["MQ01", "MQ02", "Charactergen", "CGSewerExitMarker", "RenoteRef", "CGCrumbleDust01REF", *START_TOPICS]
+# The prison wall the rats push in (CGCrumbleWall01SCRIPT); the reference has no editor id.
+CRUMBLE_WALL = 0x0003E31C
 
 
 def vanilla_forms(lo, edids):
     """Editor id (lower case) -> form id, for these editor ids in Oblivion.esm (the first plugin)."""
     want = {e.lower() for e in edids}
     out = {}
-    for r in tes4.iter_records(lo.sources[0].buf, want={"QUST", "DIAL", "CELL", "REFR"}):
+    for r in tes4.iter_records(lo.sources[0].buf, want={"QUST", "DIAL", "CELL", "REFR", "ACHR"}):
         if r.edid and r.edid.lower() in want and r.edid.lower() not in out:
             out[r.edid.lower()] = r.formid
     missing = want - out.keys()
@@ -418,10 +654,154 @@ GLOBALS = {"CQSGo": GLOB_GO, "CQSReplay": GLOB_REPLAY}
 
 
 # ---------------------------------------------------------------------------------------------------------------
+# Menus a quest opens (world state sync: the game's pause)
+#
+# The game pauses while a menu is open, and quests rely on it: Charactergen opens the birthsign menu at 43 and moves to
+# 44 at once, and the Emperor's force greet (CGEmperorToPlayerB) waits for 44; at 87 the class menu opens and Baurus's
+# force greet waits for 87. OblivionMP doesn't pause: the conversation started under the open menu, which then
+# couldn't be closed (2026-11-17). Every quest stage at which a script opens a menu gets a gate global; every package
+# that waits for that stage (GetStage quest == stage) also wants the gate at 1. CQSMenuGateScript opens it once the
+# player has picked something (the birthsign or class changed), after a minute if they keep what they had (or make
+# their own class, or for a menu it can't read), and in any case after five, or once the quest is past that stage.
+MENU_COMMANDS = {"showbirthsignmenu": "birthsign", "showclassmenu": "class", "showracemenu": "race",
+                 "showspellmaking": "spellmaking", "showenchantment": "enchanting"}
+GET_STAGE, GET_GLOBAL_VALUE = 58, 74     # condition function indexes
+MENU_KEPT_TICKS, MENU_MAX_TICKS = 120, 600  # half-second runs: a minute, five minutes
+
+
+def _code_lines(text):
+    return [l.split(";")[0].strip() for l in text.replace("\r", "").split("\n")]
+
+
+def find_menu_gates(lo):
+    """[{quest, stage, kind, packages: [(src, PACK record)]}] for each quest stage at which a script opens a menu and
+    some package waits for that stage."""
+    quests = {r.edid.lower(): (key, r.edid) for key, (src, r) in lo.winning({"QUST"}).items() if r.edid}
+    found = {}                             # (quest form id, stage) -> kind
+    menu = re.compile(r"^(?:\w+\.)?(" + "|".join(MENU_COMMANDS) + r")\b", re.I)
+    for key, (src, r) in lo.winning({"QUST", "SCPT"}).items():
+        if r.type == "QUST":
+            # Stage result scripts: the menu is open at that stage, or at the one the script moves to.
+            stage = None
+            for k, v in r.subs:
+                if k == "INDX":
+                    stage = struct.unpack("<H", v[:2])[0]
+                elif k == "SCTX" and stage is not None:
+                    lines = _code_lines(v.decode("cp1252", "replace"))
+                    kinds = [MENU_COMMANDS[m.group(1).lower()] for l in lines for m in [menu.match(l)] if m]
+                    if kinds:
+                        moved = [int(m.group(1)) for l in lines
+                                 for m in [re.match(rf"setstage\s+{re.escape(r.edid)}\s+(\d+)$", l, re.I)] if m]
+                        found[(key, moved[-1] if moved else stage)] = kinds[0]
+            continue
+        # Quest and object scripts: a menu inside "if GetStage <quest> == <stage>", maybe moved on in the same block.
+        lines = _code_lines((r.get("SCTX") or b"").decode("cp1252", "replace"))
+        stack = []
+        for i, l in enumerate(lines):
+            low = l.lower()
+            if low.startswith("if ") or low.startswith("if("):
+                stack.append(re.match(r"if\s*\(?\s*getstage\s+(\w+)\s*==\s*(\d+)\s*\)?$", l, re.I))
+            elif low == "endif":
+                if stack:
+                    stack.pop()
+            elif (m := menu.match(l)) and stack and stack[-1] and stack[-1].group(1).lower() in quests:
+                qkey, qedid = quests[stack[-1].group(1).lower()]
+                stage, depth = int(stack[-1].group(2)), 0
+                for l2 in lines[i + 1:]:
+                    l2low = l2.lower()
+                    if l2low.startswith("if ") or l2low.startswith("if("):
+                        depth += 1
+                    elif l2low == "endif":
+                        if depth == 0:
+                            break
+                        depth -= 1
+                    elif depth == 0 and (m2 := re.match(rf"setstage\s+{re.escape(qedid)}\s+(\d+)$", l2, re.I)):
+                        stage = int(m2.group(1))
+                found[(qkey, stage)] = MENU_COMMANDS[m.group(1).lower()]
+    if not found:
+        return []
+    by_key = {key: edid for key, edid in quests.values()}
+    waiting = {}
+    for key, (src, r) in lo.winning({"PACK"}).items():
+        for k, v in r.subs:
+            if k != "CTDA" or len(v) < 20:
+                continue
+            op, value, func, param = v[0], *struct.unpack_from("<fII", v, 4)
+            if func != GET_STAGE or op >> 5 != 0:
+                continue
+            qkey = lo.remap(src, param) if src is not lo.sources[0] else param
+            if (qkey, int(value)) in found:
+                waiting.setdefault((qkey, int(value)), []).append((src, r))
+    return [dict(quest=by_key[q], stage=st, kind=kind, packages=waiting[(q, st)])
+            for (q, st), kind in sorted(found.items()) if (q, st) in waiting]
+
+
+def gated_package(lo, src, r, gate):
+    """A package's copy that also wants the gate global at 1."""
+    subs = remap_record(lo, src, r, set())
+    if src is not lo.sources[0] or src.masters:
+        # Location and target: a form id at offset 4 for these kinds (reference, cell, object id).
+        out = []
+        for k, v in subs:
+            if (k == "PLDT" and len(v) >= 8 and struct.unpack_from("<I", v)[0] in (0, 1, 4)) or \
+               (k == "PTDT" and len(v) >= 8 and struct.unpack_from("<I", v)[0] in (0, 1)):
+                fid = lo.remap(src, struct.unpack_from("<I", v, 4)[0])
+                v = v[:4] + struct.pack("<I", fid or 0) + v[8:]
+            out.append((k, v))
+        subs = out
+    last = max((i for i, (k, _) in enumerate(subs) if k == "CTDA"), default=len(subs) - 1)
+    subs.insert(last + 1, ("CTDA", struct.pack("<B3sfIIII", 0, b"\0\0\0", 1.0, GET_GLOBAL_VALUE, gate, 0, 0)))
+    return tes4write.record("PACK", lo.remap(src, r.formid) if src is not lo.sources[0] else r.formid, subs,
+                            r.flags & ~0x40000)
+
+
+def menu_choices(lo, kind):
+    """Editor ids the gate script tests the player against, for a menu it can read: the birthsigns, the playable classes."""
+    if kind == "birthsign":
+        return sorted(r.edid for src, r in lo.winning({"BSGN"}).values() if r.edid)
+    if kind == "class":
+        # CLAS DATA: attributes (8), specialization (4), major skills (28), then flags (bit 0: playable).
+        return sorted(r.edid for src, r in lo.winning({"CLAS"}).values()
+                      if r.edid and len(r.get("DATA") or b"") >= 44 and struct.unpack_from("<I", r.get("DATA"), 40)[0] & 1)
+    return []
+
+
+def menu_gate_names(lo):
+    """Editor id (lower case) -> form id for the quests, birthsigns and classes the gate script names."""
+    return {r.edid.lower(): key for key, (src, r) in lo.winning({"QUST", "BSGN", "CLAS"}).items() if r.edid}
+
+
+def menu_gate_script(gates, lo):
+    lines = ["scn CQSMenuGateScript", "float fQuestDelayTime", "short now"]
+    for i, _ in enumerate(gates):
+        lines += [f"short seen{i}", f"short was{i}", f"short wait{i}"]
+    lines += ["begin GameMode", "set fQuestDelayTime to 0.5"]
+    for i, g in enumerate(gates):
+        q, st, gv = g["quest"], g["stage"], g["global"]
+        test = {"birthsign": "GetIsPlayerBirthsign {}", "class": "player.GetIsClass {}"}.get(g["kind"])
+        choices = menu_choices(lo, g["kind"]) if test else []
+        lines += [f"if GetStage {q} == {st} && {gv} == 0", "set now to 0"]
+        lines += [f"if {test.format(c)} == 1\r\nset now to {j}\r\nendif" for j, c in enumerate(choices, 1)]
+        lines += [f"if seen{i} == 0", f"set seen{i} to 1", f"set was{i} to now", f"set wait{i} to 0", "endif",
+                  f"set wait{i} to wait{i} + 1",
+                  f"if now != was{i} || wait{i} >= {MENU_MAX_TICKS}", f"set {gv} to 1",
+                  # Kept what they had (or a menu the script can't read): a minute.
+                  # A birthsign is always one of the list (a new character has none yet); a class can be the player's own.
+                  (f"elseif was{i} != 0 && wait{i} >= {MENU_KEPT_TICKS}" if g["kind"] == "birthsign"
+                   else f"elseif wait{i} >= {MENU_KEPT_TICKS}"),
+                  f"set {gv} to 1",
+                  "endif",
+                  f"elseif GetStage {q} > {st} && {gv} == 0", f"set {gv} to 1",
+                  "endif"]
+    return "\r\n".join(lines + ["end"]) + "\r\n"
+
+
+# ---------------------------------------------------------------------------------------------------------------
 # Records
 
-def scpt_record(formid, edid, source, resolve):
-    s = obscript.Script(resolve, GLOBALS.keys())
+def scpt_record(formid, edid, source, resolve, globals_=(), extvar=None):
+    s = obscript.Script(resolve, [*GLOBALS.keys(), *globals_])
+    s.extvar = extvar
     code = s.compile(source)
     subs = [("EDID", edid),
             ("SCHR", struct.pack("<IIIIHH", 0, len(s.refs), len(code), len(s.vars), 1, 0)),
@@ -666,18 +1046,71 @@ def build_main(lo, outdir, only):
     qust.append(quest_record(mod | cqid, "CQSControl", mod | csid))
     # The new-player start. Its own names: vanilla forms the quest tables above may leave out (Charactergen is never
     # mirrored), on top of ours.
-    start_names = {**vanilla_forms(lo, START_FORMS), **names}
+    start_names = {**vanilla_forms(lo, START_FORMS), **names, "cqscrumblewall": CRUMBLE_WALL}
     nsid, nqid = nxt, nxt + 1; nxt += 2
     rec, _ = scpt_record(mod | nsid, "CQSNewStartScript", NEW_START_SCRIPT, lambda n: start_names.get(n.lower()))
     scpt.append(rec)
     qust.append(quest_record(mod | nqid, "CQSNewStart", mod | nsid))
 
-    count = len(glob) + len(clot) + len(scpt) + len(qust) + len(overrides)
+    # Menus a quest opens while an NPC's force greet waits for the stage (see find_menu_gates).
+    packs, gates = [], []
+    for g in ([] if only else find_menu_gates(lo)):
+        g["global"] = f"CQSMenuGate{len(gates) + 1}"
+        gid = g["gid"] = token_id(f"menugate:{g['quest']}:{g['stage']}")
+        glob.append(glob_record(mod | gid, g["global"]))
+        packs += [gated_package(lo, src, r, mod | gid) for src, r in g["packages"]]
+        gates.append(g)
+    if gates:
+        gate_names = {**menu_gate_names(lo), **{g["global"].lower(): mod | g["gid"] for g in gates}}
+        gsid, gqid = nxt, nxt + 1; nxt += 2
+        rec, _ = scpt_record(mod | gsid, "CQSMenuGateScript", menu_gate_script(gates, lo),
+                             lambda n: gate_names.get(n.lower()), [g["global"] for g in gates])
+        scpt.append(rec)
+        qust.append(quest_record(mod | gqid, "CQSMenuGates", mod | gsid))
+
+    # Scripted deaths: one token per actor, scripts of DEATHS_PER_SCRIPT actors each.
+    deaths = []
+    for ref, ref_edid in ([] if only else find_scripted_deaths(lo)):
+        tid = token_id(f"dead:{ref:08X}")
+        tedid = f"CQSDead{ref:08X}"
+        names[tedid.lower()] = mod | tid
+        clot.append(token_record(mod | tid, tedid))
+        deaths.append(dict(token=f"{tid:06X}", ref=f"{ref:08X}", editorId=ref_edid))
+    corpses = [dict(ref=f"{ref:08X}", editorId=ref_edid) for ref, ref_edid in ([] if only else find_placed_corpses(lo))]
+    death_names = {**names, **{f"cqsref{int(d['ref'], 16):08x}": int(d["ref"], 16) for d in deaths}}
+
+    # Kills on a hit by a given actor (see find_hit_kills).
+    hits = [] if only else find_hit_kills(lo)
+    for i in range(0, len(hits), HITS_PER_SCRIPT):
+        chunk = hits[i:i + HITS_PER_SCRIPT]
+        part = i // HITS_PER_SCRIPT + 1
+        hit_names = {f"cqsref{f:08x}": f for h in chunk for f in (h["victim"], h["attacker"])}
+        hsid, hqid = nxt, nxt + 1; nxt += 2
+        variables = {(f"cqsref{h['victim']:08x}", var): h["variables"][var] for h in chunk for var in h["variables"]}
+        rec, size = scpt_record(mod | hsid, f"CQSHitKillScript{part}", hit_kill_script(f"CQSHitKillScript{part}", chunk),
+                                lambda n: hit_names.get(n.lower()),
+                                extvar=lambda ref, var: variables.get((ref.lower(), var.lower())))
+        max_code = max(max_code, size)
+        scpt.append(rec)
+        qust.append(quest_record(mod | hqid, f"CQSHitKills{part}", mod | hsid))
+    for i in range(0, len(deaths), DEATHS_PER_SCRIPT):
+        chunk = [(int(d["ref"], 16), f"CQSDead{d['ref']}", f"d{j}") for j, d in enumerate(deaths[i:i + DEATHS_PER_SCRIPT])]
+        part = i // DEATHS_PER_SCRIPT + 1
+        dsid, dqid = nxt, nxt + 1; nxt += 2
+        rec, size = scpt_record(mod | dsid, f"CQSDeathScript{part}", death_script(f"CQSDeathScript{part}", chunk),
+                                lambda n: death_names.get(n.lower()))
+        max_code = max(max_code, size)
+        scpt.append(rec)
+        qust.append(quest_record(mod | dqid, f"CQSDeaths{part}", mod | dsid))
+
+    count = len(glob) + len(clot) + len(scpt) + len(qust) + len(overrides) + len(packs)
     data = tes4write.header(count, nxt, "CoopQuestSync generator",
                             "Mirrors vanilla quest stages into hidden token items for OblivionMP co-op.",
                             lo.masters)
     data += (tes4write.group("GLOB", glob) + tes4write.group("SCPT", scpt)
              + tes4write.group("CLOT", clot) + tes4write.group("QUST", qust + overrides))
+    if packs:
+        data += tes4write.group("PACK", packs)
     if not only:
         save_ids(IDS_FILE, ids)
     with open(os.path.join(outdir, PLUGIN), "wb") as f:
@@ -689,10 +1122,12 @@ def build_main(lo, outdir, only):
                        allow={c: f"{v:06X}" for c, v in ALLOW.items()}, categories=scriptpatch.CATEGORIES,
                        newStart=dict(offer=f"{START_OFFER:06X}", prison=f"{START_PRISON:06X}",
                                      done=f"{START_DONE:06X}", intro=f"{START_INTRO:06X}", kit=f"{START_KIT:06X}"),
-                       legacy=[f"{BASE + 0x10:06X}", f"{BASE + 0x30:06X}"], tokenName=TOKEN_NAME,
+                       legacy=[f"{BASE + 0x10:06X}", f"{BASE + 0x30:06X}"], tokenName=TOKEN_NAME, deaths=deaths, corpses=corpses,
                        questItems=[f"{x:08X}" for x in quest_items], quests=mapping), f, indent=1)
     stages = sum(len(q["stages"]) for q in quests)
     patched = sum(len(q["effects"]) for q in quests)
+    print(f"{PLUGIN}: {len(deaths)} actors killed by script watched, {len(corpses)} actors placed dead, "
+          + f"{len(hits)} kills on a hit, menu gates: " + (", ".join(f"{g['quest']} {g['stage']} ({g['kind']}, {len(g['packages'])} package(s))" for g in gates) or "none"))
     print(f"{PLUGIN}: {len(quests)} quests, {stages} stages, {patched} stages with guarded effects in "
           f"{len(overrides)} quest overrides, {len(quest_items)} quest items, {count} records, {len(data)} bytes, "
           f"largest script {max_code} bytes")

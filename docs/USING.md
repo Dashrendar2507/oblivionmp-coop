@@ -49,7 +49,8 @@ with an R in them while you're down (see [Death](#how-it-plays) below).
   menus, which open once you've stood at the sewer exit for a few seconds). The window
   stays up until you click; close the Esc menu before answering it. If a load closes the window before you answer,
   it comes back once you walk a few steps. The Emperor and the prison are shared by everyone, so the intro plays once per
-  world: once someone has played it and left the sewers, later newcomers start at the sewer exit. The party's
+  world: once someone has played it and left the sewers, later newcomers start at the sewer exit. Leave the game
+  during the intro and you come back at the sewer exit, for the same reason. The party's
   progress reaches a new player once they've left the sewers, and nobody can travel to a teammate before that.
 
   With "Start in the prison" off, every new character is OblivionMP's own ready-made one: "Danmer", just out of the
@@ -93,6 +94,7 @@ The server host opens **http://localhost:9060/** on the server computer (see
 | Party leader | (none) | Used by "leader only" and by respawns. |
 | Wait while someone talks | On | New stages reach a player once their conversation ends. |
 | Announce progress in chat | On | "Alice advanced The Quest: ..." |
+| NPCs that quests bring in | On | The server keeps the hidden NPCs and creatures a quest script shows (an ambush, the prison rats), so they appear for everyone. |
 
 **Effects of a stage someone else reached.** Each quest stage that does something to the player is tagged with
 what it does: **Teleport**, **Combat**, **Items**, **Status**, **Faction ranks**, **Cut scene**. The player who

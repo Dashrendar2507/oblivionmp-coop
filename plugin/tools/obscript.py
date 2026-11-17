@@ -22,6 +22,15 @@ FUNCS = {
     "moveto":        (0x109E, ["ref"]),
     "addtopic":      (0x1058, ["ref"]),
     "getbuttonpressed": (0x101F, None),
+    "getdead":       (0x102E, None),
+    "getisplayerbirthsign": (0x10E0, ["ref"]),
+    "getisclass":    (0x1044, ["ref"]),
+    "getdistance":   (0x1001, ["ref"]),
+    "getcombattarget": (0x10E8, None),        # returns a reference: compare it with a form name
+    "kill":          (0x108B, []),            # the optional killer left out (the game writes an empty list)       # condition function 68, as the CTDA of packages and topics use it
+    "getdisabled":   (0x1023, None),
+    "getdestroyed":  (0x10CB, None),
+    "activate":      (0x100D, ["ref", "int"]),
     "getpos":        (0x1006, ["axis"]),   # the axis is one byte, the letter itself
     # an optional menu type: the game writes an empty parameter list (a zero count) when there is none
     "menumode":      (0x1024, []),
@@ -44,6 +53,8 @@ class Script:
         self.globals = {g.lower() for g in globals_}
         self.refs = []          # form ids in SCRO order
         self.vars = []          # (name, is_int)
+        # extvar(ref editor id, variable) -> (index, is_int) or None: another script's variable, as ref.variable
+        self.extvar = None
         self.name = None
 
     # ---- references and variables ----
@@ -140,6 +151,14 @@ class Script:
                 i += nargs
             elif self.var(t) or t.lower() in self.globals:
                 emit(self.var_token(t))
+            elif "." in t and self.extvar and (ev := self.extvar(*t.split(".", 1))):
+                # another reference's script variable: the reference, then the variable as that script numbers it
+                ref, _ = t.split(".", 1)
+                emit(b"\x72" + struct.pack("<H", self.ref_index(ref)) + bytes([0x73 if ev[1] else 0x66])
+                     + struct.pack("<H", ev[0]))
+            elif "." not in t and (t.lower() == "player" or self.resolve(t) is not None):
+                # a form, compared with a function that returns one (GetCombatTarget == SomeRef)
+                emit(b"\x5a" + struct.pack("<H", self.ref_index(t)))
             else:
                 raise CompileError(f"unknown token {t}")
             i += 1

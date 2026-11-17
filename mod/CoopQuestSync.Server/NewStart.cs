@@ -95,8 +95,10 @@ public sealed partial class NewStart(IEntities entities, QuestTokenSync sync, In
             var done = Count(view, Map.StartDoneLocalId);
             var kit = Count(view, Map.StartKitLocalId);
 
+            // A player who chose the prison and rejoined during the intro also has CQSStartDone (the plugin took the
+            // skip for them): they played the intro.
             if (view.Intro > 0)
-                _inSewers[id] = done > 0;
+                _inSewers[id] = done > 0 && prison == 0;
             if (view.Intro == 0)
             {
                 // Out of the sewers after playing the intro here: the shared Emperor and Blades have played their part.
@@ -127,10 +129,13 @@ public sealed partial class NewStart(IEntities entities, QuestTokenSync sync, In
                 if (offer > 0)
                     sync.Take(main, slot << 24 | Map.StartOfferLocalId, offer);
                 if (done > 0 && kit == 0)
-                    GiveStart(main, view, slot);
-                Tell(id, prison > 0 ? "prison" : "skipped", prison > 0
-                    ? "{Player} chose the prison intro. The party's progress waits until they leave the sewers."
-                    : "{Player} is at the sewer exit. The party's progress waits until they go through the gate.");
+                    GiveStart(main, view, slot, rejoined: prison > 0);
+                Tell(id, done > 0 && prison > 0 ? "rejoined" : prison > 0 ? "prison" : "skipped",
+                    done > 0 && prison > 0
+                        ? "{Player} came back during the prison intro, which can't be played again: they're at the sewer exit now. The party's progress waits until they go through the gate."
+                    : prison > 0
+                        ? "{Player} chose the prison intro. The party's progress waits until they leave the sewers."
+                        : "{Player} is at the sewer exit. The party's progress waits until they go through the gate.");
                 continue;
             }
 
@@ -168,7 +173,8 @@ public sealed partial class NewStart(IEntities entities, QuestTokenSync sync, In
     }
 
     /// <summary>The player stands at the sewer exit: the amulet, the kit, and the character menus.</summary>
-    private void GiveStart(MainCharacter main, QuestTokenSync.PlayerView view, uint slot)
+    /// <param name="rejoined">Chose the prison and came back during the intro: the character is made already.</param>
+    private void GiveStart(MainCharacter main, QuestTokenSync.PlayerView view, uint slot, bool rejoined = false)
     {
         var name = sync.Nickname(main.PlayerId);
         var equipment = main.As<Equipment>();
@@ -185,6 +191,13 @@ public sealed partial class NewStart(IEntities entities, QuestTokenSync sync, In
         logger.LogInformation("[QuestSync] {Player}: start at the sewer exit: {Amulet}, {Kit} starter item(s).", name,
             amulet ? "gave the Amulet of Kings" : delivered ? "no amulet (Jauffre already has it)" : "already has the amulet", kit.Count);
 
+        if (rejoined)
+        {
+            chat.SendTo(main.PlayerId, "You left during the prison intro, and the prison can't be played twice: you're at the sewer exit now"
+                + (delivered ? ". Your party has already brought the Amulet of Kings to Jauffre." : ", with the Amulet of Kings.")
+                + " Go through the gate to join your party.", ChatLineKind.System);
+            return;
+        }
         _menusDue[main.PlayerId] = (DateTime.UtcNow, null);
         chat.SendTo(main.PlayerId, delivered
             ? "You start at the sewer exit. Make your character, then go through the gate. Your party has already brought the Amulet of Kings to Jauffre."

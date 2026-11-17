@@ -284,6 +284,7 @@ function renderSettings() {
     ${srow("Party leader", "Used by \"leader only\" and by respawns.", sel("leader", leaders, st.leader))}
     ${srow("Wait while someone talks", "New stages reach a player once their conversation ends.", chk("holdDuringDialogue", st.holdDuringDialogue))}
     ${srow("Announce progress in chat", "\"Alice advanced The Quest\".", chk("questMessages", st.questMessages))}
+    ${srow("NPCs that quests bring in", "The server keeps the hidden NPCs and creatures a quest script reveals (an ambush, the prison rats), so they appear for everyone. Off: they never appear under OblivionMP.", chk("hiddenNpcs", st.hiddenNpcs))}
   </div>
   <div class="sgroup"><h3>Effects of a stage someone else reached</h3>
     <table class="fx"><thead><tr><th>Effect</th><th title="Someone advanced the quest while you play">Live</th><th title="Stages the party did while you were away, given when you join">On join</th><th title="Your own stages, which the game forgets and the plugin sets again each time you join">On rejoin</th></tr></thead>

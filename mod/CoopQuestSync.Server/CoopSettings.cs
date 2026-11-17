@@ -38,6 +38,12 @@ public sealed class CoopSettings
     /// <summary>"Alice advanced The Quest: journal text" in everyone's chat.</summary>
     public bool QuestMessages { get; set; } = true;
 
+    /// <summary>
+    /// The NPCs and creatures that wait hidden until a script brings them in (quest ambushes, the prison rats) are made
+    /// on the server, still hidden, so the script's enable reaches everyone (<see cref="HiddenActors"/>).
+    /// </summary>
+    public bool HiddenNpcs { get; set; } = true;
+
     // ---- Conversations ----
 
     /// <summary>Who sees someone's conversation: "everyone", "area" (same interior or exterior space) or "off".</summary>

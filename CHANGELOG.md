@@ -1,5 +1,75 @@
 # Changelog
 
+## 0.9.6 (test build)
+
+* **The Emperor dies to the assassin again, and the prison intro goes on.** The game kills him with his own script
+  when the final assassin's blow lands, but under OblivionMP that hit never reaches his script: the blow played, he
+  lived, and the intro kept you frozen waiting for his death. The same goes for every script that kills an actor when
+  a given attacker hits it. The plugin generator now finds all of them (the Emperor, Captain Renault, the orcs at the
+  Shivering Isles gate), and the plugin kills the actor once that attacker has fought it up close for a moment, under
+  the same conditions as the game's script. The rest of the game's scripts then go on from the death.
+
+## 0.9.5 (test build)
+
+* **Every menu a quest opens waits like the birthsign menu now.** 0.9.4 fixed the Emperor's line only. The plugin
+  generator now finds every quest stage at which a script opens a menu, and every NPC line waiting for that stage. In
+  the game and its DLCs that's the birthsign menu (the Emperor) and the class menu at the sewer exit (Baurus, who had
+  the same problem). Those lines wait until you've picked something: if you keep what you had or make your own class,
+  a minute; in any case at most five.
+
+## 0.9.4 (test build)
+
+* **The birthsign menu in the prison can be closed again.** The game pauses while that menu is open, so the
+  Emperor's next line waits for it. OblivionMP doesn't pause: the Emperor started talking under the open menu, which
+  then couldn't be closed. The plugin's copy of that line now waits until you've picked a birthsign (if you keep the
+  one you had, a minute; in any case at most five).
+* **Leaving during the prison intro and coming back puts you at the sewer exit.** Every join loads the server's
+  start save, the prison cell with the wall whole, but the shared Emperor, Blades and wall have moved on, and the
+  intro can't be played twice. You now get the sewer-exit start instead (with the Amulet of Kings if the Emperor
+  hadn't given it to you yet), without the character menus: your character is made already.
+
+## 0.9.3 (test build)
+
+* **Bodies placed dead can really be looted now.** 0.9.2 marked them dead once, but the game that runs them reports
+  them with no health at all, which the server doesn't count as a corpse, and the loot was still refused. The server
+  now marks them dead again whenever that happens, and right before every loot.
+
+## 0.9.2 (test build)
+
+* **Bodies placed dead can be looted (world state sync, part 3).** The game puts many actors in the world already
+  dead: skeletons, bodies, the dead goblin with the lockpicks and the key in the prison's cave (787 in Oblivion.esm).
+  The OblivionMP server took them as alive, so it refused to let anyone take their things ("not a container or a
+  corpse"). The server now marks them dead once a player's game reports them.
+
+## 0.9.1 (test build)
+
+* **NPCs that quests bring in appear for everyone (world state sync, part 2).** Many quests keep NPCs and creatures
+  hidden until a script shows them: an ambush, someone who turns up for a quest, the rats that break through the
+  prison wall. The OblivionMP server never had these (a game only reports the actors it shows), so it refused the
+  script's request to show them and they never came. The server now creates them itself, still hidden, from the
+  server's own seed (868 in the base game and its DLCs) once a player is in their area, so the script's request goes
+  through for everyone. They get their usual gear. Hidden leveled creatures (a random pick from a list) are left out
+  for now. Setting: "NPCs that quests bring in" (on).
+
+## 0.9.0 (test build)
+
+* **Deaths by script are shared (world state sync, part 1).** Vanilla quests kill many NPCs with a script command
+  instead of damage (106 actors in Oblivion.esm: Captain Renault, Glenroy and the Emperor in the prison, quest
+  victims...). Under OblivionMP that death stayed in the game that ran the script: the server kept the NPC alive and
+  brought it back for everyone. The plugin now watches those actors, and when one dies in a player's game while they
+  play, the server kills it too, so it is dead for everyone, including players who join later. Actors a script also
+  brings back (the Arena's combatants) are left to the game.
+* **The wall in the prison crumbles after the first ambush.** Two rats push it in, but they start hidden, and the
+  OblivionMP server refuses a script's request to show an NPC it doesn't have ("NoEntity"), so they never came and
+  the intro was stuck. The plugin now crumbles the wall itself if the rats haven't done it 15 s after they should
+  have come.
+* **Captain Renault dies in the first ambush of the prison intro.** In the game she dies by script when the assassins
+  strike, but under OblivionMP that death stayed in one player's game: the server kept her alive and brought her
+  back, and the intro waited for her. The server now kills her at the same moments (an assassin hits her, or
+  assassin 1 or 2 is hit), and in a world where the intro got stuck, once all four assassins are dead. The plugin
+  then moves the intro on. The assassins' missing armor and mace (summoned by a spell OblivionMP doesn't keep) are
+  still OblivionMP's to fix.
+
 ## 0.8.2
 
 * **Back where you left after leaving the sewers.** Every join loads the server's start save, the prison, so the
