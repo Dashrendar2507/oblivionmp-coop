@@ -90,8 +90,9 @@ file whether it's on the server or on the player's PC.
    that, nothing else to do.
 
 **Requirements:** Oblivion Remastered with all its official plugins (see [known issues](docs/KNOWN-ISSUES.md)), the
-ReadyM Launcher, and an **OblivionMP 1.1.0 server** with the mods it ships with (the Chat mod is required). Version
-0.8.0 doesn't load on an OblivionMP 1.0.x server, and older versions of the mod don't load on 1.1.
+ReadyM Launcher, and an **OblivionMP 1.1 server** (1.1.1 recommended, 1.1.0 works too) with the mods it ships with
+(the Chat mod is required). Version 0.8.0 and later don't load on an OblivionMP 1.0.x server, and older versions of
+the mod don't load on 1.1.
 
 ## Known issues
 
@@ -182,7 +183,8 @@ server, see `plugin/tools/locres.py`. Never commit that file or put it in a zip:
 
 ### Building the mod
 
-Requires the .NET 10 SDK. The mod builds against the OblivionMP SDK 1.1.0 packages from nuget.org. From `mod/`:
+Requires the .NET 10 SDK. The mod builds against the OblivionMP SDK 1.1.0 packages from nuget.org. OblivionMP 1.1.1
+kept the SDK packages at 1.1.0, so the same build runs on 1.1.0 and 1.1.1 servers. From `mod/`:
 
 ```powershell
 .\MakeModFolder.ps1 Release

@@ -37,8 +37,10 @@ names worked out from the game's ids.
 
 ## OblivionMP 1.1
 
-Version 0.8.0 is the first release for OblivionMP 1.1.0, and it has had much less play on 1.1 than on 1.0. Things
-1.1 changed that we haven't tested enough yet:
+Version 0.8.0 is the first release for OblivionMP 1.1, and it has had much less play on 1.1 than on 1.0. It runs on
+1.1.0 and 1.1.1 (1.1.1 recommended: it no longer counts a player as talking when two NPCs chat next to them, which
+could show a conversation overlay or hold quest stages for nothing). Things 1.1 changed that we haven't tested
+enough yet:
 
 * **Getting back up after dying may need a rejoin.** On OblivionMP 1.1, the rebirth's reload (after **R**, Alt+G,
   a teammate's revive or OblivionMP's own timed rebirth) doesn't run, so your character can stay on the ground in
