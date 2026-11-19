@@ -457,9 +457,11 @@ def find_scripted_deaths(lo):
 
 # Kills on a hit by a given actor ("begin OnHit CGAssassinFinal / kill"): the Emperor in the prison, Renault, the
 # orcs at the Shivering Isles gate. Under OblivionMP that hit never reaches the victim's script: the assassin's blow
-# played, the Emperor lived, and the intro kept the player frozen waiting for his death (2026-11-17). The plugin
-# kills the victim itself once that attacker has fought it at melee range for a moment, under the block's own
-# conditions on the victim's script variables; the game's scripts then go on from the death as they would.
+# played, the Emperor lived, and the intro kept the player frozen waiting for his death (2026-11-17). Once that attacker
+# has fought the victim at melee range for a moment (under the block's own conditions on the victim's script
+# variables), the plugin reports the death with the victim's CQSDead token, and the server kills it (DeathSync), as it
+# killed Renault (IntroDeaths). A Kill in the player's own game ended in a broken game at the Emperor (0.9.6,
+# 2026-11-18). The game's scripts then go on from the death as they would.
 HIT_RANGE, HIT_TICKS = 220, 3          # units; half-second runs in a row (the swing lands within that)
 HITS_PER_SCRIPT = 20
 
@@ -522,7 +524,8 @@ def find_hit_kills(lo):
 
 
 def hit_kill_script(edid, hits):
-    """hits: find_hit_kills entries. The victim dies once its attacker has fought it up close for HIT_TICKS runs."""
+    """hits: find_hit_kills entries, each with its death token ("token"). The death is reported once the attacker has
+    fought the victim up close for HIT_TICKS runs."""
     lines = [f"scn {edid}", "float fQuestDelayTime"] + [f"short h{i}" for i in range(len(hits))]
     lines += ["begin GameMode", "set fQuestDelayTime to 0.5"]
     for i, h in enumerate(hits):
@@ -532,7 +535,9 @@ def hit_kill_script(edid, hits):
                   f"if {a}.GetCombatTarget == {v} && {a}.GetDistance {v} < {HIT_RANGE}",
                   f"set h{i} to h{i} + 1",
                   f"if h{i} >= {HIT_TICKS}",
-                  f"{v}.Kill",
+                  f"if player.GetItemCount {h['token']} == 0",
+                  f"player.AddItem {h['token']} 1",
+                  "endif",
                   f"set h{i} to 0",
                   "endif",
                   "else",
@@ -1080,11 +1085,13 @@ def build_main(lo, outdir, only):
     death_names = {**names, **{f"cqsref{int(d['ref'], 16):08x}": int(d["ref"], 16) for d in deaths}}
 
     # Kills on a hit by a given actor (see find_hit_kills).
-    hits = [] if only else find_hit_kills(lo)
+    # Only actors with a death token: the server kills them when the plugin reports the death.
+    tokens = {int(d["ref"], 16): f"CQSDead{d['ref']}" for d in deaths}
+    hits = [dict(h, token=tokens[h["victim"]]) for h in ([] if only else find_hit_kills(lo)) if h["victim"] in tokens]
     for i in range(0, len(hits), HITS_PER_SCRIPT):
         chunk = hits[i:i + HITS_PER_SCRIPT]
         part = i // HITS_PER_SCRIPT + 1
-        hit_names = {f"cqsref{f:08x}": f for h in chunk for f in (h["victim"], h["attacker"])}
+        hit_names = {**names, **{f"cqsref{f:08x}": f for h in chunk for f in (h["victim"], h["attacker"])}}
         hsid, hqid = nxt, nxt + 1; nxt += 2
         variables = {(f"cqsref{h['victim']:08x}", var): h["variables"][var] for h in chunk for var in h["variables"]}
         rec, size = scpt_record(mod | hsid, f"CQSHitKillScript{part}", hit_kill_script(f"CQSHitKillScript{part}", chunk),

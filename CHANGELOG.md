@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.7 (test build)
+
+* **The Emperor's death comes from the server now.** In 0.9.6 the plugin killed him in the player's own game when the
+  assassin struck, and the game broke right there. Now the plugin only reports the blow, and the server kills him for
+  everyone, the way it already kills Captain Renault in the first ambush (which works). The same goes for every other
+  kill on a given attacker's hit.
+
 ## 0.9.6 (test build)
 
 * **The Emperor dies to the assassin again, and the prison intro goes on.** The game kills him with his own script
