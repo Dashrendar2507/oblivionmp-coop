@@ -16,12 +16,13 @@ If anything goes differently from what's written here, that's worth a [bug repor
 * **Oblivion Remastered**, with all its official plugins. Every copy of the remaster has them; see
   [the Deluxe note](KNOWN-ISSUES.md#everyone-needs-the-deluxe-plugins) if you're not sure.
 * The **ReadyM Launcher**, which you use to join OblivionMP servers.
-* For the host: an **OblivionMP 1.1.0 server** (see "Server > Installation" in the
+* For the host: an **OblivionMP 1.1 server**, 1.1.1 recommended (see "Server > Installation" in the
   [OblivionMP docs](https://docs.ready.mp)) with the mods it ships with, and the .NET 10 runtime it asks for.
   Co-op Quest Sync needs the **Chat** mod (`OblivionMP.Chat`), which comes with the server.
 
-Co-op Quest Sync 0.8.0 is built for OblivionMP 1.1.0 and **doesn't load on an OblivionMP 1.0.x server**. Mods built
-for 1.0 (Co-op Quest Sync 0.6 and older) don't load on 1.1.
+Co-op Quest Sync 0.8.0 and later are built for OblivionMP 1.1 and **don't load on an OblivionMP 1.0.x server**. Mods
+built for 1.0 (Co-op Quest Sync 0.6 and older) don't load on 1.1. The same zip runs on OblivionMP 1.1.0 and 1.1.1:
+1.1.1 kept the SDK at 1.1.0, so there's no separate build.
 
 ## Where things are
 
@@ -90,6 +91,19 @@ OblivionMP 1.1 comes as a new server folder. Set it up as ReadyM describes (copy
    copy the old 0.6 one: it doesn't load on 1.1.
 3. **Server:** if you made `<old server folder>\mods\CoopQuestSync\server\config.json`, copy it to the same place in
    the new folder.
+
+### Moving from OblivionMP 1.1.0 to 1.1.1
+
+OblivionMP 1.1.1 also comes as a new server folder, and the mod doesn't change. Set it up as ReadyM describes (copy
+`saves`, `data`, `branding` and `config.json` from the old server folder into the new one), then:
+
+1. **Server:** copy `coop-quest-sync-state.json` and every `coop-quest-sync-strings*.json` from the old server
+   folder into the new one, next to `server.exe`. They hold the shared progress, the settings and the game's text.
+2. **Server:** copy the whole `<old server folder>\mods\CoopQuestSync\` folder into the new `<server folder>\mods\`
+   (with your `server\config.json` in it, if you made one).
+3. **Server:** don't copy `coop-quest-sync-original-world.sav`. On its first start in the new folder, the mod keeps
+   the 1.1.1 package's own start save there again, and the log says `Start save: now the prison cell (...)`.
+4. **Every player's PC:** nothing to do. The ReadyM Launcher updates OblivionMP to 1.1.1 before it connects you.
 
 ### The game's text (nothing to do)
 

@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+* **Runs on OblivionMP 1.1.1.** OblivionMP 1.1.1 kept its SDK at 1.1.0, so the mod needs no new build: the 0.9.7 zip
+  runs on 1.1.0 and 1.1.1 servers. The docs now recommend 1.1.1 and say how to move a server to it. Two 1.1.1 fixes
+  help the mod: a player no longer counts as talking when two NPCs chat next to them (that could show the
+  conversation overlay, freeze watchers and hold quest stages for nothing), and pressure plates and some objects
+  that were never shared now behave the same for everyone.
+
 ## 0.9.7 (test build)
 
 * **The Emperor's death comes from the server now.** In 0.9.6 the plugin killed him in the player's own game when the
