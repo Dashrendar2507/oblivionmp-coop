@@ -15,8 +15,10 @@
 --     the game runs in: keys in text-request.txt, answers in text-reply.txt. The game's files are compressed in a
 --     way the mod can't read, but the running game has the text at hand.
 --
--- Crash safety (2026-11-07): see "The game-thread job" at the end. A file named "off" in the add-on folder stops
--- everything (main.lua reads it); one named "lite" stops the regular menu checks.
+-- Crash safety (2026-11-07): see "The game-thread job" at the end. No game object (UObject) is kept from one job to
+-- the next: a load frees it, and touching it after crashes the game (2026-11-20, a voice event); look it up again.
+-- A file named "off" in the add-on folder stops everything (main.lua reads it); one named "lite" stops the regular
+-- menu checks.
 
 local S = CQS or {}
 CQS = S
@@ -423,12 +425,24 @@ end
 
 -- Stops the voice playing now. ExecuteActionOnPlayingID isn't in the remaster's Wwise (2026-11-13: "not found"), so
 -- the voice played on after Alt+U: try the calls that stop one event, keep the one that works.
+--
+-- Only the event's path is kept between jobs, never the event itself: a map load frees it, and stopping a voice with
+-- the event kept from before a door crashed the game in UE4SS (2026-11-20 20:50, the next line after a load). The
+-- path is looked up again here, and a freed event is simply not found.
 local function stopVoice()
+    S.playingEvent = nil -- an add-on before 0.9.8 kept the event here
     if not S.playingId or S.playingId == 0 then
         return
     end
-    local id, event = S.playingId, S.playingEvent
-    S.playingId, S.playingEvent = nil, nil
+    local id, path = S.playingId, S.playingPath
+    S.playingId, S.playingPath = nil, nil
+    local event = nil
+    if path then
+        local ok, obj = pcall(StaticFindObject, path)
+        if ok and obj and obj:IsValid() then
+            event = obj
+        end
+    end
     local tries = {
         { "ExecuteActionOnEvent", function() statics():ExecuteActionOnEvent(event, 0, nil, 0, 0, id) end },
         { "event:ExecuteAction", function() event:ExecuteAction(0, nil, id, 0, 0) end },
@@ -492,7 +506,7 @@ function S.playVoice(spec)
     local ok, how, id = postEvent(event, pawn)
     if ok then
         S.playingId = type(id) == "number" and id or nil
-        S.playingEvent = event
+        S.playingPath = where
         log("voice " .. where .. " (" .. how .. ", playing id " .. tostring(id) .. ")")
     else
         log("could not play " .. where .. ": " .. how)

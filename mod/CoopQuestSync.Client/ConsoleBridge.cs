@@ -18,7 +18,7 @@ namespace CoopQuestSync.Client;
 /// this mod runs, so a missing or old add-on is copied into place now and works from the next start of the game.
 /// </summary>
 [Service]
-public sealed partial class ConsoleBridge(IUserInterface ui, IInput input, RestartNotice restart, ILogger logger)
+public sealed partial class ConsoleBridge(IUserInterface ui, IInput input, IPlayers players, RestartNotice restart, ILogger logger)
 {
     private static readonly Regex CellId = new("^[A-Za-z0-9_]{1,64}$");
     private static readonly Regex CellSpot = new("^([A-Za-z0-9_]{1,64}) (-?[0-9]{1,6}) (-?[0-9]{1,6}) (-?[0-9]{1,6})$");
@@ -177,9 +177,10 @@ public sealed partial class ConsoleBridge(IUserInterface ui, IInput input, Resta
 
     private void Update()
     {
+        var dt = Time.DeltaTime;
+        TrackSettled(dt);
         if (_heldMove is not { } move)
             return;
-        var dt = Time.DeltaTime;
         _heldFor += dt;
         _freeFor = input.CanApplyInput() ? _freeFor + dt : 0;
         if (_freeFor >= 0.3f)
@@ -225,7 +226,45 @@ public sealed partial class ConsoleBridge(IUserInterface ui, IInput input, Resta
             logger.LogWarning("[QuestSync] Ignored a voice line that isn't one: {Voice}", voice);
             return;
         }
+        // The add-on loads the line's sound from the game's files at once, which the game takes badly while it is
+        // still loading the world around the player: the crash of 2026-11-20 21:02 came with the first voice, 2.5 s
+        // after new outdoor cells came in. So a line asked within 5 s of joining, a load or a step into another cell
+        // goes unheard (its text still shows).
+        if (_settledFor < VoiceSettleSeconds)
+        {
+            logger.LogInformation("[QuestSync] Skipped the voice {Voice}: the game is loading the world around you.", voice);
+            return;
+        }
         Write(voice, "voice", quiet: true);
+    }
+
+    /// <summary>
+    /// How long the player has been in the world with nothing new loading around them. Joining, and any move to
+    /// another cell (a door's load lands far away, walking outdoors brings in new cells), starts it again.
+    /// </summary>
+    private float _settledFor;
+    private (int X, int Y)? _cell;
+    private const float VoiceSettleSeconds = 5f;
+    private const float UnitCm = 1.4287f, CellUnits = 4096f; // as on the server (ReturnOnJoin)
+
+    private void TrackSettled(float dt)
+    {
+        // Not CanApplyInput: a menu doesn't load anything, and a witness held still by a conversation must still hear it.
+        if (players.LocalMainCharacter is not { } me)
+        {
+            _settledFor = 0;
+            _cell = null;
+            return;
+        }
+        var p = me.Position;
+        var cell = ((int)MathF.Floor(p.X / UnitCm / CellUnits), (int)MathF.Floor(-p.Y / UnitCm / CellUnits));
+        if (_cell != cell)
+        {
+            _cell = cell;
+            _settledFor = 0;
+            return;
+        }
+        _settledFor += dt;
     }
 
     /// <summary>Stops the voice line playing, if any.</summary>
