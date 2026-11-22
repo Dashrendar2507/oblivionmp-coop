@@ -121,6 +121,9 @@ enough yet:
 * **The overlay runs a few seconds behind.** The game reports a line when it ends, so watchers read it after the
   talker heard it. The voice plays with the text, from nowhere (not from the NPC). It
   should stop when you leave the conversation (Alt+U); tell us if a line keeps playing.
+* **Some lines have no voice.** For 5 seconds after you join, go through a door or walk into another part of the
+  world, lines show without their voice: playing one while the game loads the world around you crashed the game.
+  If the game still crashes while listening in, the host can untick "Watchers hear the voices" on the settings page.
 * **You can still turn the camera while frozen.** The freeze stops walking and fighting, not looking around.
 * **Menus might not be recognised.** Persuasion, training, repair and the spell screens are detected by the
   original game's menu numbers. Lockpicking, pickpocketing and bartering come from the add-on, which sees which of

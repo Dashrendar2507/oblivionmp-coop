@@ -8,6 +8,14 @@
   conversation overlay, freeze watchers and hold quest stages for nothing), and pressure plates and some objects
   that were never shared now behave the same for everyone.
 
+## 0.9.8 (test build)
+
+* **Two crashes while listening in on a conversation are fixed.** Both came right after an NPC's voice line was played
+  for a watcher. After a door, the add-on stopped the last voice using a game object that the door's load had already
+  freed. It now looks the voice up again and never keeps a game object across a load. The other crash came while the
+  game was still loading the world around the player. Voice lines now stay silent for 5 seconds after joining, a load
+  or a step into another cell (the text still shows). The add-on update takes one restart of the game, as usual.
+
 ## 0.9.7 (test build)
 
 * **The Emperor's death comes from the server now.** In 0.9.6 the plugin killed him in the player's own game when the
