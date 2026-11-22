@@ -37,6 +37,12 @@ FUNCS = {
     # no parameter block at all: just opcode and a zero length
     "enableplayercontrols":  (0x1060, None),
     "disableplayercontrols": (0x1061, None),
+    "releaseweatheroverride": (0x1158, None),
+    "getinworldspace": (0x1136, ["ref"]),
+    "getincell":     (0x1043, ["ref"]),
+    # Oblivion gates: the one the player came through (from inside its realm), and any gate from outside
+    "closecurrentobliviongate": (0x10C0, []),
+    "forcecloseobliviongate":   (0x1165, []),
 }
 BLOCKS = {"gamemode": 0, "menumode": 1, "onactivate": 2, "onadd": 3}
 OPS = {"||": 1, "&&": 2, "==": 3, "!=": 3, "<": 3, ">": 3, "<=": 3, ">=": 3,
@@ -193,8 +199,17 @@ class Script:
             elif kw == "end":
                 stmts.append(["end", b"\x11\x00\x00\x00"])
             elif kw == "set":
-                m = re.match(r"set\s+(\w+)\s+to\s+(.+)$", l, re.I)
-                vt = self.var_token(m.group(1))
+                m = re.match(r"set\s+(\w+(?:\.\w+)?)\s+to\s+(.+)$", l, re.I)
+                target = m.group(1)
+                ev = self.extvar(*target.split(".", 1)) if "." in target and self.extvar else None
+                if "." in target and not ev:
+                    raise CompileError(f"unknown variable {target}")
+                if ev:
+                    # another script's variable (a quest's): the reference, then the variable
+                    ref = target.split(".", 1)[0]
+                    vt = b"\x72" + struct.pack("<H", self.ref_index(ref)) + bytes([0x73 if ev[1] else 0x66]) + struct.pack("<H", ev[0])
+                else:
+                    vt = self.var_token(target)
                 e = self.expr(m.group(2))
                 body = vt + struct.pack("<H", len(e)) + e
                 stmts.append(["stmt", struct.pack("<HH", 0x15, len(body)) + body])

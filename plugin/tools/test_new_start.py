@@ -36,6 +36,12 @@ class Game:
         self.targets = {}        # ref -> the ref it fights
         self.dist = {}           # (ref, ref) -> distance
         self.refvars = {}        # (ref, variable lower case) -> another script's variable
+        self.where = set()       # the worldspace and cell the player stands in (form names)
+        self.disabled = set()    # refs that are disabled
+        self.current_gate = None # the Oblivion gate the player came through (CloseCurrentOblivionGate closes it)
+        self.closed_current = 0  # CloseCurrentOblivionGate runs
+        self.force_closed = []   # refs ForceCloseOblivionGate ran on
+        self.weather_released = 0
 
     def setstage(self, q, s):
         self.done.setdefault(q, set()).add(s)
@@ -78,10 +84,14 @@ class Script:
                 return str(g.dist.get((a, args[0]), g.dist.get((args[0], a), 99999)))
             if name == "getisclass":
                 return "1" if g.cls == args[0] else "0"
+            if name in ("getinworldspace", "getincell"):
+                return "1" if args[0] in g.where else "0"
+            if name == "getdisabled":
+                return "1" if m.group(1) and m.group(1)[:-1] in g.disabled else "0"
             if name == "getpos":
                 return str(g.pos["XY".index(args[0].upper())])
             raise Exception(name)
-        e = re.sub(r"(\w+\.)?(GetStageDone|GetStage|GetItemCount|GetPos|GetQuestRunning|GetDead|GetDestroyed|GetIsPlayerBirthsign|GetIsClass|GetCombatTarget|GetDistance)((?: \w+)*?)(?= ==| !=| >=| <=| >| <|$| \|\|| &&)",
+        e = re.sub(r"(\w+\.)?(GetStageDone|GetStage|GetItemCount|GetPos|GetQuestRunning|GetDead|GetDestroyed|GetIsPlayerBirthsign|GetIsClass|GetCombatTarget|GetDistance|GetInWorldspace|GetInCell|GetDisabled)((?: \w+)*?)(?= ==| !=| >=| <=| >| <|$| \|\|| &&)",
                    fn, expr, flags=re.I)
         # Another reference's script variable.
         e = re.sub(r"\b([A-Za-z_]\w*)\.([A-Za-z_]\w*)\b", lambda m: str(g.refvars.get((m.group(1), m.group(2).lower()), 0)), e)
@@ -127,6 +137,9 @@ class Script:
                 active = stack.pop()[0]
             elif not active:
                 continue
+            elif kw == "set" and "." in l.split()[1]:
+                m = re.match(r"set (\w+)\.(\w+) to (.+)$", l, re.I)
+                g.refvars[(m.group(1), m.group(2).lower())] = self.ev(m.group(3), g)
             elif kw == "set":
                 m = re.match(r"set (\w+) to (.+)$", l, re.I)
                 name = m.group(1).lower()
@@ -153,6 +166,15 @@ class Script:
                 g.dead.add(l.split()[0].split(".")[0])
             elif kw.endswith(".activate"):
                 g.activated.append((l.split()[0].split(".")[0], l.split()[1]))
+            elif kw == "closecurrentobliviongate":
+                g.closed_current += 1
+                if g.current_gate:
+                    g.destroyed.add(g.current_gate)
+            elif kw.endswith(".forcecloseobliviongate"):
+                g.force_closed.append(l.split(".")[0])
+                g.destroyed.add(l.split(".")[0])
+            elif kw == "releaseweatheroverride":
+                g.weather_released += 1
             elif kw == "setinchargen":
                 g.chargen = int(l.split()[1])
             elif kw == "player.moveto":

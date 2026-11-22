@@ -8,6 +8,16 @@
   conversation overlay, freeze watchers and hold quest stages for nothing), and pressure plates and some objects
   that were never shared now behave the same for everyone.
 
+## 0.9.9 (test build)
+
+* **Oblivion gates close for everyone.** When a player took a sigil stone, the gate closed only in their own game.
+  It stayed open for everyone else, and a player still inside had to walk out (Kvatch, reported by a tester). Now,
+  when a gate closes in anyone's game, the server tells every player's game. Anyone inside that gate's realm is sent
+  out through it, the same way as the player who took the stone, and anyone near the gate sees it close. The
+  gate's own quests then go on in every game as they do in single player (Kvatch: Savlian Matius moves on). This
+  covers every gate a player can enter: Kvatch, the main quest gates and all 96 others. A player who joins later
+  finds the gate closed too.
+
 ## 0.9.8 (test build)
 
 * **Two crashes while listening in on a conversation are fixed.** Both came right after an NPC's voice line was played
