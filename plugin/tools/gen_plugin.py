@@ -44,7 +44,7 @@ CoopQuestSyncDialogue.esp (optional, separate so it can be left out if it clashe
   While the player has a menu from DLG_MENUS open (barter, persuasion, training... or lockpicking), its CQSMenu*
   token is in the inventory, so the server can tell the others what the talker is doing.
 """
-import json, os, re, struct, sys
+import json, os, re, struct, sys, zlib
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import tes4, tes4write, obscript, scriptpatch
@@ -545,6 +545,217 @@ def hit_kill_script(edid, hits):
                   "endif",
                   "endif"]
     return "\r\n".join(lines + ["end"]) + "\r\n"
+
+
+# Oblivion gates. A gate closes in the game of the player who takes its sigil stone (CloseCurrentOblivionGate, which
+# also sends that player back to Tamriel), and nowhere else: under OblivionMP the gate stayed open for the others, a
+# player still inside had to walk out, and the quests that wait on the gate went on only for the closer (Kvatch,
+# 2026-11-16). Every gate a player can go through is watched: once it is closed (destroyed) in a player's game, the
+# plugin gives its CQSGate token, the server gives that token to everyone, and in each other game the plugin closes
+# the gate too: from inside its realm with CloseCurrentOblivionGate (out to Tamriel, as the closer went), from
+# outside with ForceCloseOblivionGate. The gate's own scripts then go on as they would (Kvatch: MS48 stage 50).
+GATE_MODELS = ("oblivionarchgate01", "obliviongate_simple", "obliviongate_forming", "oblivionwargateani")
+GATE_NEAR = 1500        # units: the gate the player stands at in Tamriel is the one they go through
+GATE_CLOSE_RANGE = 8000 # units: closed from outside only near the player (its cell is loaded)
+GATE_WAIT = 20          # runs (10 s) between two closings from inside: the trip out is a load
+GATES_PER_SCRIPT = 20
+GATE_IN_LINE = 8        # places tested on one line
+RANDOM_REALM = 9        # CQSRealm for any of the random gates' realms (OblivionRD001-007 and their shared citadels)
+GATE_GLOBALS = ("CQSRealm", "CQSGateLast", "CQSGateWait")
+
+
+def world_index(buf):
+    """(records by form id, cell of each placed reference, worldspace of each cell or None for an interior)."""
+    recs, ref_cell, cell_ws = {}, {}, {}
+
+    def walk(i, end, ws, cell):
+        while i < end:
+            t = buf[i:i + 4].decode("ascii", "replace")
+            if t == "GRUP":
+                gsize, label, gtype = struct.unpack_from("<IIi", buf, i + 4)
+                w, c = ws, cell
+                if gtype == 1:
+                    w = label
+                elif gtype in (6, 8, 9, 10):
+                    c = label
+                elif gtype == 0:
+                    w, c = None, None
+                walk(i + 20, i + gsize, w, c)
+                i += gsize
+                continue
+            dsize, flags, formid = struct.unpack_from("<III", buf, i + 4)
+            if t in ("REFR", "CELL", "WRLD", "DOOR"):
+                data = buf[i + 20:i + 20 + dsize]
+                if flags & 0x00040000:
+                    data = zlib.decompress(data[4:])
+                recs[formid] = tes4.Record(t, flags, formid, tes4.parse_subs(data), i)
+                if t == "CELL":
+                    cell_ws[formid] = ws
+                elif t == "REFR":
+                    ref_cell[formid] = cell
+            i += 20 + dsize
+
+    walk(0, len(buf), None, None)
+    return recs, ref_cell, cell_ws
+
+
+def find_oblivion_gates(lo):
+    """Every Oblivion gate a player can go through, and the places of its realm.
+    gates: [{ref, editorId, realm}]: realm is the gate's own realm number (1...) when the gate leads to one realm (Kvatch,
+    Bruma, Cheydinhal, the Great Gate), RANDOM_REALM for the gates that send the player to one of the random realms.
+    realms: {number: (worldspaces, interior cells)}, everything a player in that realm can stand in."""
+    recs, ref_cell, cell_ws = world_index(lo.sources[0].buf)
+
+    def base(r):
+        n = r.get("NAME")
+        return recs.get(struct.unpack("<I", n[:4])[0]) if n else None
+
+    def xtel(r):
+        x = r.get("XTEL")
+        return struct.unpack("<I", x[:4])[0] if x else None
+
+    def tnam(b):
+        return [struct.unpack("<I", v)[0] for k, v in b.subs if k == "TNAM"]
+
+    found = []
+    for f, r in recs.items():
+        b = base(r) if r.type == "REFR" else None
+        if b is None or b.type != "DOOR" or not r.flags & 0x400:
+            continue
+        model = (b.get("MODL") or b"").decode("cp1252", "replace").lower()
+        if not any(m in model for m in GATE_MODELS):
+            continue
+        here = cell_ws.get(ref_cell.get(f))
+        to = xtel(r)
+        there = cell_ws.get(ref_cell.get(to)) if to is not None else None
+        if there is not None and there != here:
+            found.append((f, r.edid, here, [there]))
+        elif to is None:
+            worlds = [w for w in tnam(b) if recs.get(w) is not None and recs[w].type == "WRLD" and w != here]
+            if worlds:
+                found.append((f, r.edid, here, worlds))
+    # Tamriel's side: a worldspace with more gates out of it than into it. A realm has one or two ways back out, and
+    # one gate or many into it.
+    out_of, into = {}, {}
+    for _, _, here, ws in found:
+        out_of[here] = out_of.get(here, 0) + 1
+        for w in ws:
+            into[w] = into.get(w, 0) + 1
+    found = [g for g in found if out_of[g[2]] > into.get(g[2], 0)]
+    doors = {}
+    for f, c in ref_cell.items():
+        r = recs[f]
+        b = base(r)
+        if b is not None and b.type == "DOOR":
+            doors.setdefault(c, []).append(r)
+    cells = {}
+    for c, w in cell_ws.items():
+        cells.setdefault(w, []).append(c)
+
+    def interiors(worlds):
+        todo, seen = [c for w in worlds for c in cells.get(w, [])], set()
+        out = set()
+        while todo:
+            c = todo.pop()
+            if c in seen:
+                continue
+            seen.add(c)
+            for d in doors.get(c, []):
+                targets = [ref_cell.get(xtel(d))] if xtel(d) is not None else tnam(base(d))
+                for t in targets:
+                    if t in cell_ws and cell_ws[t] is None and t not in out:
+                        out.add(t)
+                        todo.append(t)
+        return out
+
+    realms, number, gates = {}, {}, []
+    pool = sorted({w for _, _, _, ws in found if len(ws) > 1 for w in ws})
+    for f, edid, here, ws in sorted(found):
+        if len(ws) == 1 and ws[0] not in pool:
+            if ws[0] not in number:
+                number[ws[0]] = len(number) + 1
+                realms[number[ws[0]]] = ([ws[0]], sorted(interiors(ws)))
+            realm = number[ws[0]]
+        else:
+            realm = RANDOM_REALM
+        gates.append(dict(ref=f, editorId=edid, realm=realm, world=here))
+    if pool:
+        realms[RANDOM_REALM] = (pool, sorted(interiors(pool)))
+    return gates, realms
+
+
+def gate_realm_script(gates, realms, worlds):
+    """Sets CQSRealm (the realm the player stands in, 0: not in Oblivion), CQSGateLast (the gate the player stands at in
+    Tamriel, 1-based in `gates`) and counts CQSGateWait down."""
+    lines = ["scn CQSGateRealmScript", "float fQuestDelayTime", "begin GameMode", "set fQuestDelayTime to 0.5",
+             "if CQSGateWait > 0", "set CQSGateWait to CQSGateWait - 1", "endif"]
+    first = True
+    for number, (ws, cells) in sorted(realms.items()):
+        places = [f"player.GetInWorldspace CQSPlace{w:08X}" for w in ws] + [f"player.GetInCell CQSPlace{c:08X}" for c in cells]
+        for i in range(0, len(places), GATE_IN_LINE):
+            lines += [("if " if first else "elseif ") + " || ".join(places[i:i + GATE_IN_LINE]), f"set CQSRealm to {number}"]
+            first = False
+    lines += ["else", "set CQSRealm to 0", "endif"]
+    lines += ["if CQSRealm == 0"]
+    for w in worlds:
+        lines += [f"if player.GetInWorldspace CQSPlace{w:08X}"]
+        near = [(i, g) for i, g in enumerate(gates, 1) if g["world"] == w]
+        for k, (i, g) in enumerate(near):
+            lines += [("if " if k == 0 else "elseif ") + f"CQSRef{g['ref']:08X}.GetDistance player < {GATE_NEAR}",
+                      f"set CQSGateLast to {i}"]
+        lines += ["endif"] if near else []
+        lines += ["endif"]
+    lines += ["endif"]
+    return "\r\n".join(lines + ["end"]) + "\r\n"
+
+
+def gate_script(edid, chunk):
+    """chunk: [(1-based gate number, gate)], each gate with its token's editor id ("token")."""
+    lines = [f"scn {edid}", "float fQuestDelayTime", "begin GameMode", "set fQuestDelayTime to 0.5"]
+    for i, g in chunk:
+        ref, tok = f"CQSRef{g['ref']:08X}", g["token"]
+        came = f"CQSGateLast == {i}" + (f" || CQSRealm == {g['realm']}" if g["realm"] != RANDOM_REALM else "")
+        lines += [f"if {ref}.GetDestroyed == 1",
+                  f"if player.GetItemCount {tok} == 0",
+                  f"player.AddItem {tok} 1",
+                  "endif",
+                  f"elseif player.GetItemCount {tok} > 0",
+                  "if CQSRealm != 0",
+                  # inside a realm: out through the gate this player came in by, if it is this one
+                  "if CQSGateWait == 0",
+                  f"if {came}",
+                  f"set CQSGateWait to {GATE_WAIT}",
+                  "set CQSGateLast to 0",
+                  "CloseCurrentOblivionGate",
+                  "endif",
+                  "endif",
+                  f"elseif {ref}.GetDisabled == 0",
+                  f"if player.GetInWorldspace CQSPlace{g['world']:08X}",
+                  f"if {ref}.GetDistance player < {GATE_CLOSE_RANGE}",
+                  f"{ref}.ForceCloseOblivionGate",
+                  # the gate's own script keeps the storm on while it is open, and lets go of it only then
+                  f"if MQ00.nearOblivionGate == {ref}",
+                  "set MQ00.nearOblivionGate to 0",
+                  "ReleaseWeatherOverride",
+                  "endif",
+                  "endif",
+                  "endif",
+                  "endif",
+                  "endif"]
+    return "\r\n".join(lines + ["end"]) + "\r\n"
+
+
+def script_variable(lo, script_edid, name):
+    """(index, is_int) of a vanilla script's variable, as another script reads it (quest.variable)."""
+    for _, r in lo.winning({"SCPT"}).values():
+        if r.edid and r.edid.lower() == script_edid.lower():
+            index = None
+            for k, v in r.subs:
+                if k == "SLSD":
+                    index, is_int = struct.unpack_from("<I", v)[0], v[16] == 1
+                elif k == "SCVR" and index is not None and v.rstrip(b"\0").decode("cp1252").lower() == name.lower():
+                    return index, is_int
+    return None
 
 
 def find_placed_corpses(lo):
@@ -1110,6 +1321,48 @@ def build_main(lo, outdir, only):
         scpt.append(rec)
         qust.append(quest_record(mod | dqid, f"CQSDeaths{part}", mod | dsid))
 
+    # Oblivion gates (see find_oblivion_gates).
+    gate_list, realms = ([], {}) if only else find_oblivion_gates(lo)
+    gate_out = []
+    if gate_list:
+        gnames = {**names, "mq00": vanilla_forms(lo, ["MQ00"])["mq00"]}
+        for g in gate_list:
+            tid = token_id(f"gate:{g['ref']:08X}")
+            g["token"] = f"CQSGate{g['ref']:08X}"
+            gnames[g["token"].lower()] = mod | tid
+            gnames[f"cqsref{g['ref']:08x}"] = g["ref"]
+            clot.append(token_record(mod | tid, g["token"]))
+            gate_out.append(dict(token=f"{tid:06X}", ref=f"{g['ref']:08X}", editorId=g["editorId"]))
+        for number, (ws, cells) in realms.items():
+            for place in ws + cells:
+                gnames[f"cqsplace{place:08x}"] = place
+        worlds = sorted({g["world"] for g in gate_list})
+        for w in worlds:
+            gnames[f"cqsplace{w:08x}"] = w
+        for name in GATE_GLOBALS:
+            gid = token_id(f"global:{name}")
+            glob.append(glob_record(mod | gid, name))
+            gnames[name.lower()] = mod | gid
+        near_gate = script_variable(lo, "MQ00Script", "nearOblivionGate")
+        gate_var = lambda ref, var: near_gate if (ref.lower(), var.lower()) == ("mq00", "nearobliviongate") else None
+        gate_resolve = lambda n: gnames.get(n.lower())
+        rsid, rqid = nxt, nxt + 1; nxt += 2
+        rec, size = scpt_record(mod | rsid, "CQSGateRealmScript", gate_realm_script(gate_list, realms, worlds),
+                                gate_resolve, GATE_GLOBALS)
+        max_code = max(max_code, size)
+        scpt.append(rec)
+        qust.append(quest_record(mod | rqid, "CQSGateRealm", mod | rsid))
+        numbered = list(enumerate(gate_list, 1))
+        for i in range(0, len(numbered), GATES_PER_SCRIPT):
+            part = i // GATES_PER_SCRIPT + 1
+            gsid, gqid = nxt, nxt + 1; nxt += 2
+            rec, size = scpt_record(mod | gsid, f"CQSGateScript{part}",
+                                    gate_script(f"CQSGateScript{part}", numbered[i:i + GATES_PER_SCRIPT]),
+                                    gate_resolve, GATE_GLOBALS, extvar=gate_var)
+            max_code = max(max_code, size)
+            scpt.append(rec)
+            qust.append(quest_record(mod | gqid, f"CQSGates{part}", mod | gsid))
+
     count = len(glob) + len(clot) + len(scpt) + len(qust) + len(overrides) + len(packs)
     data = tes4write.header(count, nxt, "CoopQuestSync generator",
                             "Mirrors vanilla quest stages into hidden token items for OblivionMP co-op.",
@@ -1130,11 +1383,12 @@ def build_main(lo, outdir, only):
                        newStart=dict(offer=f"{START_OFFER:06X}", prison=f"{START_PRISON:06X}",
                                      done=f"{START_DONE:06X}", intro=f"{START_INTRO:06X}", kit=f"{START_KIT:06X}"),
                        legacy=[f"{BASE + 0x10:06X}", f"{BASE + 0x30:06X}"], tokenName=TOKEN_NAME, deaths=deaths, corpses=corpses,
+                       gates=gate_out,
                        questItems=[f"{x:08X}" for x in quest_items], quests=mapping), f, indent=1)
     stages = sum(len(q["stages"]) for q in quests)
     patched = sum(len(q["effects"]) for q in quests)
     print(f"{PLUGIN}: {len(deaths)} actors killed by script watched, {len(corpses)} actors placed dead, "
-          + f"{len(hits)} kills on a hit, menu gates: " + (", ".join(f"{g['quest']} {g['stage']} ({g['kind']}, {len(g['packages'])} package(s))" for g in gates) or "none"))
+          + f"{len(hits)} kills on a hit, {len(gate_out)} Oblivion gates in {len(realms)} realm(s), menu gates: " + (", ".join(f"{g['quest']} {g['stage']} ({g['kind']}, {len(g['packages'])} package(s))" for g in gates) or "none"))
     print(f"{PLUGIN}: {len(quests)} quests, {stages} stages, {patched} stages with guarded effects in "
           f"{len(overrides)} quest overrides, {len(quest_items)} quest items, {count} records, {len(data)} bytes, "
           f"largest script {max_code} bytes")

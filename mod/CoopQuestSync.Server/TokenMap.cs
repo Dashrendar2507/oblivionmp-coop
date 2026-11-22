@@ -42,12 +42,16 @@ public sealed class TokenMap
     /// <summary>Actors placed dead in Oblivion.esm (base health 0): ref id to editor id.</summary>
     public IReadOnlyDictionary<uint, string?> Corpses => _corpses;
 
+    /// <summary>Oblivion gates: CQSGate token (local id) -> the gate's reference and editor id.</summary>
+    public IReadOnlyDictionary<uint, (uint Ref, string? EditorId)> Gates => _gates;
+
     private readonly Dictionary<uint, QuestStage> _byToken = new();
     private readonly Dictionary<QuestStage, uint> _byStage = new();
     private readonly Dictionary<string, QuestInfo> _quests = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, uint> _allow = new();
     private readonly HashSet<uint> _questItems = new();
     private readonly Dictionary<uint, (uint, string?)> _deaths = new();
+    private readonly Dictionary<uint, (uint, string?)> _gates = new();
     private readonly Dictionary<uint, string?> _corpses = new();
 
     /// <summary>A quest the plugin mirrors. <see cref="Sync"/> is false for quests that stay local (the tutorial).</summary>
@@ -90,6 +94,10 @@ public sealed class TokenMap
             foreach (var d in deaths.EnumerateArray())
                 _deaths[ParseHex(d.GetProperty("token").GetString()!)] = (ParseHex(d.GetProperty("ref").GetString()!),
                     d.TryGetProperty("editorId", out var e) && e.ValueKind == JsonValueKind.String ? e.GetString() : null);
+        if (root.TryGetProperty("gates", out var gates))
+            foreach (var g in gates.EnumerateArray())
+                _gates[ParseHex(g.GetProperty("token").GetString()!)] = (ParseHex(g.GetProperty("ref").GetString()!),
+                    g.TryGetProperty("editorId", out var e) && e.ValueKind == JsonValueKind.String ? e.GetString() : null);
         if (root.TryGetProperty("corpses", out var corpses))
             foreach (var c in corpses.EnumerateArray())
                 _corpses[ParseHex(c.GetProperty("ref").GetString()!)] =

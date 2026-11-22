@@ -22,12 +22,16 @@ for r in tes4.iter_records(buf):
         scripts.append(r)
 
 
-def same_refs(code, refs, want, want_refs):
-    """Equal once each reference index (after 0x72, or in a ref call's prefix) is turned into the form id it names."""
+def same_refs(code, refs, want, want_refs, vars_too=False):
+    """Equal once each reference index (after 0x72, or in a ref call's prefix) is turned into the form id it names.
+    vars_too: variable indexes (after 0x73 or 0x66) may differ as well."""
     def form(rs, idx):
         return rs[idx - 1] if 0 < idx <= len(rs) else None
     i = 0
     while i < len(code):
+        if code[i] != want[i] and vars_too and i > 0 and code[i - 1] in (0x73, 0x66):
+            i += 1
+            continue
         if code[i] != want[i]:
             # a 2-byte index right after 0x72, or a ref call's (1C 00 <index>), differing in its low or high byte
             start = (i - 1 if i >= 1 and code[i - 1] == 0x72 else i - 2 if i >= 2 and code[i - 2] == 0x72
@@ -59,6 +63,8 @@ for r in scripts:
         res["match except variable index"] += 1
     elif len(code) == len(want) and same_refs(code, s.refs, want, [struct.unpack("<I", v)[0] for k, v in r.subs if k == "SCRO"]):
         res["match except reference order"] += 1
+    elif len(code) == len(want) and same_refs(code, s.refs, want, [struct.unpack("<I", v)[0] for k, v in r.subs if k == "SCRO"], True):
+        res["match except variable index and reference order"] += 1
     else:
         res["MISMATCH"] += 1
         print("mismatch:", r.edid)

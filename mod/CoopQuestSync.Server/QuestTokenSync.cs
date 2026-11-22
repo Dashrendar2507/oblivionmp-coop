@@ -92,6 +92,9 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
     /// <summary>ReadyM accounts (N format) that have joined this server since 0.7.0. See <see cref="PlayerSaves"/>.</summary>
     public SortedSet<string> KnownAccounts { get; } = new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>Oblivion gates someone has closed, by the gate's reference (hex). See <see cref="GateSync"/>.</summary>
+    public SortedSet<string> ClosedGates { get; } = new(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>
     /// Stages a brand-new character already has when they first join: OblivionMP 1.1 starts everyone from the same
     /// world save, with a few quests under way. Everyone has them, so they are never shared or announced.
@@ -625,6 +628,9 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
         }
     }
 
+    /// <summary>Gives one of the plugin's items (local id) to this player, unless they hold it already.</summary>
+    public void GiveOwn(MainCharacter main, PlayerView view, uint slot, uint local) => Ensure(main, view, slot, local, true);
+
     /// <summary>Gives an item (game form id) to every other ready player. onlyIfMissing: only those who have none.</summary>
     public int ShareItem(PlayerId from, uint formId, int count, bool onlyIfMissing)
     {
@@ -987,6 +993,7 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
         public string[]? NewCharacters { get; set; }
         public string[]? KnownAccounts { get; set; }
         public Dictionary<string, int[]>? PresetStages { get; set; }
+        public string[]? ClosedGates { get; set; }
     }
 
     private void LoadState()
@@ -1010,6 +1017,8 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
                 NewCharacters.Add(account);
             foreach (var account in state.KnownAccounts ?? [])
                 KnownAccounts.Add(account);
+            foreach (var gate in state.ClosedGates ?? [])
+                ClosedGates.Add(gate);
             foreach (var (quest, stages) in state.Shared)
                 if (Map.TryNormalizeQuest(quest, out var name))
                     foreach (var s in stages)
@@ -1058,6 +1067,7 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
                 GotoLocked = GotoLocked.ToArray(),
                 NewCharacters = NewCharacters.ToArray(),
                 KnownAccounts = KnownAccounts.ToArray(),
+                ClosedGates = ClosedGates.ToArray(),
                 PresetStages = PresetStages.GroupBy(s => s.Quest).ToDictionary(g => g.Key, g => g.Select(s => s.Stage).Order().ToArray()),
             };
             var tmp = StatePath + ".tmp";

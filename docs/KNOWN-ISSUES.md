@@ -61,9 +61,14 @@ enough yet:
   OblivionMP and once from the mod, or reach a player who wasn't in the conversation. If you see it, please report
   the quest and stage, and whether the other player was nearby.
 * **Other changes scripts make to the world stay in one player's game.** OblivionMP shares NPC health, positions
-  and containers, but not what a script changes otherwise. Since 0.9.0 the mod shares NPCs killed by script. Still
-  not shared: Oblivion gates (a gate a friend closed stays open in your game, and each game picks its own random
-  gates to open), and things a script shows, hides, locks or unlocks. That's the next part of the work.
+  and containers, but not what a script changes otherwise. Since 0.9.0 the mod shares NPCs killed by script, and
+  since 0.9.9 closed Oblivion gates. Still not shared: which random gates are open (each game picks its own), and
+  things a script shows, hides, locks or unlocks.
+* **Random Oblivion gates lead to a realm each game picks.** Two players going through the same random gate can end
+  up in different realms. When the gate is closed, everyone who came in through it is sent out, whichever realm
+  they are in. A player who got into a random gate's realm another way (teleporting to a friend) isn't sent out:
+  walk out through the realm's own gate. The gates of Kvatch, Bruma, Cheydinhal and the Great Gate have one realm
+  each, so everyone inside is sent out.
 * **Some NPCs a script brings into the world may still never appear.** Many quests keep an NPC hidden until a script
   shows it. Since 0.9.1 the server makes these NPCs itself so the script can show them, but not the hidden leveled
   creatures (a random pick from a list, about 400), nor anything that appears because a hidden marker is switched
