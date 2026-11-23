@@ -1,6 +1,6 @@
 {
   "uniqueId": "CoopQuestSync",
-  "version": "0.9.9",
+  "version": "0.9.10",
   "name": "Co-op Quest Sync",
   "author": "Nicolas",
   "description": "Co-op for vanilla Oblivion: shared quest progress and stage effects, shared conversations, revive and party rules. Plugins mirror quest stages and dialogue lines into hidden token items; the server shares them with the other players.",

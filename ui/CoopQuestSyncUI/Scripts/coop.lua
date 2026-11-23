@@ -15,7 +15,8 @@
 --     the game runs in: keys in text-request.txt, answers in text-reply.txt. The game's files are compressed in a
 --     way the mod can't read, but the running game has the text at hand.
 --
--- Crash safety (2026-11-07): see "The game-thread job" at the end. No game object (UObject) is kept from one job to
+-- Crash safety (2026-11-07): see "The game-thread job" at the end. Console commands never run during a load or
+-- just after one (2026-11-23, see "Loads"). No game object (UObject) is kept from one job to
 -- the next: a load frees it, and touching it after crashes the game (2026-11-20, a voice event); look it up again.
 -- A file named "off" in the add-on folder stops everything (main.lua reads it); one named "lite" stops the regular
 -- menu checks.
@@ -208,6 +209,7 @@ S.commandQueue = S.commandQueue or {}
 local QUIET_AFTER_SYNC = 8 -- seconds after the catch-up ends
 local QUIET_AFTER_MENU = 4 -- seconds after a menu opens or closes
 local COMMAND_MAX_WAIT = 30 -- run anyway after this long, so a stuck menu state can't hold commands forever
+local MOVE_MAX_AGE = 45     -- a move not run by then is dropped (the server has given up on that trip)
 
 local function takeCommands()
     os.remove(COMMAND_TAKEN)
@@ -232,9 +234,93 @@ local function takeCommands()
     os.remove(COMMAND_TAKEN)
 end
 
--- Why commands should wait now, or nil when the game is quiet.
+-- Loads. A console command run while the game is still loading the world around the player crashed it (2026-11-23
+-- 20:01:51, exe AV 0.5 s after a player.positionworld): the move was asked in one place, held back by a menu, and ran
+-- only after the player had fast-travelled elsewhere, while the new place was still streaming in. Two signs of a load:
+--   * the client writes area.txt, "<loads> <0|1>": how many times the player has left an area (each load does), and
+--     whether they are in one now (0 while the game loads the next place);
+--   * the game thread not running this add-on's job for GAME_HELD seconds (a load holds it: 20 s on 2026-11-23).
+-- Commands wait during a load and QUIET_AFTER_LOAD seconds after it, and a move asked before the player went
+-- elsewhere is dropped: it would pull them back from where they chose to go.
+local AREA_FILE = FOLDER .. "area.txt"
+local QUIET_AFTER_LOAD = 8 -- seconds after a load ends; the world keeps streaming in after the game thread is back
+local GAME_HELD = 2        -- seconds without a job: the game was loading
+local LOADING_MAX = 90     -- a client that stopped writing area.txt can't hold commands longer than this
+
+local function isMove(cmd)
+    return cmd:match("^coc ") or cmd:match("^cow ") or cmd:match("^player%.positioncell ")
+        or cmd:match("^player%.positionworld ")
+end
+
+-- Takes a command off the queue unrun. For a move, the client lifts its travel screen (travel-dropped), and the world
+-- comes back if it was faded out for this move. Game thread.
+local function dropJob(job, why)
+    log("dropped " .. job.cmd .. ": " .. why)
+    if not isMove(job.cmd) then
+        return
+    end
+    local f = io.open(FOLDER .. "travel-dropped", "w")
+    if f then
+        f:write(job.cmd)
+        f:close()
+    end
+    if job.faded and S.fadeHeld then
+        S.fadeHeld = false
+        S.fadeBack = true
+    end
+end
+
+local function dropMoves(why)
+    local kept = {}
+    for _, job in ipairs(S.commandQueue) do
+        if isMove(job.cmd) then
+            dropJob(job, why)
+        else
+            kept[#kept + 1] = job
+        end
+    end
+    S.commandQueue = kept
+end
+
+function S.areaCheck()
+    local f = io.open(AREA_FILE, "r")
+    if not f then
+        return
+    end
+    local text = f:read("*l")
+    f:close()
+    local loads, inside = (text or ""):match("^(%d+) ([01])$")
+    if not loads then
+        return -- the client is writing it
+    end
+    local now = os.clock()
+    if S.areaLoads ~= nil and S.areaLoads ~= loads then
+        S.loadedAt = now
+        dropMoves("the player has gone to another place since it was asked")
+    end
+    S.areaLoads = loads
+    local loading = inside == "0"
+    if loading and not S.areaLoading then
+        S.loadingSince = now
+    elseif S.areaLoading and not loading then
+        S.loadedAt = now
+    end
+    S.areaLoading = loading
+end
+
+-- Why commands should wait now, or nil when the game is quiet. The second value is true for a load: nothing runs
+-- through one, however long it has waited.
 function S.commandBusy()
     local now = os.clock()
+    if S.areaLoading and now - (S.loadingSince or now) < LOADING_MAX then
+        return "the game is loading a place", true
+    end
+    if S.loadedAt and now - S.loadedAt < QUIET_AFTER_LOAD then
+        return "the game has just loaded a place", true
+    end
+    if S.heldAt and now - S.heldAt < QUIET_AFTER_LOAD then
+        return string.format("the game was held %.0f s (a load)", S.heldFor or 0), true
+    end
     if S.muted then
         return "quest catch-up running"
     end
@@ -301,23 +387,39 @@ end
 
 function S.runCommands()
     takeCommands()
+    S.areaCheck()
+    if S.fadeBack then
+        S.fadeBack = false
+        cameraFade(1.0, 0.0, FADE_IN, false)
+    end
     local next = S.commandQueue[1]
     if not next then
         return
     end
-    local busy = S.commandBusy()
-    if busy then
-        if os.clock() - next.at < COMMAND_MAX_WAIT then
-            if S.commandWaitLogged ~= next then
+    local waited = os.clock() - next.at
+    local moves = isMove(next.cmd)
+    -- The server gives up on a trip after 45 s and may have sent another way in since: a move this old is stale.
+    if moves and waited >= MOVE_MAX_AGE and not next.runAfter then
+        table.remove(S.commandQueue, 1)
+        dropJob(next, "not run within " .. MOVE_MAX_AGE .. " s")
+        return
+    end
+    local busy, loading = S.commandBusy()
+    if busy and not next.runAfter then
+        if waited < COMMAND_MAX_WAIT or loading then
+            if S.commandWaitLogged ~= next or S.commandWaitWhy ~= busy then
                 S.commandWaitLogged = next
+                S.commandWaitWhy = busy
                 log("waiting to run " .. next.cmd .. ": " .. busy)
+            end
+            if loading and waited >= MOVE_MAX_AGE then
+                table.remove(S.commandQueue, 1)
+                dropJob(next, "still loading after " .. MOVE_MAX_AGE .. " s")
             end
             return
         end
         log("running " .. next.cmd .. " after " .. COMMAND_MAX_WAIT .. " s even though " .. busy)
     end
-    local moves = next.cmd:match("^coc ") or next.cmd:match("^cow ") or next.cmd:match("^player%.positioncell ")
-        or next.cmd:match("^player%.positionworld ")
     -- Only with a client that brings the world back (it writes fade-ok): an older one left it black for the whole
     -- FADE_MAX (2026-11-07).
     if moves and not next.faded and hasFile(FOLDER .. "fade-ok") then
@@ -1013,6 +1115,12 @@ end
 
 -- Made once, so queueing it makes nothing new.
 local function runJob()
+    local now = os.clock()
+    if S.lastJobAt and now - S.lastJobAt > GAME_HELD then
+        S.heldAt = now
+        S.heldFor = now - S.lastJobAt
+    end
+    S.lastJobAt = now
     pcall(S.gameJob)
     S.jobBusy = false
 end
@@ -1032,6 +1140,9 @@ end
 
 if not S.started then
     S.started = true
+    -- Left by the last game: area.txt is written afresh by the client, and a dropped trip is news only once.
+    os.remove(AREA_FILE)
+    os.remove(FOLDER .. "travel-dropped")
     collectgarbage("stop")
     local ok, err = hookHud()
     if not ok then
