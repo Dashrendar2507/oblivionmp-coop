@@ -41,6 +41,8 @@ public sealed partial class TravelScreen(CefHost cef, IPlayers players, IInput i
     private float _settled;
     private float _fadeInIn = -1;
     private static string TravelRan => Path.Combine(Path.GetDirectoryName(ConsoleBridge.MenuFlag)!, "travel-ran");
+    /// <summary>The add-on dropped the move (the player went elsewhere first, or it waited too long): no trip comes.</summary>
+    private static string TravelDropped => Path.Combine(Path.GetDirectoryName(ConsoleBridge.MenuFlag)!, "travel-dropped");
     private ViewportHandle? _viewport;
     private BrowserHandle? _browser;
     private bool _visible;
@@ -181,6 +183,17 @@ public sealed partial class TravelScreen(CefHost cef, IPlayers players, IInput i
             if (_checkIn2 > 0)
                 return;
             _checkIn2 = 0.2f;
+            if (File.Exists(TravelDropped))
+            {
+                try { File.Delete(TravelDropped); } catch { /* next time */ }
+                if (_text is not null)
+                {
+                    logger.LogInformation("[QuestSync] The trip was called off (you went elsewhere first); travel screen lifted.");
+                    _text = null;
+                    Lift();
+                }
+                return;
+            }
             if (!File.Exists(TravelRan))
                 return;
             // positionworld too: a short hop outdoors may not load at all, so don't wait 20 s for one.

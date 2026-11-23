@@ -8,6 +8,16 @@
   conversation overlay, freeze watchers and hold quest stages for nothing), and pressure plates and some objects
   that were never shared now behave the same for everyone.
 
+## 0.9.10 (test build)
+
+* **A crash after fast travel is fixed.** When the mod moved a player (back where they left on joining, to a
+  teammate, into a building), the add-on waited for an open menu to close before it ran the move. If the player
+  fast-travelled from that menu, the move still ran later, while the new place was loading. The game crashed, and
+  without the crash the player would have been pulled back. Now the add-on waits out every load (and a few seconds
+  after it) before it runs any console command. A move asked for before the player went somewhere else is called off,
+  and the black travel screen lifts. This covers every console command the mod uses and every kind of load: doors,
+  fast travel and the mod's own trips. The add-on update takes one restart of the game, as usual.
+
 ## 0.9.9 (test build)
 
 * **Oblivion gates close for everyone.** When a player took a sigil stone, the gate closed only in their own game.

@@ -179,6 +179,7 @@ public sealed partial class ConsoleBridge(IUserInterface ui, IInput input, IPlay
     {
         var dt = Time.DeltaTime;
         TrackSettled(dt);
+        TrackArea(dt);
         if (_heldMove is not { } move)
             return;
         _heldFor += dt;
@@ -265,6 +266,57 @@ public sealed partial class ConsoleBridge(IUserInterface ui, IInput input, IPlay
             return;
         }
         _settledFor += dt;
+    }
+
+    /// <summary>
+    /// Tells the add-on about loads through area.txt, "&lt;loads&gt; &lt;0|1&gt;": how many times this player has left an area
+    /// (every load does: a door, fast travel, a coc), and whether they are in one now. The add-on holds console
+    /// commands back during a load and for a few seconds after, and drops a move asked before the player went
+    /// elsewhere: on 2026-11-23 a move held back by the map ran after the player's own fast travel, while the new
+    /// place was still loading, and the game crashed.
+    /// </summary>
+    private bool? _inArea;
+    private int _loads;
+    private float _areaCheckIn;
+
+    private void TrackArea(float dt)
+    {
+        _areaCheckIn -= dt;
+        if (_areaCheckIn > 0 && _inArea is not null)
+            return;
+        _areaCheckIn = 0.1f;
+        var inArea = false;
+        if (players.LocalMainCharacter is not null)
+            foreach (var _ in players.AreaPlayers) // empty between areas
+            {
+                inArea = true;
+                break;
+            }
+        if (inArea == _inArea)
+            return;
+        if (_inArea == true && !inArea)
+        {
+            _loads++;
+            if (_heldMove is { } held)
+            {
+                _heldMove = null;
+                logger.LogInformation("[QuestSync] Dropped {Command}: you went to another place first.", held);
+            }
+        }
+        _inArea = inArea;
+        try
+        {
+            if (!Directory.Exists(Folder))
+                return;
+            var tmp = Path.Combine(Folder, "area.tmp");
+            File.WriteAllText(tmp, $"{_loads} {(inArea ? 1 : 0)}");
+            File.Move(tmp, Path.Combine(Folder, "area.txt"), overwrite: true);
+        }
+        catch (Exception e)
+        {
+            logger.LogDebug("[QuestSync] Could not write area.txt: {Error}", e.Message);
+            _inArea = null; // again next time
+        }
     }
 
     /// <summary>Stops the voice line playing, if any.</summary>
