@@ -365,6 +365,7 @@ public sealed partial class QuestTokenSync(IEntities entities, IServerEvents eve
                 case Phase.NoPlugin:
                     logger.LogInformation("[QuestSync] {Player}: plugin found in load order slot {Slot:X2}, {Count} stage token(s). Starting handshake.",
                         Nickname(playerId), slot, snap.Stages.Count);
+                    data.LearnPluginSlot(slot);
                     if (snap.Busy > 0)
                         Take(main, slot << 24 | Map.BusyLocalId, snap.Busy);
                     foreach (var (formId, count) in snap.Legacy)

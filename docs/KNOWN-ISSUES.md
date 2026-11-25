@@ -98,6 +98,9 @@ enough yet:
   `AltarDeluxe.esp`, and OblivionMP then finds `AltarDeluxe.esp` in a different place than the server has it. The
   mod's quest sync isn't affected. Content from the Deluxe plugin may not sync between players. This needs a fix in
   the launcher; adding the plugins to `Plugins.txt` by hand doesn't help (it lists them twice and breaks the sync).
+  ReadyM Launcher 0.34.1 (with OblivionMP 1.2) says it fixes `.esp` loading, which may end this message. Since 0.10.2
+  the server follows wherever the launcher puts the mod's plugins (the server log says `Our plugin is in load order
+  slot ...` when it isn't where the mod expected).
 
 ## Quests
 

@@ -53,30 +53,73 @@ public sealed partial class GameData(QuestSyncConfig config, ILogger logger)
 
     private void Start() => EnsureLoaded();
 
+    /// <summary>The players' load order as the server assumes it (config GamePlugins, with our plugins placed).</summary>
+    private List<string> _order = [];
+    /// <summary>The host listed our plugin in GamePlugins themselves: their order wins over the beacon.</summary>
+    private bool _fixedByHost;
+
+    private void BuildNumbering(bool warn)
+    {
+        var map = Map;
+        _toGame = new int[map.Masters.Count];
+        _fromGame = new();
+        for (var i = 0; i < map.Masters.Count; i++)
+        {
+            var at = _order.FindIndex(p => p.Equals(map.Masters[i], StringComparison.OrdinalIgnoreCase));
+            _toGame[i] = at < 0 ? -1 : at;
+            if (at < 0)
+            {
+                if (warn)
+                    logger.LogWarning("[QuestSync] {Plugin} is not in GamePlugins; its items cannot be shared.", map.Masters[i]);
+            }
+            else
+                _fromGame[at] = i;
+        }
+    }
+
+    /// <summary>
+    /// A player's game has our plugin in this load order slot (from the beacon item). Where the launcher puts our two
+    /// plugins decides the numbering of the plugins after them (AltarDeluxe.esp...), so when the slot isn't the one
+    /// assumed, our plugins move there and the numbering is rebuilt. Same launcher for everyone, so once is enough.
+    /// </summary>
+    public void LearnPluginSlot(uint slot)
+    {
+        EnsureLoaded();
+        var at = _order.FindIndex(p => p.Equals(PluginName, StringComparison.OrdinalIgnoreCase));
+        if (at == slot || _fixedByHost)
+            return;
+        var others = _order.Where(p => !p.Equals(PluginName, StringComparison.OrdinalIgnoreCase) && !p.Equals(DialoguePluginName, StringComparison.OrdinalIgnoreCase)).ToList();
+        if (slot > others.Count)
+        {
+            logger.LogWarning("[QuestSync] Our plugin is in load order slot {Slot:X2}, after more plugins than GamePlugins lists ({Count}): "
+                + "items of the DLC and Deluxe plugins may be numbered wrong. List the players' plugins in config GamePlugins.", slot, others.Count);
+            return;
+        }
+        others.InsertRange((int)slot, [PluginName, DialoguePluginName]);
+        _order = others;
+        BuildNumbering(warn: false);
+        logger.LogInformation("[QuestSync] Our plugin is in load order slot {Slot:X2}, not {Assumed:X2}: numbering the other plugins' items to match ({Order}).",
+            slot, at, string.Join(", ", _order));
+    }
+
     private void EnsureLoaded()
     {
         if (_loaded)
             return;
         _loaded = true;
-        var map = Map;
-        var order = config.GamePlugins.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+        _order = config.GamePlugins.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
         // The ReadyM Launcher (0.32+) adds our two plugins to the players' Plugins.txt itself, right after
         // AltarESPMain.esp, so AltarDeluxe.esp and AltarESPLocal.esp come after ours (2026-11-13, OblivionMP 1.1.0).
-        if (!order.Contains(PluginName, StringComparer.OrdinalIgnoreCase))
+        // Launcher 0.34.1 "fixes .esp loading" and may put them elsewhere: the first player's beacon tells
+        // (LearnPluginSlot), and the numbering follows it.
+        if (!_order.Contains(PluginName, StringComparer.OrdinalIgnoreCase))
         {
-            var main = order.FindIndex(p => p.Equals("AltarESPMain.esp", StringComparison.OrdinalIgnoreCase));
-            order.InsertRange(main < 0 ? order.Count : main + 1, [PluginName, DialoguePluginName]);
+            var main = _order.FindIndex(p => p.Equals("AltarESPMain.esp", StringComparison.OrdinalIgnoreCase));
+            _order.InsertRange(main < 0 ? _order.Count : main + 1, [PluginName, DialoguePluginName]);
         }
-        _toGame = new int[map.Masters.Count];
-        for (var i = 0; i < map.Masters.Count; i++)
-        {
-            var at = order.FindIndex(p => p.Equals(map.Masters[i], StringComparison.OrdinalIgnoreCase));
-            _toGame[i] = at < 0 ? -1 : at;
-            if (at < 0)
-                logger.LogWarning("[QuestSync] {Plugin} is not in GamePlugins; its items cannot be shared.", map.Masters[i]);
-            else
-                _fromGame[at] = i;
-        }
+        else
+            _fixedByHost = true;
+        BuildNumbering(warn: true);
 
         var dialogue = TokenMap.ReadEmbedded("dialogue.json");
         if (dialogue is not null)
