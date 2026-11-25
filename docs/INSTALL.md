@@ -109,10 +109,8 @@ from the old server folder into the new one), then:
    `<server folder>\mods\CoopQuestSync\server\` too.
 3. **Server:** don't copy `coop-quest-sync-original-world.sav`. On its first start in the new folder, the mod keeps
    the 1.2 package's own start save there again, and the log says `Start save: now the prison cell (...)`.
-4. **Server, optional:** OblivionMP 1.2 turns waiting and sleeping off for everyone. To turn them back on, set
-   `"AllowTimeSkip": true` in `<server folder>\mods\OblivionMp.Sdk\server\config.json` and
-   `"HideWaitMenu": false` in `<server folder>\mods\OblivionMp.Sdk\client\config.json` (the server hands that one
-   to the players). See [known issues](KNOWN-ISSUES.md#oblivionmp-12) for why you may want to.
+4. **Server:** leave OblivionMP's own `AllowTimeSkip` and `HideWaitMenu` settings as they are. OblivionMP 1.2 turns
+   waiting and sleeping off, and the mod brings them back with a vote (setting "Waiting and sleeping" on the page).
 5. **Every player's PC:** nothing to do. The ReadyM Launcher updates OblivionMP to 1.2 before it connects you.
 
 ### Moving from OblivionMP 1.1.0 to 1.1.1

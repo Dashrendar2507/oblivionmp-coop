@@ -5,7 +5,7 @@
 | Key | What it does | Chat command |
 | --- | --- | --- |
 | **Alt+U** | While someone talks to an NPC: leave the overlay (and stop being frozen), or listen in again. | `/coop follow` |
-| **Alt+Y** | While someone talks to an NPC: travel to them, listening in or not (into their building or city too). | `/coop join` |
+| **Alt+Y** | While someone talks to an NPC: travel to them, listening in or not (into their building or city too). When a teammate asks to wait or sleep: agree. | `/coop join`, `/coop yes` |
 | **Alt+H** | Revive the downed teammate standing next to you. | `/coop revive` |
 | **Alt+G** | While you're down: give up and respawn next to the party. | `/coop giveup` |
 | **Alt+O** | Any time: travel to a teammate (the last one you picked with `/coop goto`, else the leader, else the only other player). | `/coop goto [name]` |
@@ -41,6 +41,12 @@ with an R in them while you're down (see [Death](#how-it-plays) below).
   25 seconds in our tests), and **R** does the same at once, even while you type in the chat. The mod can't stop
   either, so it treats them as a respawn: once that reload is over, it takes you to the party (or your last safe
   spot), the same as Alt+G. A revive is only possible before that happens.
+* **Waiting and sleeping** (OblivionMP 1.2). The server has one clock for everyone, so a wait or a night's sleep
+  moves everyone's time. With "Waiting and sleeping" on **Vote** (the default), the wait menu works as usual (**T**,
+  or a bed), but confirming it asks the others first: each gets a note, "Alice wants to sleep 8 hours", and has 30
+  seconds to agree with **Alt+Y** or `/coop yes`. When everyone has agreed, time moves on for everyone and a message
+  says the new time. One `/coop no`, or someone who doesn't answer in time, and nothing happens. Alone on the server,
+  the wait happens at once. Your character doesn't play the game's own sleep: the clock jumps forward instead.
 * **New players** start in the prison cell, like a new game. OblivionMP 1.1 starts every new character from one
   save on the server; the mod puts a save made in the prison cell there each time the server starts (setting "Start
   in the prison"). The new player makes their character the game's own way, and on arrival the game's own window
@@ -134,6 +140,8 @@ reaches the stage always gets everything. These switches decide what everyone el
 | Tags over heads | On | Talking, bartering, persuading, picking a lock, pickpocketing, down. |
 | Level of spawns and loot | Server default (halfway) | Lowest player level, halfway, or highest player level. |
 | Difficulty, damage dealt / taken | Game default | Novice to Master. |
+| Waiting and sleeping | Vote | Vote: a player's wait or sleep happens once all the others agree. Anyone: any wait moves everyone's clock, no vote. OblivionMP's own: the mod stays out of it (OblivionMP 1.2 turns waiting off unless its own settings turn it on). |
+| Seconds to agree | 30 | How long the others have to answer a wait or sleep. |
 | Friendly fire | Off | Off: a player's hit on another player does no damage. Healing still works, and NPCs hurt everyone. |
 
 **New players**
@@ -165,6 +173,7 @@ reaches the stage always gets everything. These switches decide what everyone el
 | `/qs newstart again <name>` | With the prison start: show that player the start window again (only while they haven't left the sewers). |
 | `/qs newstart fresh` | With the prison start: offer the prison intro again. Only on a fresh world: the Emperor alive, the prison doors closed. |
 | `/coop follow`, `/coop join`, `/coop revive`, `/coop giveup` | Same as the keys. |
+| `/coop yes`, `/coop no` | Agree to, or refuse, a teammate's wait or sleep. |
 | `/coop calm` | Stop the fights in your area: each NPC fighting there stops, and guards stop chasing the players there. For a fight that went wrong, such as a quest giver turned hostile. |
 | `/coop calm <name>` | The same in that player's area, and their bounty goes to 0. Case and a final dot don't matter, and the start of a name is enough when only one player matches. |
 | `/coop calm all` | Every area with a player in it. |
@@ -197,6 +206,7 @@ admin commands. [mod/TESTING.md](../mod/TESTING.md) uses them in its walkthrough
 | `/coop test pin`, `/coop test back` | Remember where you stand, then go back there the way a join would. |
 | `/coop test goto` | Travel to where Ghost stands, the way `/coop goto` would. |
 | `/coop test askme` | Ghost asks to come to you, as with `/coop goto lock`. |
+| `/coop test rest [hours]` | Ghost asks to sleep (8 hours unless you say): you get the vote note. Yes moves the clock for everyone. |
 | `/coop test status` | What the server knows about you. |
 | `/coop test asghost on\|off` | The server treats you like Ghost, a player who isn't an admin, so you can see the admin commands refused. Open to everyone. |
 

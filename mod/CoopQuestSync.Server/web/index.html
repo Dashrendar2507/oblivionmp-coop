@@ -257,6 +257,7 @@ const choices = {
   commandAccess: [["admins", "Admins only"], ["everyone", "Everyone"]],
   newStart: [["ask", "Ask"], ["sewers", "Sewer exit"], ["off", "Game's own"]],
   prisonStart: [["fresh", "Fresh world"], ["always", "Always"], ["never", "Never"]],
+  rest: [["vote", "Vote: everyone agrees"], ["anyone", "Anyone, no vote"], ["off", "OblivionMP's own"]],
   difficultyDealt: ["Unset", "Novice", "Apprentice", "Adept", "Journeyman", "Expert", "Master"].map(t => [t, t === "Unset" ? "Game default" : t]),
 };
 choices.difficultyTaken = choices.difficultyDealt;
@@ -309,12 +310,14 @@ function renderSettings() {
     ${srow("Travel to teammates any time", "/coop goto <name> or the goto key, into their building or city too (needs the add-on). A player can type /coop goto lock so others must ask first.", chk("teleportAnytime", st.teleportAnytime))}
     ${srow("Seconds between trips", "Per player, for /coop goto and the goto key. 0: no wait.", num("teleportCooldown", st.teleportCooldown))}
     ${srow("No trips during a fight", "The traveller can't use /coop goto while in combat.", chk("teleportNotInCombat", st.teleportNotInCombat))}
-    ${srow("Keys", "Alt + a letter the game doesn't use (K is the chat). Follow: listen in or leave a conversation. Join: travel to the talker, or let in a teammate who asked. Goto: travel to a teammate.", `<span class="keys">${[["Follow","keyFollow"],["Join","keyJoin"],["Revive","keyRevive"],["Respawn","keyRespawn"],["Goto","keyGoto"]].map(([n, k]) => `<span>${n} ${txt(k, st[k])}</span>`).join("")}</span>`, "wide")}
+    ${srow("Keys", "Alt + a letter the game doesn't use (K is the chat). Follow: listen in or leave a conversation. Join: travel to the talker, let in a teammate who asked, or agree to a teammate's wait or sleep. Goto: travel to a teammate.", `<span class="keys">${[["Follow","keyFollow"],["Join","keyJoin"],["Revive","keyRevive"],["Respawn","keyRespawn"],["Goto","keyGoto"]].map(([n, k]) => `<span>${n} ${txt(k, st[k])}</span>`).join("")}</span>`, "wide")}
     ${srow("Revive distance (cm)", "400 is about four metres.", num("reviveRange", st.reviveRange))}
     ${srow("Tags over heads", "Talking, bartering, picking a lock, down.", chk("statusTags", st.statusTags))}
     ${srow("Level of spawns and loot", "", sel("scaling", choices.scaling, st.scaling))}
     ${srow("Difficulty, damage dealt", "", sel("difficultyDealt", choices.difficultyDealt, st.difficultyDealt))}
     ${srow("Difficulty, damage taken", "", sel("difficultyTaken", choices.difficultyTaken, st.difficultyTaken))}
+    ${srow("Waiting and sleeping", "OblivionMP 1.2 has one clock for everyone. Vote: a player who waits or sleeps asks the others, who agree with the join key or /coop yes; when all agree, time moves on for everyone. Anyone: any wait moves everyone's clock. OblivionMP's own: off unless the server's SDK settings turn it on.", sel("rest", choices.rest, st.rest))}
+    ${srow("Seconds to agree", "How long the others have to answer a wait or sleep.", num("restVoteSeconds", st.restVoteSeconds))}
     ${srow("Friendly fire", "Players can hurt each other. Off: their hits on each other do no damage. NPCs hurt everyone either way.", chk("friendlyFire", st.friendlyFire))}
   </div>
   <div class="sgroup"><h3>New players</h3>

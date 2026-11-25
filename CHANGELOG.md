@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.10.1 (test build)
+
+* **Waiting and sleeping work again, with a party vote.** OblivionMP 1.2 has one clock for the whole server and
+  turns the wait menu off. The mod turns it back on. A player who waits or sleeps now asks the others: each gets a
+  note ("Alice wants to sleep 8 hours") and has 30 seconds to agree with Alt+Y or `/coop yes`. When everyone has
+  agreed, the time moves on for everyone; one `/coop no`, or no answer in time, and nothing happens. Alone on the
+  server, the wait happens at once. New settings on the page: "Waiting and sleeping" (Vote, Anyone without a vote,
+  or OblivionMP's own) and "Seconds to agree". `/coop test rest` lets one player try the vote with Ghost.
+
 ## 0.10.0 (test build)
 
 * **Built for OblivionMP 1.2.0** (SDK 1.2.0). OblivionMP 1.2 doesn't load mods built for 1.1, so 0.9.10 and older
@@ -10,7 +19,7 @@
   the game's quick-load and did nothing without a quicksave. The mod's revive, Alt+G and R all go through that
   rebirth, so "Still on the ground? Quit and rejoin" should no longer show. Not tested in game yet.
 * **Waiting and sleeping are off on OblivionMP 1.2** by default (one clock for the whole server). That is
-  OblivionMP's setting, not the mod's; see [known issues](docs/KNOWN-ISSUES.md#oblivionmp-12).
+  OblivionMP's setting, not the mod's. 0.10.1 brings them back with a vote.
 
 ## Docs after 0.9.10
 

@@ -77,6 +77,18 @@ public static partial class CoopRpcContracts
     /// </summary>
     [ServerToClient] public static partial void Down(string text);
 
+    /// <summary>
+    /// How waiting and sleeping work on this server: "vote" or "anyone" (the game shows its wait menu; the server
+    /// decides what a wait does) or "off" (OblivionMP's own HideWaitMenu setting decides).
+    /// </summary>
+    [ServerToClient] public static partial void RestRule(string mode);
+
+    /// <summary>
+    /// A teammate wants to wait or sleep: "&lt;seconds&gt;|&lt;text&gt;" for a note that stays on screen while the vote
+    /// runs (the text's {s} counts down); an empty string takes it away.
+    /// </summary>
+    [ServerToClient] public static partial void Vote(string text);
+
     /// <summary>The player was revived, or is respawned: the game brings them back to life.</summary>
     [ServerToClient] public static partial void Resurrect();
 

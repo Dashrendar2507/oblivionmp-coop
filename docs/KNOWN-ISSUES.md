@@ -40,12 +40,14 @@ names worked out from the game's ids.
 Version 0.10.0 is the first build for OblivionMP 1.2. It is the 0.9.10 mod built against the 1.2 SDK, and it hasn't
 been played on 1.2 yet. Everything in the 1.1 section below still applies, except where noted here.
 
-* **Waiting and sleeping are off by default.** OblivionMP 1.2 keeps one clock for the whole server, so one
-  player's sleep would move everyone's time. Out of the box the wait key does nothing, and a bed only opens the
-  level-up menu when you have one ready. Quests that need you to wait or sleep are held up by this: the Dark
-  Brotherhood's invitation comes while you sleep after your first murder, for example. The host can turn waiting and
-  sleeping back on (step 4 of [Moving from OblivionMP 1.1 to 1.2](INSTALL.md#moving-from-oblivionmp-11-to-12)); then
-  anyone's wait or sleep moves the clock for everyone.
+* **Waiting and sleeping go through a vote** (since 0.10.1). OblivionMP 1.2 keeps one clock for the whole server and
+  turns waiting off out of the box. The mod turns the wait menu back on and asks the other players before the clock
+  moves ([how it plays](USING.md#how-it-plays)). Under OblivionMP your character never really sleeps: the clock jumps
+  forward instead. So quests that start *while* you sleep, like the Dark Brotherhood's invitation after your first
+  murder, may not start. Untested so far; please report what happens. To show the wait menu the mod uses a part of
+  OblivionMP that isn't meant for mods. If a later OblivionMP changes it, the menu stays hidden and the player's
+  log says "Could not show the wait menu": the host then sets `"HideWaitMenu": false` in
+  `<server folder>\mods\OblivionMp.Sdk\client\config.json`, and the vote works again.
 * **Getting back up after dying should no longer need a rejoin.** OblivionMP 1.2 fixed the rebirth described in the
   1.1 section below. If you still see "Still on the ground? Quit and rejoin" on 1.2, please report it.
 

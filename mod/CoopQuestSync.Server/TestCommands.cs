@@ -22,20 +22,22 @@ namespace CoopQuestSync.Server;
 /// the NPC closest to you). See CombatService.
 ///   /coop test goto           - /coop goto's checks and cooldown, then the trip to the pinned spot, as if Ghost stood there
 ///   /coop test askme          - Ghost asks to come to you (as if you had typed /coop goto lock): Alt+Y or /coop accept answers
+///   /coop test rest [hours]   - Ghost asks the party to sleep (8 hours by default): Alt+Y or /coop yes agrees, /coop no refuses
 ///   /coop test status         - what the server knows about you: phase, area, talking, menu, frozen, switches
 ///   /coop test asghost on|off - the server treats you like Ghost, a player who isn't an admin, so you can see the
 ///                               admin commands refused without a second player (open to everyone)
 /// /coop goto [name | lock | unlock] and /coop accept [name]: travel to a teammate at any time (see <see cref="TeleportService"/>).
+/// /coop yes and /coop no: answer a teammate who wants to wait or sleep (see <see cref="RestVote"/>).
 /// /coop calm and /coop test are for admins only (see <see cref="CommandAccess"/>); /coop follow, join, revive, giveup,
 /// goto and accept are for everyone.
 /// </summary>
 [Service]
 public sealed partial class TestCommands(IChat chat, IEntities entities, QuestTokenSync sync, GameData data,
     ConversationRelay talks, PartyService party, ReturnOnJoin returns, CombatService combat, CoopRpc rpc, CommandAccess access,
-    TeleportService teleport)
+    TeleportService teleport, RestVote rest)
 {
     private const string Ghost = "Ghost";
-    private const string Usage = "/coop follow | join | revive | giveup | goto [name | lock | unlock] | accept [name], /coop calm [player | all | near], or /coop test talk [ask] | stop | stage <quest> <stage> | effects <quest> | revive (or heal) | voice | pin | back | goto | askme | status | asghost on|off";
+    private const string Usage = "/coop follow | join | revive | giveup | goto [name | lock | unlock] | accept [name] | yes | no, /coop calm [player | all | near], or /coop test talk [ask] | stop | stage <quest> <stage> | effects <quest> | revive (or heal) | voice | pin | back | goto | askme | rest [hours] | status | asghost on|off";
 
     private void Start() => chat.AddCommand("coop", Usage, Run);
 
@@ -69,6 +71,10 @@ public sealed partial class TestCommands(IChat chat, IEntities entities, QuestTo
                 case "join": talks.Join(sender); return;
                 case "revive": party.ReviveNearest(sender); return;
                 case "giveup": party.GiveUp(sender); return;
+                case "yes" or "no":
+                    if (rest.Answer(sender, parts[0].Equals("yes", StringComparison.OrdinalIgnoreCase)) is { } why)
+                        Reply(sender, why);
+                    return;
             }
         if (parts.Length < 2 || !parts[0].Equals("test", StringComparison.OrdinalIgnoreCase))
         {
@@ -195,6 +201,10 @@ public sealed partial class TestCommands(IChat chat, IEntities entities, QuestTo
                 Reply(sender, teleport.TestAskMe(sender));
                 break;
 
+            case "rest":
+                Reply(sender, rest.TestAsk(sender, parts.Length > 2 && int.TryParse(parts[2], out var h) ? Math.Clamp(h, 1, 24) : 8));
+                break;
+
             case "status":
             {
                 if (!sync.Players.TryGetValue(sender, out var view))
@@ -205,7 +215,7 @@ public sealed partial class TestCommands(IChat chat, IEntities entities, QuestTo
                     + $"talking {view.InDialogue}, menu {talks.Activity(sender) ?? "none"}, in combat {view.InCombat}, frozen {view.WantFrozen}. "
                     + $"Effect switches now ({phase}): {string.Join(", ", allowed)}. Dialogue text loaded: {(data.HasText ? "yes" : "no")}. "
                     + $"Your game's language: {view.Language ?? "not known yet"}{(view.Language is { } lang ? $" (server has {data.Learned(lang).Found} texts learned in it)" : "")}. "
-                    + returns.Describe(sender) + " " + teleport.Describe(sender) + " " + combat.Describe());
+                    + returns.Describe(sender) + " " + teleport.Describe(sender) + " " + combat.Describe() + " " + rest.Describe());
                 break;
             }
 

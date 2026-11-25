@@ -122,6 +122,15 @@ public sealed class CoopSettings
 
     public string DifficultyTaken { get; set; } = "Unset";
 
+    /// <summary>
+    /// Waiting and sleeping under OblivionMP 1.2's one clock (see <see cref="RestVote"/>): "vote" (the others agree
+    /// first), "anyone" (anyone's wait moves everyone's clock) or "off" (OblivionMP's own settings decide).
+    /// </summary>
+    public string Rest { get; set; } = "vote";
+
+    /// <summary>How long the others have to agree to a wait or sleep.</summary>
+    public int RestVoteSeconds { get; set; } = 30;
+
     /// <summary>Players can hurt each other. Off: a player's hit on another player is refused (see <see cref="FriendlyFire"/>).</summary>
     public bool FriendlyFire { get; set; } = false;
 
@@ -223,6 +232,8 @@ public sealed class CoopSettings
         KeyRespawn = CleanKey(KeyRespawn, "G");
         KeyGoto = CleanKey(KeyGoto, "O");
         TeleportCooldown = Math.Clamp(TeleportCooldown, 0, 3600);
+        Rest = Rest is "anyone" or "off" ? Rest : "vote";
+        RestVoteSeconds = Math.Clamp(RestVoteSeconds, 10, 300);
         DifficultyDealt ??= "Unset";
         DifficultyTaken ??= "Unset";
         CommandAccess = CommandAccess is "everyone" ? "everyone" : "admins";
