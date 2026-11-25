@@ -35,6 +35,22 @@ names worked out from the game's ids.
 * The web page shows one language (`"Language"` in config.json, English by default, or the first one learned).
 * Only English has been tried so far.
 
+## OblivionMP 1.2
+
+Version 0.10.0 is the first build for OblivionMP 1.2. It is the 0.9.10 mod built against the 1.2 SDK, and it hasn't
+been played on 1.2 yet. Everything in the 1.1 section below still applies, except where noted here.
+
+* **Waiting and sleeping go through a vote** (since 0.10.1). OblivionMP 1.2 keeps one clock for the whole server and
+  turns waiting off out of the box. The mod turns the wait menu back on and asks the other players before the clock
+  moves ([how it plays](USING.md#how-it-plays)). Under OblivionMP your character never really sleeps: the clock jumps
+  forward instead. So quests that start *while* you sleep, like the Dark Brotherhood's invitation after your first
+  murder, may not start. Untested so far; please report what happens. To show the wait menu the mod uses a part of
+  OblivionMP that isn't meant for mods. If a later OblivionMP changes it, the menu stays hidden and the player's
+  log says "Could not show the wait menu": the host then sets `"HideWaitMenu": false` in
+  `<server folder>\mods\OblivionMp.Sdk\client\config.json`, and the vote works again.
+* **Getting back up after dying should no longer need a rejoin.** OblivionMP 1.2 fixed the rebirth described in the
+  1.1 section below. If you still see "Still on the ground? Quit and rejoin" on 1.2, please report it.
+
 ## OblivionMP 1.1
 
 Version 0.8.0 is the first release for OblivionMP 1.1, and it has had much less play on 1.1 than on 1.0. It runs on

@@ -32,8 +32,13 @@ public sealed partial class CoopRpc
     /// </summary>
     public Func<PlayerId, bool>? JoinTaken;
 
+    /// <summary>Asked before <see cref="JoinTaken"/>: true when the key agreed to a teammate's wait or sleep (<see cref="RestVote"/>).</summary>
+    public Func<PlayerId, bool>? VoteTaken;
+
     partial void OnJoinTalker(RpcContext context)
     {
+        if (VoteTaken?.Invoke(context.Sender) == true)
+            return;
         if (JoinTaken?.Invoke(context.Sender) == true)
             return;
         JoinRequested?.Invoke(context.Sender);
