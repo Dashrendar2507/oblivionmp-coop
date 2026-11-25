@@ -1,6 +1,18 @@
 # Changelog
 
-## Unreleased
+## 0.10.0 (test build)
+
+* **Built for OblivionMP 1.2.0** (SDK 1.2.0). OblivionMP 1.2 doesn't load mods built for 1.1, so 0.9.10 and older
+  don't load on a 1.2 server, and 0.10.0 doesn't load on 1.1. Nothing else in the mod changed: none of the SDK
+  parts that 1.2 renamed (time, skills, poison) are used by the mod. Players have nothing to do: the ReadyM Launcher
+  moves their game to 1.2 when they join a 1.2 server.
+* **Getting back up after dying should work in place again.** OblivionMP 1.2 fixed its rebirth, which used to press
+  the game's quick-load and did nothing without a quicksave. The mod's revive, Alt+G and R all go through that
+  rebirth, so "Still on the ground? Quit and rejoin" should no longer show. Not tested in game yet.
+* **Waiting and sleeping are off on OblivionMP 1.2** by default (one clock for the whole server). That is
+  OblivionMP's setting, not the mod's; see [known issues](docs/KNOWN-ISSUES.md#oblivionmp-12).
+
+## Docs after 0.9.10
 
 * **Runs on OblivionMP 1.1.1.** OblivionMP 1.1.1 kept its SDK at 1.1.0, so the mod needs no new build: the 0.9.7 zip
   runs on 1.1.0 and 1.1.1 servers. The docs now recommend 1.1.1 and say how to move a server to it. Two 1.1.1 fixes
