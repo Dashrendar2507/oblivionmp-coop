@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.10.2 (test build)
+
+* **Follows the launcher's plugin order.** ReadyM Launcher 0.34.1 changed how it loads `.esp` files, which may move
+  the mod's two plugins in the players' load order. The server used to assume they sit right after
+  `AltarESPMain.esp`; if they moved, items from the plugins after them (the Deluxe content) would have been shared
+  under the wrong numbers. Now the server reads where the plugin really is from the first player's game and numbers
+  the other plugins' items to match. Quest sync itself never depended on it.
+
 ## 0.10.1 (test build)
 
 * **Waiting and sleeping work again, with a party vote.** OblivionMP 1.2 has one clock for the whole server and
